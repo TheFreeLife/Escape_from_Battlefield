@@ -36,11 +36,15 @@ export default class Inventory {
         this.addHotbarItem({ id: 'pistol', count: 1 }, 0);
         this.addHotbarItem({ id: 'medkit', count: 5 }, 1);
         this.addHotbarItem({ id: 'ak47', count: 1 }, 2);
+        this.addHotbarItem({ id: 'm40', count: 1 }, 3);
         this.addItem({ id: 'medkit', count: 2 });
         this.addItem({ id: 'helmet', count: 1 });
         this.addItem({ id: 'vest', count: 1 });
         this.addItem({ id: 'boots', count: 1 });
         this.addItem({ id: 'watch', count: 1 });
+        this.addItem({ id: 'scope_2x', count: 1 });
+        this.addItem({ id: 'scope_4x', count: 1 });
+        this.addItem({ id: 'laser_sight', count: 1 });
     }
 
     toggle() {
@@ -89,6 +93,7 @@ export default class Inventory {
                 if (itemDef && itemDef.type === 'weapon') {
                     item.ammo = itemDef.magSize;
                     item.totalAmmo = itemDef.magSize * 4;
+                    item.attachments = { optic: null, barrel: null, underbarrel: null };
                 }
                 this.items[i] = item;
                 return true;
@@ -103,6 +108,7 @@ export default class Inventory {
             if (itemDef && itemDef.type === 'weapon') {
                 item.ammo = itemDef.magSize;
                 item.totalAmmo = itemDef.magSize * 4;
+                item.attachments = { optic: null, barrel: null, underbarrel: null };
             }
             this.hotbar[slot] = item;
             return true;
@@ -137,8 +143,21 @@ export default class Inventory {
             } else {
                 this.lastMouseDown = false;
             }
+
+            if (input.mouse.rightDown) {
+                if (!this.lastRightMouseDown) {
+                    this.handleInputRightClick(input.mouse.x, input.mouse.y);
+                }
+                this.lastRightMouseDown = true;
+            } else {
+                this.lastRightMouseDown = false;
+            }
+
             return;
         }
+
+        // Zoom logic
+        this.updateZoom();
 
         for (let i = 0; i < this.hotbarSlots; i++) {
             if (input.isKeyPressed(`Digit${i + 1}`)) {
@@ -179,6 +198,63 @@ export default class Inventory {
         // Reload
         if (input.isKeyPressed('KeyR')) {
             this.reloadWeapon();
+        }
+    }
+
+    updateZoom() {
+        const item = this.getSelectedItem();
+        let targetZoom = 0.8; // Base zoom
+
+        if (item && item.attachments?.optic) {
+            const opticDef = this.getItemDef(item.attachments.optic.id);
+            if (opticDef && opticDef.zoom) {
+                targetZoom = 0.8 / opticDef.zoom;
+            }
+        }
+
+        // Smooth zoom
+        this.game.zoom += (targetZoom - this.game.zoom) * 0.1;
+        this.game.resize(); // Trigger camera recalculation
+    }
+
+    handleInputRightClick(mx, my) {
+        const layout = this.getLayout();
+        // Check if we right-clicked an attachment in storage/hotbar to attach it to held weapon
+        const checkSlots = [
+            ...layout.storage.map((r, i) => ({ r, i, type: 'storage' })),
+            ...layout.hotbar.map((r, i) => ({ r, i, type: 'hotbar' }))
+        ];
+
+        for (const slot of checkSlots) {
+            if (this.pointInRect(mx, my, slot.r)) {
+                const item = slot.type === 'storage' ? this.items[slot.i] : this.hotbar[slot.i];
+                if (!item) continue;
+
+                const itemDef = this.getItemDef(item.id);
+                if (itemDef && itemDef.type === 'attachment') {
+                    this.tryAttach(item, slot.type, slot.i);
+                    return;
+                }
+            }
+        }
+    }
+
+    tryAttach(attachmentItem, fromType, fromKey) {
+        const weapon = this.getSelectedItem();
+        if (!weapon) return;
+
+        const attachDef = this.getItemDef(attachmentItem.id);
+        if (!attachDef || !weapon.attachments) return;
+
+        const slot = attachDef.slot; // e.g. 'optic'
+        if (slot in weapon.attachments) {
+            const old = weapon.attachments[slot];
+            weapon.attachments[slot] = attachmentItem;
+
+            if (fromType === 'storage') this.items[fromKey] = old;
+            else if (fromType === 'hotbar') this.hotbar[fromKey] = old;
+
+            console.log(`Attached ${attachDef.name} to ${weapon.id}`);
         }
     }
 
@@ -751,6 +827,26 @@ export default class Inventory {
         ctx.fillStyle = '#aaa';
         ctx.font = 'bold 16px Arial';
         ctx.fillText(itemDef.name.toUpperCase(), x, y - 45);
+
+        // Attachment Icons
+        if (item.attachments) {
+            let offset = 0;
+            for (const slotKey in item.attachments) {
+                const attach = item.attachments[slotKey];
+                if (attach) {
+                    const attachImg = this.game.assetManager.get(attach.id);
+                    if (attachImg) {
+                        const iconX = x + 180 + offset;
+                        const iconY = y - 70;
+                        ctx.drawImage(attachImg, iconX, iconY, 30, 30);
+                        ctx.strokeStyle = '#f1c40f';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(iconX, iconY, 30, 30);
+                        offset += 35;
+                    }
+                }
+            }
+        }
 
         // Ammo Numbers
         ctx.fillStyle = '#fff';

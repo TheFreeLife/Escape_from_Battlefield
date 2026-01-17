@@ -1,14 +1,14 @@
 export default class Projectile {
-    constructor(game, x, y, dx, dy, damage = 1) {
+    constructor(game, x, y, dx, dy, damage = 1, speed = 600, life = 2.0) {
         this.game = game;
         this.x = x;
         this.y = y;
         this.dx = dx;
         this.dy = dy;
-        this.speed = 600;
+        this.speed = speed;
         this.radius = 5;
         this.damage = damage;
-        this.life = 2.0; // Seconds
+        this.life = life; // Seconds
         this.markedForDeletion = false;
     }
 

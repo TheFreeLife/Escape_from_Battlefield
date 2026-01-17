@@ -140,8 +140,11 @@ export default class Player {
         if (dist > 0) {
             const damage = itemDef.damage || 1;
             const fireRate = itemDef.fireRate || this.fireRate;
+            const bSpeed = itemDef.bulletSpeed || 600;
+            const range = itemDef.range || 1200; // Default range
+            const life = range / bSpeed;
 
-            const prj = new Projectile(this.game, this.x, this.y, dx / dist, dy / dist, damage);
+            const prj = new Projectile(this.game, this.x, this.y, dx / dist, dy / dist, damage, bSpeed, life);
             this.game.projectiles.push(prj);
             this.fireTimer = fireRate;
 
@@ -198,15 +201,42 @@ export default class Player {
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
 
-        // Punch Visual (Arc)
-        if (this.punchVisualTimer > 0) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        // Laser Sight Visual
+        const selectedItem = this.game.inventory.getSelectedItem();
+        if (selectedItem && selectedItem.attachments?.underbarrel?.id === 'laser_sight' && !this.game.inventory.isOpen) {
+            const input = this.game.input;
+            const targetX = input.mouse.x / this.game.zoom + camera.x;
+            const targetY = input.mouse.y / this.game.zoom + camera.y;
+
+            const dx = targetX - this.x;
+            const dy = targetY - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
+
+            const laserLen = 1500; // Long enough to go off screen
+
+            ctx.save();
             ctx.beginPath();
             ctx.moveTo(screenX, screenY);
-            ctx.arc(screenX, screenY, 100, this.punchAngle - Math.PI * 0.25, this.punchAngle + Math.PI * 0.25);
-            ctx.fill();
+            ctx.lineTo(screenX + Math.cos(angle) * laserLen, screenY + Math.sin(angle) * laserLen);
+
+            // Laser Style
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
+            ctx.lineWidth = 1.5;
+            ctx.shadowColor = 'red';
+            ctx.shadowBlur = 8;
+            ctx.stroke();
+
+            // Bright center
+            ctx.strokeStyle = 'rgba(255, 200, 200, 0.8)';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+
             ctx.closePath();
+            ctx.restore();
         }
+
+        // Punch Visual (Arc)
 
         // Simple circle for player
         ctx.beginPath();
