@@ -25,6 +25,7 @@ export default class Inventory {
 
         this.heldItem = null;
         this.lastMouseDown = false;
+        this.hoveredSlotInfo = null; // { item, x, y, size }
 
         // Test Items
         this.addHotbarItem({ id: 'rifle', count: 1 }, 0);
@@ -38,15 +39,44 @@ export default class Inventory {
 
     toggle() {
         this.isOpen = !this.isOpen;
-        if (!this.isOpen && this.heldItem) {
-            if (!this.addItem(this.heldItem)) {
-                // If inventory full, it just disappears for now
+        if (!this.isOpen) {
+            if (this.heldItem) {
+                if (!this.addItem(this.heldItem)) {
+                    // Drop ground TBD
+                }
+                this.heldItem = null;
             }
-            this.heldItem = null;
+            this.hoveredSlotInfo = null;
         }
     }
 
     addItem(item) {
+        const itemDef = this.getItemDef(item.id);
+        const isStackable = itemDef && itemDef.type === 'consumable';
+
+        // 1. Try to stack if it's consumable
+        if (isStackable) {
+            // Check storage
+            for (let i = 0; i < this.slots; i++) {
+                if (this.items[i] && this.items[i].id === item.id && this.items[i].count < 99) {
+                    const addAmount = Math.min(item.count, 99 - this.items[i].count);
+                    this.items[i].count += addAmount;
+                    item.count -= addAmount;
+                    if (item.count <= 0) return true;
+                }
+            }
+            // Check hotbar
+            for (let i = 0; i < this.hotbarSlots; i++) {
+                if (this.hotbar[i] && this.hotbar[i].id === item.id && this.hotbar[i].count < 99) {
+                    const addAmount = Math.min(item.count, 99 - this.hotbar[i].count);
+                    this.hotbar[i].count += addAmount;
+                    item.count -= addAmount;
+                    if (item.count <= 0) return true;
+                }
+            }
+        }
+
+        // 2. Find empty slot if still has count
         for (let i = 0; i < this.slots; i++) {
             if (!this.items[i]) {
                 this.items[i] = item;
@@ -64,6 +94,10 @@ export default class Inventory {
         return false;
     }
 
+    getSelectedItem() {
+        return this.hotbar[this.selectedSlot];
+    }
+
     update(dt) {
         const input = this.game.input;
 
@@ -77,6 +111,8 @@ export default class Inventory {
         }
 
         if (this.isOpen) {
+            this.updateHover(input.mouse.x, input.mouse.y);
+
             if (input.mouse.leftDown) {
                 if (!this.lastMouseDown) {
                     this.handleInputClick(input.mouse.x, input.mouse.y);
@@ -91,7 +127,38 @@ export default class Inventory {
         for (let i = 0; i < this.hotbarSlots; i++) {
             if (input.isKeyPressed(`Digit${i + 1}`)) {
                 this.selectedSlot = i;
-                this.useItem(i);
+            }
+        }
+    }
+
+    updateHover(mx, my) {
+        this.hoveredSlotInfo = null;
+        const layout = this.getLayout();
+
+        // Check storage
+        for (let i = 0; i < this.slots; i++) {
+            const rect = layout.storage[i];
+            if (this.pointInRect(mx, my, rect) && this.items[i]) {
+                this.hoveredSlotInfo = { item: this.items[i], x: rect.x, y: rect.y, size: rect.size };
+                return;
+            }
+        }
+
+        // Check hotbar
+        for (let i = 0; i < this.hotbarSlots; i++) {
+            const rect = layout.hotbar[i];
+            if (this.pointInRect(mx, my, rect) && this.hotbar[i]) {
+                this.hoveredSlotInfo = { item: this.hotbar[i], x: rect.x, y: rect.y, size: rect.size };
+                return;
+            }
+        }
+
+        // Check equipment
+        for (const key in layout.equipment) {
+            const rect = layout.equipment[key];
+            if (this.pointInRect(mx, my, rect) && this.equipment[key]) {
+                this.hoveredSlotInfo = { item: this.equipment[key], x: rect.x, y: rect.y, size: rect.size };
+                return;
             }
         }
     }
@@ -207,10 +274,22 @@ export default class Inventory {
     useItem(slotIndex) {
         const item = this.hotbar[slotIndex];
         if (!item) return;
-        if (item.id === 'medkit' && item.count > 0) {
-            item.count--;
-            if (item.count <= 0) this.hotbar[slotIndex] = null;
+
+        const itemDef = this.getItemDef(item.id);
+        if (!itemDef) return;
+
+        if (itemDef.id === 'medkit' && item.count > 0) {
+            // Heal player
+            const player = this.game.player;
+            if (player.health < player.maxHealth) {
+                player.health = Math.min(player.maxHealth, player.health + 200);
+                item.count--;
+                if (item.count <= 0) this.hotbar[slotIndex] = null;
+                console.log("Used Medkit! Health:", player.health);
+                return true;
+            }
         }
+        return false;
     }
 
     render(ctx) {
@@ -270,6 +349,45 @@ export default class Inventory {
             const my = this.game.input.mouse.y;
             this.drawItem(ctx, this.heldItem, mx - 25, my - 25, 50);
         }
+
+        // Tooltip (Always last)
+        if (this.hoveredSlotInfo && !this.heldItem) {
+            this.renderTooltip(ctx, this.hoveredSlotInfo);
+        }
+    }
+
+    renderTooltip(ctx, info) {
+        const itemDef = this.getItemDef(info.item.id);
+        if (!itemDef) return;
+
+        const padding = 12;
+        const titleHeight = 25;
+        const typeHeight = 20;
+        const w = 180;
+        const h = titleHeight + typeHeight + padding * 2;
+
+        // Position near slot, but keep inside canvas
+        let tx = info.x + info.size + 10;
+        let ty = info.y;
+        if (tx + w > this.game.canvas.width) tx = info.x - w - 10;
+        if (ty + h > this.game.canvas.height) ty = this.game.canvas.height - h - 10;
+
+        // Shadow/BG
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillRect(tx, ty, w, h);
+        ctx.strokeStyle = itemDef.color || '#fff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(tx, ty, w, h);
+
+        // Name
+        ctx.fillStyle = itemDef.color || '#fff';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText(itemDef.name, tx + padding, ty + padding + 15);
+
+        // Type
+        ctx.fillStyle = '#aaa';
+        ctx.font = 'italic 11px Arial';
+        ctx.fillText(itemDef.type.toUpperCase(), tx + padding, ty + padding + 35);
     }
 
     drawSlot(ctx, rect, item, isSelected, label) {

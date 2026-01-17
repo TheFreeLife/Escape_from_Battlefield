@@ -4,6 +4,8 @@ export default class TileMap {
     constructor(game) {
         this.game = game;
         this.chunks = new Map(); // Key: "x,y", Value: Chunk
+        this.width = 0; // In tiles
+        this.height = 0; // In tiles
     }
 
     getChunkKey(cx, cy) {

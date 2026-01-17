@@ -8,10 +8,17 @@ export default class Enemy {
         this.color = '#e74c3c'; // Red
         this.health = 3;
         this.isDead = false;
+        this.attackDamage = 1;
+        this.attackCooldown = 1.0; // 1 second
+        this.attackTimer = 0;
     }
 
     update(dt) {
         if (this.isDead) return;
+
+        if (this.attackTimer > 0) {
+            this.attackTimer -= dt;
+        }
 
         // Simple chase logic
         const player = this.game.player;
@@ -19,6 +26,14 @@ export default class Enemy {
             const dx = player.x - this.x;
             const dy = player.y - this.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Attack logic
+            const attackRange = this.radius + player.radius + 10;
+            if (dist < attackRange && this.attackTimer <= 0) {
+                player.health -= this.attackDamage;
+                this.attackTimer = this.attackCooldown;
+                console.log(`Enemy attacked player! Player health: ${player.health}`);
+            }
 
             if (dist > this.radius + player.radius) { // Stop when touching
                 const vdx = (dx / dist) * this.speed * dt;
@@ -45,6 +60,12 @@ export default class Enemy {
                 }
             }
         }
+
+        // Map Boundary Constrain
+        const mapW = this.game.tileMap.width * 64;
+        const mapH = this.game.tileMap.height * 64;
+        this.x = Math.max(this.radius, Math.min(mapW - this.radius, this.x));
+        this.y = Math.max(this.radius, Math.min(mapH - this.radius, this.y));
 
         // --- Unit-to-Unit Collision (Separation) ---
         const checkTile = (tx, ty) => {

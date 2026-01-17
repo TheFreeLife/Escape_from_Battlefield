@@ -41,7 +41,11 @@ export default class Game {
 
         // Procedural generation
         const mapGenerator = new MapGenerator(this);
-        mapGenerator.generate(this.tileMap, 50, 50); // Generate 50x50 map
+        const mapW = 50;
+        const mapH = 50;
+        this.tileMap.width = mapW;
+        this.tileMap.height = mapH;
+        mapGenerator.generate(this.tileMap, mapW, mapH); // Generate 50x50 map
 
         this.player = new Player(this, 300, 300); // Start position
         this.inventory = new Inventory(this);

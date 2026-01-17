@@ -14,6 +14,10 @@ export default class Player {
         // Health system
         this.maxHealth = 1000;
         this.health = 1000;
+
+        // Combat Visuals
+        this.punchVisualTimer = 0;
+        this.punchAngle = 0;
     }
 
     update(dt) {
@@ -59,13 +63,34 @@ export default class Player {
             this.y = nextY;
         }
 
-        // Shooting logic
+        // Map Boundary Constrain
+        const mapW = this.game.tileMap.width * 64;
+        const mapH = this.game.tileMap.height * 64;
+        this.x = Math.max(this.radius, Math.min(mapW - this.radius, this.x));
+        this.y = Math.max(this.radius, Math.min(mapH - this.radius, this.y));
+
+        // Shooting & Item Usage logic
         if (this.fireTimer > 0) {
             this.fireTimer -= dt;
         }
+        if (this.punchVisualTimer > 0) {
+            this.punchVisualTimer -= dt;
+        }
 
         if (input.mouse.leftDown && this.fireTimer <= 0) {
-            this.shoot();
+            const selectedItem = this.game.inventory.getSelectedItem();
+            const itemDef = selectedItem ? this.game.inventory.getItemDef(selectedItem.id) : null;
+
+            if (itemDef && itemDef.type === 'weapon') {
+                this.shoot();
+            } else if (itemDef && itemDef.type === 'consumable') {
+                if (this.game.inventory.useItem(this.game.inventory.selectedSlot)) {
+                    this.fireTimer = 0.5; // Prevent spamming consumables
+                }
+            } else {
+                // Default: Punch
+                this.punch();
+            }
         }
 
         // --- Unit-to-Unit Collision (Separation) ---
@@ -114,10 +139,61 @@ export default class Player {
         }
     }
 
+    punch() {
+        const input = this.game.input;
+        const camera = this.game.camera;
+        const targetX = input.mouse.x / this.game.zoom + camera.x;
+        const targetY = input.mouse.y / this.game.zoom + camera.y;
+
+        const punchAngle = Math.atan2(targetY - this.y, targetX - this.x);
+        const punchRange = 100;
+        const punchDamage = 1;
+        const punchArc = Math.PI * 0.5; // 90 degrees
+
+        // Set visual states
+        this.punchAngle = punchAngle;
+        this.punchVisualTimer = 0.15;
+        this.fireTimer = 0.4; // Punch cooldown (global combat cooldown)
+
+        console.log("PUNCH!");
+
+        for (const enemy of this.game.enemies) {
+            if (enemy.isDead) continue;
+
+            const dx = enemy.x - this.x;
+            const dy = enemy.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < punchRange) {
+                const angleToEnemy = Math.atan2(dy, dx);
+                let diff = angleToEnemy - punchAngle;
+
+                // Keep diff in [-PI, PI]
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+
+                if (Math.abs(diff) < punchArc / 2) {
+                    enemy.takeDamage(punchDamage);
+                    console.log(`Punched enemy! Health: ${enemy.health}`);
+                }
+            }
+        }
+    }
+
     render(ctx, camera) {
         // Render relative to camera
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
+
+        // Punch Visual (Arc)
+        if (this.punchVisualTimer > 0) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.beginPath();
+            ctx.moveTo(screenX, screenY);
+            ctx.arc(screenX, screenY, 100, this.punchAngle - Math.PI * 0.25, this.punchAngle + Math.PI * 0.25);
+            ctx.fill();
+            ctx.closePath();
+        }
 
         // Simple circle for player for now
         ctx.beginPath();
