@@ -78,7 +78,7 @@ export default class Player {
             const itemDef = selectedItem ? this.game.inventory.getItemDef(selectedItem.id) : null;
 
             if (itemDef && itemDef.type === 'weapon') {
-                this.shoot();
+                this.shoot(itemDef);
             } else if (itemDef && itemDef.type === 'consumable') {
                 if (this.game.inventory.useItem(this.game.inventory.selectedSlot)) {
                     this.fireTimer = 0.5; // Prevent spamming consumables
@@ -116,7 +116,7 @@ export default class Player {
         }
     }
 
-    shoot() {
+    shoot(weaponDef) {
         const input = this.game.input;
         const camera = this.game.camera;
 
@@ -129,9 +129,12 @@ export default class Player {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist > 0) {
-            const prj = new Projectile(this.game, this.x, this.y, dx / dist, dy / dist);
+            const damage = weaponDef ? weaponDef.damage || 1 : 1;
+            const fireRate = weaponDef ? weaponDef.fireRate || this.fireRate : this.fireRate;
+
+            const prj = new Projectile(this.game, this.x, this.y, dx / dist, dy / dist, damage);
             this.game.projectiles.push(prj);
-            this.fireTimer = this.fireRate;
+            this.fireTimer = fireRate;
         }
     }
 

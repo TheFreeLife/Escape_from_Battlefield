@@ -35,8 +35,9 @@ export default class AssetManager {
             // Adding specific styling/color if needed
             const finalSVG = `
                 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                    <style>path { fill: ${color}; stroke: black; stroke-width: 1; }</style>
-                    ${svgContent}
+                    <g fill="${color}" stroke="black" stroke-width="1">
+                        ${svgContent}
+                    </g>
                 </svg>
             `;
             const blob = new Blob([finalSVG], { type: 'image/svg+xml' });

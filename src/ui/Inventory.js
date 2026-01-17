@@ -30,6 +30,7 @@ export default class Inventory {
         // Test Items
         this.addHotbarItem({ id: 'rifle', count: 1 }, 0);
         this.addHotbarItem({ id: 'medkit', count: 5 }, 1);
+        this.addHotbarItem({ id: 'ak47', count: 1 }, 2);
         this.addItem({ id: 'medkit', count: 2 });
         this.addItem({ id: 'helmet', count: 1 });
         this.addItem({ id: 'vest', count: 1 });
@@ -390,13 +391,86 @@ export default class Inventory {
 
         // Name
         ctx.fillStyle = itemDef.color || '#fff';
-        ctx.font = 'bold 14px Arial';
+        ctx.font = 'bold 15px Arial';
         ctx.fillText(itemDef.name, tx + padding, ty + padding + 15);
 
         // Type
         ctx.fillStyle = '#aaa';
         ctx.font = 'italic 11px Arial';
         ctx.fillText(itemDef.type.toUpperCase(), tx + padding, ty + padding + 35);
+
+        let currentY = ty + padding + 55;
+
+        // Description
+        if (itemDef.description) {
+            ctx.fillStyle = '#eee';
+            ctx.font = '12px Arial';
+            // Simple word wrap
+            const words = itemDef.description.split(' ');
+            let line = '';
+            for (const word of words) {
+                if (ctx.measureText(line + word).width > w - padding * 2) {
+                    ctx.fillText(line, tx + padding, currentY);
+                    line = word + ' ';
+                    currentY += 15;
+                } else {
+                    line += word + ' ';
+                }
+            }
+            ctx.fillText(line, tx + padding, currentY);
+            currentY += 20;
+        }
+
+        // Stats
+        if (itemDef.type === 'weapon') {
+            ctx.fillStyle = '#f1c40f';
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(`Damage: ${itemDef.damage || 1}`, tx + padding, currentY);
+            currentY += 15;
+            ctx.fillText(`Fire Rate: ${itemDef.fireRate || 0.2}s`, tx + padding, currentY);
+            currentY += 15;
+        }
+
+        // Adjust background height (Redraw)
+        const finalH = currentY - ty + padding;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillRect(tx, ty, w, finalH);
+        ctx.strokeStyle = itemDef.color || '#fff';
+        ctx.strokeRect(tx, ty, w, finalH);
+
+        // Redraw text over background
+        ctx.fillStyle = itemDef.color || '#fff';
+        ctx.font = 'bold 15px Arial';
+        ctx.fillText(itemDef.name, tx + padding, ty + padding + 15);
+        ctx.fillStyle = '#aaa';
+        ctx.font = 'italic 11px Arial';
+        ctx.fillText(itemDef.type.toUpperCase(), tx + padding, ty + padding + 35);
+
+        currentY = ty + padding + 55;
+        if (itemDef.description) {
+            ctx.fillStyle = '#eee';
+            ctx.font = '12px Arial';
+            const words = itemDef.description.split(' ');
+            let line = '';
+            for (const word of words) {
+                if (ctx.measureText(line + word).width > w - padding * 2) {
+                    ctx.fillText(line, tx + padding, currentY);
+                    line = word + ' ';
+                    currentY += 15;
+                } else {
+                    line += word + ' ';
+                }
+            }
+            ctx.fillText(line, tx + padding, currentY);
+            currentY += 20;
+        }
+        if (itemDef.type === 'weapon') {
+            ctx.fillStyle = '#f1c40f';
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(`Damage: ${itemDef.damage || 1}`, tx + padding, currentY);
+            currentY += 15;
+            ctx.fillText(`Fire Rate: ${itemDef.fireRate || 0.2}s`, tx + padding, currentY);
+        }
     }
 
     drawSlot(ctx, rect, item, isSelected, label) {

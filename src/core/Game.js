@@ -8,6 +8,8 @@ import Projectile from '../entities/Projectile.js';
 import Inventory from '../ui/Inventory.js';
 import Loot from '../entities/Loot.js';
 
+import { allItems } from '../items/index.js';
+
 export default class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
@@ -34,11 +36,14 @@ export default class Game {
     async init() {
         await this.assetManager.loadData([
             { name: 'tiles', path: 'assets/data/tiles.json' },
-            { name: 'items', path: 'assets/data/items.json' },
             { name: 'structures', path: 'assets/data/structures.json' },
             { name: 'biomes', path: 'assets/data/biomes.json' },
             { name: 'enemies', path: 'assets/data/enemies.json' }
         ]);
+
+        // Inject items from JS registry
+        this.assetManager.data['items'] = allItems;
+
         await this.assetManager.generateBitmaps();
 
         this.tileMap = new TileMap(this);
@@ -49,7 +54,7 @@ export default class Game {
         this.player = new Player(this, 300, 300); // Start position
         this.inventory = new Inventory(this);
 
-        // Generate bitmaps for items as well
+        // Generate bitmaps for items
         const items = this.assetManager.getData('items');
         if (items) {
             for (const item of items) {
