@@ -10,7 +10,7 @@ export default class Loot {
     }
 
     update(dt) {
-        // Auto-pickup removed, now handled via T interaction in Game.js
+        // Auto-pickup removed, now handled via F interaction in Game.js
     }
 
     render(ctx, camera) {
@@ -50,7 +50,7 @@ export default class Loot {
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 12px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText(`[T] ${itemDef?.name || 'Item'}`, screenX, screenY - 25);
+                ctx.fillText(`[F] ${itemDef?.name || 'Item'}`, screenX, screenY - 25);
                 ctx.restore();
             }
         }

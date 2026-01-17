@@ -47,6 +47,8 @@ export default class Enemy {
         this.patrolTarget = null;
         this.patrolPauseTimer = 0;
 
+        this.isCollidable = true;
+        this.weight = 100;
         console.log(`Enemy spawned with command: ${this.command}`);
     }
 
@@ -79,7 +81,8 @@ export default class Enemy {
             }
         }
 
-        // --- Unit-to-Unit Collision (Separation) ---
+        // Separation is still useful for smooth sliding between entities, 
+        // but it will also respect the unified collision check
         this.handleSeparation(dt);
     }
 
@@ -130,8 +133,6 @@ export default class Enemy {
     }
 
     handleGuard(dt) {
-        // Just stand still at spawn if possible, or current position
-        // Maybe slowly return to spawn if far?
         const dx = this.spawnX - this.x;
         const dy = this.spawnY - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -142,40 +143,18 @@ export default class Enemy {
     }
 
     moveTowards(tx, ty) {
-        const checkCollision = (cx, cy) => {
-            const buffer = this.radius * 0.8;
-            const points = [
-                { x: cx - buffer, y: cy - buffer },
-                { x: cx + buffer, y: cy - buffer },
-                { x: cx - buffer, y: cy + buffer },
-                { x: cx + buffer, y: cy + buffer }
-            ];
-            return points.some(p => this.game.tileMap.isCollidable(p.x, p.y));
-        };
-
         const vdx = tx - this.x;
         const vdy = ty - this.y;
 
-        if (!checkCollision(this.x + vdx, this.y)) {
+        if (!this.game.checkCollision(this.x + vdx, this.y, this.radius, this)) {
             this.x += vdx;
         }
-        if (!checkCollision(this.x, this.y + vdy)) {
+        if (!this.game.checkCollision(this.x, this.y + vdy, this.radius, this)) {
             this.y += vdy;
         }
     }
 
     handleSeparation(dt) {
-        const checkTile = (tx, ty) => {
-            const buffer = this.radius * 0.8;
-            const points = [
-                { x: tx - buffer, y: ty - buffer },
-                { x: tx + buffer, y: ty - buffer },
-                { x: tx - buffer, y: ty + buffer },
-                { x: tx + buffer, y: ty + buffer }
-            ];
-            return points.some(p => this.game.tileMap.isCollidable(p.x, p.y));
-        };
-
         // 1. Resolve with other enemies
         for (const other of this.game.enemies) {
             if (other === this || other.isDead) continue;
@@ -194,20 +173,17 @@ export default class Enemy {
                 const pushX = nx * overlap;
                 const pushY = ny * overlap;
 
-                if (!checkTile(this.x + pushX, this.y + pushY)) {
+                // Important: Only check tiles when separating overlapped units
+                if (!this.game.checkTileCollision(this.x + pushX, this.y + pushY, this.radius)) {
                     this.x += pushX;
                     this.y += pushY;
-                }
-                if (!checkTile(other.x - pushX, other.y - pushY)) {
-                    other.x -= pushX;
-                    other.y -= pushY;
                 }
             }
         }
 
         // 2. Resolve with player
         const p = this.game.player;
-        if (p) {
+        if (p && !p.isInVehicle) {
             const dx = this.x - p.x;
             const dy = this.y - p.y;
             const distSq = dx * dx + dy * dy;
@@ -221,7 +197,7 @@ export default class Enemy {
 
                 const pushX = nx * overlap;
                 const pushY = ny * overlap;
-                if (!checkTile(this.x + pushX, this.y + pushY)) {
+                if (!this.game.checkTileCollision(this.x + pushX, this.y + pushY, this.radius)) {
                     this.x += pushX;
                     this.y += pushY;
                 }

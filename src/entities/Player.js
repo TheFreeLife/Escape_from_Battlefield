@@ -27,10 +27,17 @@ export default class Player {
         // Vehicle state
         this.isInVehicle = false;
         this.currentVehicle = null;
+
+        this.isCollidable = true;
+        this.weight = 100;
     }
 
     update(dt) {
-        if (this.isInVehicle) return;
+        if (this.isInVehicle) {
+            this.isCollidable = false;
+            return;
+        }
+        this.isCollidable = true;
 
         const input = this.game.input;
         let dx = 0;
@@ -51,26 +58,11 @@ export default class Player {
         const nextX = this.x + dx * this.speed * dt;
         const nextY = this.y + dy * this.speed * dt;
 
-        // Simple Collision Detection
-        // Check multiple points around the player radius for a more robust feel
-        const checkCollision = (tx, ty) => {
-            const buffer = this.radius * 0.8;
-            const points = [
-                { x: tx - buffer, y: ty - buffer },
-                { x: tx + buffer, y: ty - buffer },
-                { x: tx - buffer, y: ty + buffer },
-                { x: tx + buffer, y: ty + buffer }
-            ];
-            return points.some(p => this.game.tileMap.isCollidable(p.x, p.y));
-        };
-
-        // Try moving X
-        if (!checkCollision(nextX, this.y)) {
+        // Use unified collision check
+        if (!this.game.checkCollision(nextX, this.y, this.radius, this)) {
             this.x = nextX;
         }
-
-        // Try moving Y
-        if (!checkCollision(this.x, nextY)) {
+        if (!this.game.checkCollision(this.x, nextY, this.radius, this)) {
             this.y = nextY;
         }
 

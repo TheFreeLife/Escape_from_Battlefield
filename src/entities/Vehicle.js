@@ -14,6 +14,9 @@ export default class Vehicle {
         this.isOccupied = false;
 
         this.interactionRadius = 100;
+        this.isCollidable = true;
+        this.radius = Math.max(this.width, this.height) * 0.5; // Circular radius for simplified collision
+        this.weight = 2000;
     }
 
     update(dt) {
@@ -27,11 +30,18 @@ export default class Vehicle {
         const vx = Math.cos(this.angle) * this.speed * dt;
         const vy = Math.sin(this.angle) * this.speed * dt;
 
-        if (!this.checkCollision(this.x + vx, this.y + vy)) {
+        // Try moving X
+        if (!this.game.checkCollision(this.x + vx, this.y, this.radius, this)) {
             this.x += vx;
+        } else {
+            this.speed *= 0.3; // Hit something
+        }
+
+        // Try moving Y
+        if (!this.game.checkCollision(this.x, this.y + vy, this.radius, this)) {
             this.y += vy;
         } else {
-            this.speed *= 0.5; // Bounce/Slam stop
+            this.speed *= 0.3; // Hit something
         }
 
         // Update Occupant Position
@@ -60,23 +70,6 @@ export default class Vehicle {
             if (input.isKeyPressed('KeyA')) this.angle -= steerSpeed * dt;
             if (input.isKeyPressed('KeyD')) this.angle += steerSpeed * dt;
         }
-
-        // Exit
-        if (input.isKeyPressed('KeyT') && !this.game.lastTState) {
-            this.exit();
-            this.game.lastTState = true;
-        }
-    }
-
-    checkCollision(tx, ty) {
-        const buffer = 40;
-        const corners = [
-            { x: tx - buffer, y: ty - buffer },
-            { x: tx + buffer, y: ty - buffer },
-            { x: tx - buffer, y: ty + buffer },
-            { x: tx + buffer, y: ty + buffer }
-        ];
-        return corners.some(p => this.game.tileMap.isCollidable(p.x, p.y));
     }
 
     enter() {
@@ -87,9 +80,28 @@ export default class Vehicle {
     }
 
     exit() {
+        const player = this.game.player;
+        const exitDist = this.radius + player.radius + 15; // Position outside collision radius
+        const sideAngle = this.angle - Math.PI / 2; // Exit to the left side
+
+        let targetX = this.x + Math.cos(sideAngle) * exitDist;
+        let targetY = this.y + Math.sin(sideAngle) * exitDist;
+
+        // Check if the left side is blocked by a wall or another object
+        if (this.game.checkCollision(targetX, targetY, player.radius, this)) {
+            // Try the right side instead
+            const otherSide = this.angle + Math.PI / 2;
+            targetX = this.x + Math.cos(otherSide) * exitDist;
+            targetY = this.y + Math.sin(otherSide) * exitDist;
+        }
+
+        // Apply new position
+        player.x = targetX;
+        player.y = targetY;
+
         this.isOccupied = false;
-        this.game.player.isInVehicle = false;
-        this.game.player.currentVehicle = null;
+        player.isInVehicle = false;
+        player.currentVehicle = null;
         console.log("Exited vehicle");
     }
 
@@ -141,9 +153,9 @@ export default class Vehicle {
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 16px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText("[T] 탭승", screenX, screenY - 60);
+                ctx.fillText("[F] 탑승", screenX, screenY - 60);
 
-                // Detection for T press in Game.js/Player.js
+                // Detection for F press in Game.js/Player.js
             }
         }
     }

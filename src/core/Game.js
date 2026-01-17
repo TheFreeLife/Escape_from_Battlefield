@@ -37,6 +37,77 @@ export default class Game {
         this.init();
     }
 
+    /**
+     * Unified collision check
+     * @param {number} x Target X coordinate
+     * @param {number} y Target Y coordinate
+     * @param {number} radius Radius of the object checking collision
+     * @param {Object} ignore Object to ignore (usually the caller itself)
+     * @returns {boolean} True if collision detected
+     */
+    /**
+     * Check only tile map collision
+     */
+    checkTileCollision(x, y, radius) {
+        const buffer = radius * 0.8;
+        const points = [
+            { x: x - buffer, y: y - buffer },
+            { x: x + buffer, y: y - buffer },
+            { x: x - buffer, y: y + buffer },
+            { x: x + buffer, y: y + buffer }
+        ];
+        return this.tileMap && points.some(p => this.tileMap.isCollidable(p.x, p.y));
+    }
+
+    checkCollision(x, y, radius, ignore = null) {
+        // 1. Tile Map Collision (Walls always block)
+        if (this.checkTileCollision(x, y, radius)) return true;
+
+        // 2. Entity Collision
+        const entities = [
+            this.player,
+            ...this.enemies,
+            ...this.vehicles
+        ];
+
+        for (const ent of entities) {
+            if (!ent || ent === ignore || !ent.isCollidable) continue;
+            
+            const dx = x - ent.x;
+            const dy = y - ent.y;
+            const distSq = dx * dx + dy * dy;
+            const minDist = radius + ent.radius;
+
+            if (distSq < minDist * minDist) {
+                // Collision Detected!
+                
+                // Weight Logic: Can we push this object?
+                if (ignore && ignore.weight > ent.weight) {
+                    const dist = Math.sqrt(distSq) || 0.1;
+                    const overlap = minDist - dist;
+                    const nx = dx / dist; // Vector from ent to x,y
+                    const ny = dy / dist;
+
+                    // Calculate where to push the entity (away from the moving object)
+                    const pushX = -nx * overlap;
+                    const pushY = -ny * overlap;
+
+                    // Can the entity be pushed there? (Check tile collision for the entity)
+                    if (!this.checkTileCollision(ent.x + pushX, ent.y + pushY, ent.radius)) {
+                        // Push successful
+                        ent.x += pushX;
+                        ent.y += pushY;
+                        return false; // Don't block the heavier object
+                    }
+                }
+                
+                return true; // Blocked if same/lower weight or pushed entity hit a wall
+            }
+        }
+
+        return false;
+    }
+
     async init() {
         await this.assetManager.loadData([
             { name: 'tiles', path: 'assets/data/tiles.json' },
@@ -163,14 +234,14 @@ export default class Game {
             v.update(dt);
         }
 
-        // Handle Global Interaction (T Key)
-        if (this.input.isKeyPressed('KeyT')) {
-            if (!this.lastTState) {
+        // Handle Global Interaction (F Key)
+        if (this.input.isKeyPressed('KeyF')) {
+            if (!this.lastFState) {
                 this.handleInteraction();
-                this.lastTState = true;
+                this.lastFState = true;
             }
         } else {
-            this.lastTState = false;
+            this.lastFState = false;
         }
     }
 
