@@ -1,6 +1,7 @@
 import { CHUNK_SIZE } from './Chunk.js';
 import Enemy from '../entities/Enemy.js';
 import Loot from '../entities/Loot.js';
+import Vehicle from '../entities/Vehicle.js';
 import Noise from '../core/Noise.js';
 
 export default class MapGenerator {
@@ -93,6 +94,16 @@ export default class MapGenerator {
                             this.game.loots.push(new Loot(this.game, ix, iy, itemId));
                         }
                     }
+                }
+            }
+
+            // 3. Vehicles
+            if (Math.random() < 0.05) { // 5% chance per chunk
+                const vx = (cx * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * 64;
+                const vy = (cy * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * 64;
+
+                if (!tileMap.isCollidable(vx, vy)) {
+                    this.game.vehicles.push(new Vehicle(this.game, vx, vy));
                 }
             }
         }

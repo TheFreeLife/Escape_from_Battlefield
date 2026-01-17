@@ -8,6 +8,7 @@ import Projectile from '../entities/Projectile.js';
 import Inventory from '../ui/Inventory.js';
 import Loot from '../entities/Loot.js';
 import Grenade from '../entities/Grenade.js';
+import Vehicle from '../entities/Vehicle.js';
 
 import { allItems } from '../items/index.js';
 
@@ -23,6 +24,7 @@ export default class Game {
         this.projectiles = [];
         this.loots = [];
         this.grenades = [];
+        this.vehicles = [];
         this.zoom = 0.8;
 
         this.resize();
@@ -55,6 +57,9 @@ export default class Game {
 
         this.player = new Player(this, 300, 300); // Start position
         this.inventory = new Inventory(this);
+
+        // Spawn test vehicle
+        this.vehicles.push(new Vehicle(this, 500, 500));
 
         // Generate bitmaps for items
         const items = this.assetManager.getData('items');
@@ -152,6 +157,55 @@ export default class Game {
                 this.grenades.splice(i, 1);
             }
         }
+
+        // Update Vehicles
+        for (const v of this.vehicles) {
+            v.update(dt);
+        }
+
+        // Handle Global Interaction (T Key)
+        if (this.input.isKeyPressed('KeyT')) {
+            if (!this.lastTState) {
+                this.handleInteraction();
+                this.lastTState = true;
+            }
+        } else {
+            this.lastTState = false;
+        }
+    }
+
+    handleInteraction() {
+        if (this.player.isInVehicle) {
+            // Exit logic handled in Vehicle.handleInput/exit
+            this.player.currentVehicle.exit();
+            return;
+        }
+
+        // 1. Search for nearby vehicle to enter
+        for (const v of this.vehicles) {
+            const dist = Math.sqrt((this.player.x - v.x) ** 2 + (this.player.y - v.y) ** 2);
+            if (dist < v.interactionRadius && !v.isOccupied) {
+                v.enter();
+                return; // Prioritize vehicle entry
+            }
+        }
+
+        // 2. Search for nearby loot to pick up
+        for (let i = this.loots.length - 1; i >= 0; i--) {
+            const l = this.loots[i];
+            const dx = this.player.x - l.x;
+            const dy = this.player.y - l.y;
+            const distSq = dx * dx + dy * dy;
+            const interactDist = 60;
+
+            if (distSq < interactDist * interactDist) {
+                if (this.inventory.addItem({ id: l.itemId, count: l.count })) {
+                    l.markedForDeletion = true;
+                    console.log(`Picked up ${l.itemId} x${l.count} via T key`);
+                    return; // Pick one at a time
+                }
+            }
+        }
     }
 
     render() {
@@ -188,6 +242,11 @@ export default class Game {
         // Render Grenades
         for (const g of this.grenades) {
             g.render(this.ctx, this.camera);
+        }
+
+        // Render Vehicles
+        for (const v of this.vehicles) {
+            v.render(this.ctx, this.camera);
         }
 
         this.ctx.restore();

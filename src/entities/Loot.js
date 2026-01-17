@@ -10,20 +10,7 @@ export default class Loot {
     }
 
     update(dt) {
-        const player = this.game.player;
-        if (!player) return;
-
-        const dx = player.x - this.x;
-        const dy = player.y - this.y;
-        const distSq = dx * dx + dy * dy;
-        const pickupDist = 50;
-
-        if (distSq < pickupDist * pickupDist) {
-            if (this.game.inventory.addItem({ id: this.itemId, count: this.count })) {
-                this.markedForDeletion = true;
-                console.log(`Picked up ${this.itemId} x${this.count}`);
-            }
-        }
+        // Auto-pickup removed, now handled via T interaction in Game.js
     }
 
     render(ctx, camera) {
@@ -49,6 +36,23 @@ export default class Loot {
         } else {
             ctx.fillStyle = color;
             ctx.fillRect(screenX - 10, screenY - 10, 20, 20);
+        }
+
+        // Interaction Hint
+        const player = this.game.player;
+        if (player && !player.isInVehicle) {
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const distSq = dx * dx + dy * dy;
+            const interactDist = 60;
+            if (distSq < interactDist * interactDist) {
+                ctx.save();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`[T] ${itemDef?.name || 'Item'}`, screenX, screenY - 25);
+                ctx.restore();
+            }
         }
     }
 }

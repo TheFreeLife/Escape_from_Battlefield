@@ -23,9 +23,15 @@ export default class Player {
         // Grenade system
         this.throwCharge = 0;
         this.maxThrowCharge = 1.0; // 1 second to max
+
+        // Vehicle state
+        this.isInVehicle = false;
+        this.currentVehicle = null;
     }
 
     update(dt) {
+        if (this.isInVehicle) return;
+
         const input = this.game.input;
         let dx = 0;
         let dy = 0;
@@ -244,6 +250,8 @@ export default class Player {
     }
 
     render(ctx, camera) {
+        if (this.isInVehicle) return;
+
         // Render relative to camera
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
