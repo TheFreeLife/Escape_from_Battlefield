@@ -27,6 +27,10 @@ export default class Inventory {
         this.lastMouseDown = false;
         this.hoveredSlotInfo = null; // { item, x, y, size }
 
+        // Vehicle Storage Integration
+        this.currentVehicleStorage = null;
+        this.isVehicleStorageOpen = false;
+
         // Reload system
         this.isReloading = false;
         this.reloadTimer = 0;
@@ -52,9 +56,24 @@ export default class Inventory {
         this.addItem({ id: 'laser_sight', count: 1 });
     }
 
+    openVehicleStorage(vehicle) {
+        this.currentVehicleStorage = vehicle;
+        this.isVehicleStorageOpen = true;
+        this.isOpen = true; // Ensure inventory is open
+    }
+
+    closeVehicleStorage() {
+        if (this.currentVehicleStorage) {
+            this.currentVehicleStorage.isStorageOpen = false;
+        }
+        this.currentVehicleStorage = null;
+        this.isVehicleStorageOpen = false;
+    }
+
     toggle() {
         this.isOpen = !this.isOpen;
         if (!this.isOpen) {
+            this.closeVehicleStorage();
             if (this.heldItem) {
                 if (!this.addItem(this.heldItem)) {
                     // Drop ground TBD
@@ -94,11 +113,11 @@ export default class Inventory {
         // 2. Find empty slot if still has count
         for (let i = 0; i < this.slots; i++) {
             if (!this.items[i]) {
-                // Initialize weapon ammo if pickup
+                // Initialize weapon ammo only if it's a new pickup (no existing state)
                 if (itemDef && itemDef.type === 'weapon') {
-                    item.ammo = itemDef.magSize;
-                    item.totalAmmo = itemDef.magSize * 4;
-                    item.attachments = { optic: null, barrel: null, underbarrel: null };
+                    if (item.ammo === undefined) item.ammo = itemDef.magSize;
+                    if (item.totalAmmo === undefined) item.totalAmmo = itemDef.magSize * 4;
+                    if (!item.attachments) item.attachments = { optic: null, barrel: null, underbarrel: null };
                 }
                 this.items[i] = item;
                 return true;
@@ -443,6 +462,16 @@ export default class Inventory {
         this.hoveredSlotInfo = null;
         const layout = this.getLayout();
 
+        // Check vehicle storage
+        if (this.isVehicleStorageOpen) {
+            layout.vehicleStorage.forEach((rect, i) => {
+                if (this.pointInRect(mx, my, rect) && this.currentVehicleStorage.storage[i]) {
+                    this.hoveredSlotInfo = { item: this.currentVehicleStorage.storage[i], x: rect.x, y: rect.y, size: rect.size };
+                }
+            });
+            if (this.hoveredSlotInfo) return;
+        }
+
         // Check storage
         for (let i = 0; i < this.slots; i++) {
             const rect = layout.storage[i];
@@ -475,6 +504,23 @@ export default class Inventory {
         const layout = this.getLayout();
         const input = this.game.input;
         const isShift = input.isKeyPressed('ShiftLeft') || input.isKeyPressed('ShiftRight');
+
+        // 0. Vehicle Storage
+        if (this.isVehicleStorageOpen) {
+            for (let i = 0; i < 10; i++) {
+                const rect = layout.vehicleStorage[i];
+                if (this.pointInRect(mx, my, rect)) {
+                    if (isShift && this.currentVehicleStorage.storage[i]) {
+                        this.handleQuickMove('vehicle', i);
+                        return;
+                    }
+                    const temp = this.currentVehicleStorage.storage[i];
+                    this.currentVehicleStorage.storage[i] = this.heldItem;
+                    this.heldItem = temp;
+                    return;
+                }
+            }
+        }
 
         // 1. Storage slots
         for (let i = 0; i < this.slots; i++) {
@@ -535,10 +581,30 @@ export default class Inventory {
         if (fromType === 'storage') item = this.items[fromKey];
         else if (fromType === 'hotbar') item = this.hotbar[fromKey];
         else if (fromType === 'equipment') item = this.equipment[fromKey];
+        else if (fromType === 'vehicle') item = this.currentVehicleStorage.storage[fromKey];
 
         if (!item) return;
         const itemDef = this.getItemDef(item.id);
         if (!itemDef) return;
+
+        // Move from vehicle to player storage/hotbar
+        if (fromType === 'vehicle') {
+            if (this.addItem(item)) {
+                this.clearSlot(fromType, fromKey);
+            }
+            return;
+        }
+
+        // Move from player to vehicle if vehicle storage is open
+        if (this.isVehicleStorageOpen && fromType !== 'vehicle') {
+            for (let i = 0; i < 10; i++) {
+                if (!this.currentVehicleStorage.storage[i]) {
+                    this.currentVehicleStorage.storage[i] = item;
+                    this.clearSlot(fromType, fromKey);
+                    return;
+                }
+            }
+        }
 
         // Try to move to equipment if from storage/hotbar
         if (fromType !== 'equipment' && itemDef.type === 'equipment') {
@@ -604,6 +670,7 @@ export default class Inventory {
         if (type === 'storage') this.items[key] = null;
         else if (type === 'hotbar') this.hotbar[key] = null;
         else if (type === 'equipment') this.equipment[key] = null;
+        else if (type === 'vehicle') this.currentVehicleStorage.storage[key] = null;
     }
 
     getItemDef(itemId) {
@@ -616,10 +683,13 @@ export default class Inventory {
 
     getLayout() {
         const cols = 8;
-        const slotSize = 50; // Optimized for small screens
+        const slotSize = 50;
         const padding = 8;
         const winW = (slotSize + padding) * cols + padding + 40;
-        const winH = 580; // Optimized height
+        
+        // Increased height slightly to fit everything: 10 storage slots + 32 inv slots + hotbar
+        let winH = this.isVehicleStorageOpen ? 520 : 580; 
+
         const winX = (this.game.canvas.width - winW) / 2;
         const winY = (this.game.canvas.height - winH) / 2;
 
@@ -628,25 +698,44 @@ export default class Inventory {
             preview: { x: winX + 25, y: winY + 60, w: 180, h: 180 },
             equipment: {},
             storage: [],
-            hotbar: []
+            hotbar: [],
+            vehicleStorage: []
         };
 
-        const eqStartX = layout.preview.x + layout.preview.w + 20;
-        const eqStartY = layout.preview.y;
+        // Vehicle Storage Slots (2 rows of 5)
+        if (this.isVehicleStorageOpen) {
+            const vCols = 5;
+            for (let i = 0; i < 10; i++) {
+                const col = i % vCols;
+                const row = Math.floor(i / vCols);
+                layout.vehicleStorage.push({
+                    x: winX + 25 + col * (slotSize + padding),
+                    y: winY + 60 + row * (slotSize + padding), // Fixed: added row offset
+                    size: slotSize
+                });
+            }
+        }
 
-        const eqRows = ['head', 'chest', 'top', 'bottom', 'acc1', 'acc2'];
-        eqRows.forEach((key, idx) => {
-            const col = Math.floor(idx / 3);
-            const row = idx % 3;
-            layout.equipment[key] = {
-                x: eqStartX + col * (slotSize + padding),
-                y: eqStartY + row * (slotSize + padding),
-                size: slotSize,
-                label: key
-            };
-        });
+        // Equipment Slots
+        if (!this.isVehicleStorageOpen) {
+            const eqStartX = layout.preview.x + layout.preview.w + 20;
+            const eqStartY = layout.preview.y;
+            const eqRows = ['head', 'chest', 'top', 'bottom', 'acc1', 'acc2'];
+            eqRows.forEach((key, idx) => {
+                const col = Math.floor(idx / 3);
+                const row = idx % 3;
+                layout.equipment[key] = {
+                    x: eqStartX + col * (slotSize + padding),
+                    y: eqStartY + row * (slotSize + padding),
+                    size: slotSize,
+                    label: key
+                };
+            });
+        }
 
-        const storageStartY = layout.preview.y + layout.preview.h + 30;
+        // Player Inventory Storage position
+        // When vehicle is open, start lower to make room for 2 rows of vehicle storage
+        const storageStartY = this.isVehicleStorageOpen ? winY + 200 : layout.preview.y + layout.preview.h + 30;
         for (let i = 0; i < this.slots; i++) {
             const col = i % cols;
             const row = Math.floor(i / cols);
@@ -688,38 +777,52 @@ export default class Inventory {
 
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 20px Arial';
-        ctx.fillText("Character", win.x + 25, win.y + 40);
+        
+        if (this.isVehicleStorageOpen) {
+            // Vehicle Storage Mode
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillText("Vehicle Trunk", win.x + 25, win.y + 40);
+            layout.vehicleStorage.forEach((rect, i) => {
+                this.drawSlot(ctx, rect, this.currentVehicleStorage.storage[i], false, 'Trunk');
+            });
+            ctx.fillStyle = '#fff';
+            ctx.fillText("Inventory", win.x + 25, storage[0].y - 15);
+        } else {
+            // Normal Inventory Mode
+            ctx.fillText("Character", win.x + 25, win.y + 40);
 
-        // Player Preview
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-        ctx.fillRect(preview.x, preview.y, preview.w, preview.h);
-        ctx.strokeStyle = '#555';
-        ctx.strokeRect(preview.x, preview.y, preview.w, preview.h);
+            // Player Preview
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.fillRect(preview.x, preview.y, preview.w, preview.h);
+            ctx.strokeStyle = '#555';
+            ctx.strokeRect(preview.x, preview.y, preview.w, preview.h);
 
-        const centerX = preview.x + preview.w / 2;
-        const centerY = preview.y + preview.h / 2;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, 35, 0, Math.PI * 2);
-        ctx.fillStyle = this.game.player.color;
-        ctx.fill();
-        ctx.closePath();
+            const centerX = preview.x + preview.w / 2;
+            const centerY = preview.y + preview.h / 2;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 35, 0, Math.PI * 2);
+            ctx.fillStyle = this.game.player.color;
+            ctx.fill();
+            ctx.closePath();
 
-        // Equipment
-        for (const key in equipment) {
-            const rect = equipment[key];
-            this.drawSlot(ctx, rect, this.equipment[key], false, rect.label);
+            // Equipment
+            for (const key in equipment) {
+                const rect = equipment[key];
+                this.drawSlot(ctx, rect, this.equipment[key], false, rect.label);
+            }
+
+            ctx.fillStyle = '#aaa';
+            ctx.font = '12px Arial';
+            ctx.fillText("Storage", win.x + 25, storage[0].y - 10);
         }
 
-        // Storage
-        ctx.fillStyle = '#aaa';
-        ctx.font = '12px Arial';
-        ctx.fillText("Storage", win.x + 25, storage[0].y - 10);
+        // Storage Slots (Always drawn, position handled by getLayout)
         storage.forEach((rect, i) => {
             this.drawSlot(ctx, rect, this.items[i], false);
         });
 
         // Hotbar
-        ctx.fillText("Hotbar Slots", win.x + 25, hotbar[0].y - 10);
+        if (!this.isVehicleStorageOpen) ctx.fillText("Hotbar Slots", win.x + 25, hotbar[0].y - 10);
         hotbar.forEach((rect, i) => {
             this.drawSlot(ctx, rect, this.hotbar[i], false);
         });

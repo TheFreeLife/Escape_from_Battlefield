@@ -184,6 +184,16 @@ export default class Game {
     }
 
     update(dt) {
+        // Handle Global Interaction (F Key) - Move this BEFORE the inventory early return
+        if (this.input.isKeyPressed('KeyF')) {
+            if (!this.lastFState) {
+                this.handleInteraction();
+                this.lastFState = true;
+            }
+        } else {
+            this.lastFState = false;
+        }
+
         if (this.inventory && this.inventory.isOpen) {
             this.inventory.update(dt);
             return; // Pause game when inventory is open
@@ -239,31 +249,28 @@ export default class Game {
         for (const v of this.vehicles) {
             v.update(dt);
         }
-
-        // Handle Global Interaction (F Key)
-        if (this.input.isKeyPressed('KeyF')) {
-            if (!this.lastFState) {
-                this.handleInteraction();
-                this.lastFState = true;
-            }
-        } else {
-            this.lastFState = false;
-        }
     }
 
     handleInteraction() {
+        // 1. If vehicle storage is open, close it
+        if (this.inventory && this.inventory.isVehicleStorageOpen) {
+            this.inventory.closeVehicleStorage();
+            this.inventory.isOpen = false;
+            return;
+        }
+
         if (this.player.isInVehicle) {
             // Exit logic handled in Vehicle.handleInput/exit
             this.player.currentVehicle.exit();
             return;
         }
 
-        // 1. Search for nearby vehicle to enter
+        // 1. Search for nearby vehicle to interact
         for (const v of this.vehicles) {
             const dist = Math.sqrt((this.player.x - v.x) ** 2 + (this.player.y - v.y) ** 2);
-            if (dist < v.interactionRadius && !v.isOccupied) {
-                v.enter();
-                return; // Prioritize vehicle entry
+            if (dist < v.interactionRadius) {
+                const result = v.handleInteraction(this.player.x, this.player.y);
+                if (result) return;
             }
         }
 

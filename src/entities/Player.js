@@ -122,7 +122,7 @@ export default class Player {
                 const pushY = ny * overlap;
 
                 // Push player away from enemy if not hitting a wall
-                if (!checkCollision(this.x + pushX, this.y + pushY)) {
+                if (!this.game.checkCollision(this.x + pushX, this.y + pushY, this.radius, this)) {
                     this.x += pushX;
                     this.y += pushY;
                 }

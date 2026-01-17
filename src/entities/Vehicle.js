@@ -17,6 +17,44 @@ export default class Vehicle {
         this.isCollidable = true;
         this.radius = Math.max(this.width, this.height) * 0.5; // Circular radius for simplified collision
         this.weight = 2000;
+
+        // Trunk Storage (10 slots)
+        this.storageSlots = 10;
+        this.storage = new Array(this.storageSlots).fill(null);
+        this.isStorageOpen = false;
+    }
+
+    handleInteraction(playerX, playerY) {
+        // Calculate relative position to vehicle
+        const dx = playerX - this.x;
+        const dy = playerY - this.y;
+        
+        // Rotate the relative coordinates to match vehicle's local space
+        const localX = dx * Math.cos(-this.angle) - dy * Math.sin(-this.angle);
+        const localY = dx * Math.sin(-this.angle) + dy * Math.cos(-this.angle);
+
+        // Vehicle width is 120. Cabin is at positive local X, Trunk is at negative local X.
+        if (localX > 0) {
+            // Front side -> Cabin
+            if (!this.isOccupied) {
+                this.enter();
+                return 'ENTERED';
+            }
+        } else {
+            // Back side -> Trunk
+            this.toggleStorage();
+            return 'STORAGE';
+        }
+        return null;
+    }
+
+    toggleStorage() {
+        this.isStorageOpen = !this.isStorageOpen;
+        if (this.isStorageOpen) {
+            this.game.inventory.openVehicleStorage(this);
+        } else {
+            this.game.inventory.closeVehicleStorage();
+        }
     }
 
     update(dt) {
@@ -150,12 +188,17 @@ export default class Vehicle {
             const player = this.game.player;
             const dist = Math.sqrt((player.x - this.x) ** 2 + (player.y - this.y) ** 2);
             if (dist < this.interactionRadius) {
+                // Determine label based on local position
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const localX = dx * Math.cos(-this.angle) - dy * Math.sin(-this.angle);
+                
+                const label = localX > 0 ? "[F] 탑승" : "[F] 적재함";
+
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 16px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText("[F] 탑승", screenX, screenY - 60);
-
-                // Detection for F press in Game.js/Player.js
+                ctx.fillText(label, screenX, screenY - 60);
             }
         }
     }
