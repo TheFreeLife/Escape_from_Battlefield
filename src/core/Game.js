@@ -7,6 +7,7 @@ import Enemy from '../entities/Enemy.js';
 import Projectile from '../entities/Projectile.js';
 import Inventory from '../ui/Inventory.js';
 import Loot from '../entities/Loot.js';
+import Grenade from '../entities/Grenade.js';
 
 import { allItems } from '../items/index.js';
 
@@ -21,6 +22,7 @@ export default class Game {
         this.enemies = [];
         this.projectiles = [];
         this.loots = [];
+        this.grenades = [];
         this.zoom = 0.8;
 
         this.resize();
@@ -141,6 +143,15 @@ export default class Game {
                 this.loots.splice(i, 1);
             }
         }
+
+        // Update Grenades
+        for (let i = this.grenades.length - 1; i >= 0; i--) {
+            const g = this.grenades[i];
+            g.update(dt);
+            if (g.markedForDeletion) {
+                this.grenades.splice(i, 1);
+            }
+        }
     }
 
     render() {
@@ -172,6 +183,11 @@ export default class Game {
         // Render Loots
         for (const l of this.loots) {
             l.render(this.ctx, this.camera);
+        }
+
+        // Render Grenades
+        for (const g of this.grenades) {
+            g.render(this.ctx, this.camera);
         }
 
         this.ctx.restore();

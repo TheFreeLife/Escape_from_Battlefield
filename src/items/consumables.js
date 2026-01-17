@@ -39,5 +39,16 @@ export const consumables = [
         description: 'M40 전용 5발들이 탄창입니다.',
         svg: `<rect x="22" y="30" width="20" height="20" rx="2" fill="#2c3e50" />
               <rect x="22" y="46" width="20" height="4" fill="#34495e" />`
+    },
+    {
+        id: 'grenade',
+        name: 'Frag Grenade',
+        type: 'grenade',
+        color: '#4b5320',
+        description: '강력한 폭발을 일으키는 세열수류탄입니다. 투척 거리에 비례하여 파괴력이 전달됩니다.',
+        svg: `<path d="M25,15 L39,15 L39,20 L25,20 Z" fill="#333" />
+              <rect x="22" y="20" width="20" height="30" rx="8" fill="#4b5320" />
+              <path d="M22,30 L42,30 M22,40 L42,40 M32,20 L32,50" stroke="rgba(0,0,0,0.2)" stroke-width="1" />
+              <circle cx="39" cy="12" r="4" fill="none" stroke="#666" stroke-width="2" />`
     }
 ];

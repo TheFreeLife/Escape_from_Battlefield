@@ -41,6 +41,7 @@ export default class Inventory {
         this.addHotbarItem({ id: 'medkit', count: 5 }, 1);
         this.addHotbarItem({ id: 'ak47', count: 1 }, 2);
         this.addHotbarItem({ id: 'm40', count: 1 }, 3);
+        this.addHotbarItem({ id: 'grenade', count: 3 }, 4);
         this.addItem({ id: 'medkit', count: 2 });
         this.addItem({ id: 'helmet', count: 1 });
         this.addItem({ id: 'vest', count: 1 });
@@ -939,8 +940,12 @@ export default class Inventory {
         const angle = Math.atan2(targetY - screenY, targetX - screenX);
 
         // Sight Arc configuration
-        const optic = this.getSelectedItem().attachments.optic;
+        const item = this.getSelectedItem();
+        const optic = item?.attachments?.optic;
+        if (!optic) return; // Cannot render aim overlay without optic
+
         const opticDef = this.getItemDef(optic.id);
+        if (!opticDef) return;
 
         // Scope power affects arc width (Higher zoom = narrower arc)
         const baseArc = Math.PI * 0.6; // 108 deg base

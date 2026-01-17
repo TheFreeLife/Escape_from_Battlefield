@@ -1,4 +1,5 @@
 import Projectile from './Projectile.js';
+import Grenade from './Grenade.js';
 
 export default class Player {
     constructor(game, x, y) {
@@ -18,6 +19,10 @@ export default class Player {
         // Combat Visuals
         this.punchVisualTimer = 0;
         this.punchAngle = 0;
+
+        // Grenade system
+        this.throwCharge = 0;
+        this.maxThrowCharge = 1.0; // 1 second to max
     }
 
     update(dt) {
@@ -73,19 +78,30 @@ export default class Player {
             this.punchVisualTimer -= dt;
         }
 
-        if (input.mouse.leftDown && this.fireTimer <= 0) {
-            const selectedItem = this.game.inventory.getSelectedItem();
-            const itemDef = selectedItem ? this.game.inventory.getItemDef(selectedItem.id) : null;
+        const selectedItem = this.game.inventory.getSelectedItem();
+        const itemDef = selectedItem ? this.game.inventory.getItemDef(selectedItem.id) : null;
 
-            if (itemDef && itemDef.type === 'weapon') {
-                this.shoot(selectedItem);
-            } else if (itemDef && (itemDef.type === 'consumable' || itemDef.type === 'magazine')) {
-                if (this.game.inventory.useItem(this.game.inventory.selectedSlot)) {
-                    this.fireTimer = 0.5; // Prevent spamming
+        if (input.mouse.leftDown) {
+            if (itemDef && itemDef.type === 'grenade') {
+                // Charging grenade
+                this.throwCharge = Math.min(this.maxThrowCharge, this.throwCharge + dt);
+            } else if (this.fireTimer <= 0) {
+                if (itemDef && itemDef.type === 'weapon') {
+                    this.shoot(selectedItem);
+                } else if (itemDef && (itemDef.type === 'consumable' || itemDef.type === 'magazine')) {
+                    if (this.game.inventory.useItem(this.game.inventory.selectedSlot)) {
+                        this.fireTimer = 0.5; // Prevent spamming
+                    }
+                } else {
+                    // Default: Punch
+                    this.punch();
                 }
-            } else {
-                // Default: Punch
-                this.punch();
+            }
+        } else {
+            // Mouse released
+            if (this.throwCharge > 0) {
+                this.throwGrenade(selectedItem);
+                this.throwCharge = 0;
             }
         }
 
@@ -196,6 +212,37 @@ export default class Player {
         }
     }
 
+    throwGrenade(item) {
+        const input = this.game.input;
+        const camera = this.game.camera;
+
+        // Target position in world space
+        const mouseWorldX = input.mouse.x / this.game.zoom + camera.x;
+        const mouseWorldY = input.mouse.y / this.game.zoom + camera.y;
+
+        const dx = mouseWorldX - this.x;
+        const dy = mouseWorldY - this.y;
+        const distToMouse = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+
+        const maxDist = 600;
+        const throwDist = (this.throwCharge / this.maxThrowCharge) * Math.min(maxDist, distToMouse);
+
+        const tx = this.x + Math.cos(angle) * throwDist;
+        const ty = this.y + Math.sin(angle) * throwDist;
+
+        this.game.grenades.push(new Grenade(this.game, this.x, this.y, tx, ty, 100));
+
+        // Consume item
+        item.count--;
+        if (item.count <= 0) {
+            this.game.inventory.hotbar[this.game.inventory.selectedSlot] = null;
+        }
+
+        this.fireTimer = 1.0; // Cooldown after throw
+        console.log("Threw Grenade!");
+    }
+
     render(ctx, camera) {
         // Render relative to camera
         const screenX = this.x - camera.x;
@@ -262,6 +309,25 @@ export default class Player {
             ctx.textAlign = 'center';
             ctx.fillText("RELOADING...", screenX, screenY - this.radius - 20);
             ctx.textAlign = 'left';
+        }
+
+        // Grenade Charge Gauge
+        if (this.throwCharge > 0) {
+            const barW = 60;
+            const barH = 6;
+            const bx = screenX - barW / 2;
+            const by = screenY - this.radius - 15;
+
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(bx, by, barW, barH);
+
+            const progress = this.throwCharge / this.maxThrowCharge;
+            ctx.fillStyle = `rgb(${255 * progress}, ${255 * (1 - progress)}, 0)`;
+            ctx.fillRect(bx, by, barW * progress, barH);
+
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(bx, by, barW, barH);
         }
     }
 }
