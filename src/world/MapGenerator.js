@@ -1,84 +1,99 @@
 import { CHUNK_SIZE } from './Chunk.js';
 import Enemy from '../entities/Enemy.js';
+import Loot from '../entities/Loot.js';
+import Noise from '../core/Noise.js';
 
 export default class MapGenerator {
     constructor(game) {
         this.game = game;
+        this.noise = new Noise(Math.random());
+        this.biomeNoise = new Noise(Math.random());
     }
 
-    generate(tileMap, width, height) {
-        // Simple noise or random generation for now
-        // 0: grass, 1: dirt, 2: concrete
+    getBiomeAt(tx, ty) {
+        const biomes = this.game.assetManager.getData('biomes');
+        if (!biomes) return null;
 
-        console.log("Generating map...");
+        const n = this.biomeNoise.perlin2D(tx / 100, ty / 100, 2, 0.5);
+        const index = Math.floor(n * biomes.length);
+        return biomes[Math.min(index, biomes.length - 1)];
+    }
 
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                // Base terrain
-                let tileId = 'grass';
-                const noise = Math.random();
-
-                if (noise > 0.7) tileId = 'dirt';
-                if (noise > 0.9) tileId = 'concrete';
-
-                tileMap.setTile(x, y, tileId);
-            }
-        }
-
-        // Place structures (Prefabs)
+    generateChunk(tileMap, cx, cy) {
+        const chunk = tileMap.createChunk(cx, cy);
         const structures = this.game.assetManager.getData('structures');
+
+        for (let ly = 0; ly < CHUNK_SIZE; ly++) {
+            for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+                const tx = cx * CHUNK_SIZE + lx;
+                const ty = cy * CHUNK_SIZE + ly;
+
+                const biome = this.getBiomeAt(tx, ty);
+                if (!biome) continue;
+
+                const tn = this.noise.perlin2D(tx / 10, ty / 10, 2, 0.5);
+                const tileIndex = Math.floor(tn * biome.tiles.length);
+                const tileId = biome.tiles[Math.min(tileIndex, biome.tiles.length - 1)];
+
+                chunk.setTile(lx, ly, tileId);
+            }
+        }
+
+        // Place structures in chunk
         if (structures) {
-            const structureCount = 20; // Increased attempt count
-            const occupancyMap = Array.from({ length: height }, () => new Array(width).fill(false));
-            let placedCount = 0;
+            const biome = this.getBiomeAt(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
+            if (biome && Math.random() < biome.spawnRate.structures) {
+                const prefabId = biome.structures[Math.floor(Math.random() * biome.structures.length)];
+                const prefab = structures.find(s => s.id === prefabId);
 
-            for (let i = 0; i < structureCount && placedCount < 15; i++) {
-                const prefab = structures[Math.floor(Math.random() * structures.length)];
-
-                const sx = Math.floor(Math.random() * (width - prefab.width - 2)) + 1;
-                const sy = Math.floor(Math.random() * (height - prefab.height - 2)) + 1;
-
-                // Player start protection
-                const playerX = 4;
-                const playerY = 4;
-                if (Math.abs(sx - playerX) < 6 && Math.abs(sy - playerY) < 6) continue;
-
-                // Overlap Check (including 1-tile margin for better spacing)
-                let canPlace = true;
-                for (let py = sy - 1; py < sy + prefab.height + 1; py++) {
-                    for (let px = sx - 1; px < sx + prefab.width + 1; px++) {
-                        if (px < 0 || px >= width || py < 0 || py >= height || occupancyMap[py][px]) {
-                            canPlace = false;
-                            break;
-                        }
-                    }
-                    if (!canPlace) break;
-                }
-
-                if (canPlace) {
-                    this.placeStructure(tileMap, prefab, sx, sy);
-                    // Mark as occupied
-                    for (let py = sy; py < sy + prefab.height; py++) {
-                        for (let px = sx; px < sx + prefab.width; px++) {
-                            occupancyMap[py][px] = true;
-                        }
-                    }
-                    placedCount++;
+                if (prefab) {
+                    const sx = Math.floor(Math.random() * (CHUNK_SIZE - prefab.width));
+                    const sy = Math.floor(Math.random() * (CHUNK_SIZE - prefab.height));
+                    this.placeStructure(tileMap, prefab, cx * CHUNK_SIZE + sx, cy * CHUNK_SIZE + sy);
                 }
             }
         }
 
-        // Spawn Enemies
-        const enemyCount = 30;
-        for (let i = 0; i < enemyCount; i++) {
-            const ex = Math.random() * width * 64;
-            const ey = Math.random() * height * 64;
+        // Spawn Entities (Enemies & Items)
+        const spawnBiome = this.getBiomeAt(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
+        if (spawnBiome) {
+            // 1. Enemies
+            if (spawnBiome.enemies && spawnBiome.enemies.length > 0) {
+                const enemyAttempts = 3;
+                for (let i = 0; i < enemyAttempts; i++) {
+                    if (Math.random() < spawnBiome.spawnRate.enemies) {
+                        const ex = (cx * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * 64;
+                        const ey = (cy * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * 64;
 
-            const dist = Math.sqrt((ex - 300) ** 2 + (ey - 300) ** 2);
-            if (dist > 500 && !tileMap.isCollidable(ex, ey)) {
-                this.game.enemies.push(new Enemy(this.game, ex, ey));
-            } else {
-                i--;
+                        const player = this.game.player;
+                        let farEnough = true;
+                        if (player) {
+                            const dist = Math.sqrt((ex - player.x) ** 2 + (ey - player.y) ** 2);
+                            if (dist < 600) farEnough = false;
+                        }
+
+                        if (farEnough && !tileMap.isCollidable(ex, ey)) {
+                            const enemyId = spawnBiome.enemies[Math.floor(Math.random() * spawnBiome.enemies.length)];
+                            this.game.enemies.push(new Enemy(this.game, ex, ey, enemyId));
+                        }
+                    }
+                }
+            }
+
+            // 2. Items (Ground Loot)
+            if (spawnBiome.items && spawnBiome.items.length > 0) {
+                const itemAttempts = 2;
+                for (let i = 0; i < itemAttempts; i++) {
+                    if (Math.random() < spawnBiome.spawnRate.items) {
+                        const ix = (cx * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * 64;
+                        const iy = (cy * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * 64;
+
+                        if (!tileMap.isCollidable(ix, iy)) {
+                            const itemId = spawnBiome.items[Math.floor(Math.random() * spawnBiome.items.length)];
+                            this.game.loots.push(new Loot(this.game, ix, iy, itemId));
+                        }
+                    }
+                }
             }
         }
     }

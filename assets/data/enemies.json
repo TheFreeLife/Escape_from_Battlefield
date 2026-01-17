@@ -1,0 +1,29 @@
+[
+    {
+        "id": "zombie",
+        "name": "좀비",
+        "speed": 80,
+        "health": 3,
+        "damage": 1,
+        "color": "#7fb3d5",
+        "radius": 28
+    },
+    {
+        "id": "soldier",
+        "name": "반란군 보병",
+        "speed": 120,
+        "health": 5,
+        "damage": 2,
+        "color": "#e74c3c",
+        "radius": 32
+    },
+    {
+        "id": "mutant",
+        "name": "변종 괴물",
+        "speed": 150,
+        "health": 10,
+        "damage": 5,
+        "color": "#8e44ad",
+        "radius": 40
+    }
+]

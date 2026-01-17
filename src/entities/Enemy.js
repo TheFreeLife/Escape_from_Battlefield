@@ -1,15 +1,26 @@
 export default class Enemy {
-    constructor(game, x, y) {
+    constructor(game, x, y, enemyId = 'soldier') {
         this.game = game;
         this.x = x;
         this.y = y;
-        this.speed = 100;
-        this.radius = 32; // Half of TILE_SIZE (64)
-        this.color = '#e74c3c'; // Red
-        this.health = 3;
+        this.enemyId = enemyId;
+
+        const data = this.game.assetManager.getData('enemies')?.find(e => e.id === enemyId) || {
+            speed: 100,
+            health: 3,
+            damage: 1,
+            color: '#e74c3c',
+            radius: 32
+        };
+
+        this.speed = data.speed;
+        this.radius = data.radius;
+        this.color = data.color;
+        this.health = data.health;
+        this.attackDamage = data.damage;
+
         this.isDead = false;
-        this.attackDamage = 1;
-        this.attackCooldown = 1.0; // 1 second
+        this.attackCooldown = 1.0;
         this.attackTimer = 0;
     }
 
@@ -61,11 +72,7 @@ export default class Enemy {
             }
         }
 
-        // Map Boundary Constrain
-        const mapW = this.game.tileMap.width * 64;
-        const mapH = this.game.tileMap.height * 64;
-        this.x = Math.max(this.radius, Math.min(mapW - this.radius, this.x));
-        this.y = Math.max(this.radius, Math.min(mapH - this.radius, this.y));
+        // Map Boundary Constrain removed for infinite map
 
         // --- Unit-to-Unit Collision (Separation) ---
         const checkTile = (tx, ty) => {

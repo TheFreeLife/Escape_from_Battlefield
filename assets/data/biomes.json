@@ -1,0 +1,106 @@
+[
+    {
+        "id": "plains",
+        "name": "평원",
+        "tiles": [
+            "grass",
+            "grass",
+            "dirt"
+        ],
+        "structures": [
+            "concrete_barrier"
+        ],
+        "enemies": [
+            "zombie"
+        ],
+        "items": [
+            "medkit"
+        ],
+        "spawnRate": {
+            "structures": 0.05,
+            "enemies": 0.1,
+            "items": 0.05
+        },
+        "color": "#90ee90"
+    },
+    {
+        "id": "forest",
+        "name": "숲",
+        "tiles": [
+            "grass",
+            "dirt",
+            "dirt"
+        ],
+        "structures": [
+            "guard_tower",
+            "concrete_barrier"
+        ],
+        "enemies": [
+            "zombie",
+            "soldier"
+        ],
+        "items": [
+            "medkit",
+            "rifle"
+        ],
+        "spawnRate": {
+            "structures": 0.1,
+            "enemies": 0.2,
+            "items": 0.08
+        },
+        "color": "#228b22"
+    },
+    {
+        "id": "desert",
+        "name": "사막",
+        "tiles": [
+            "sand",
+            "sand",
+            "dirt"
+        ],
+        "structures": [
+            "barracks_small",
+            "concrete_barrier"
+        ],
+        "enemies": [
+            "soldier",
+            "mutant"
+        ],
+        "items": [
+            "rifle",
+            "helmet"
+        ],
+        "spawnRate": {
+            "structures": 0.05,
+            "enemies": 0.15,
+            "items": 0.05
+        },
+        "color": "#edc9af"
+    },
+    {
+        "id": "tundra",
+        "name": "툰드라",
+        "tiles": [
+            "snow",
+            "snow",
+            "dirt"
+        ],
+        "structures": [
+            "guard_tower"
+        ],
+        "enemies": [
+            "mutant"
+        ],
+        "items": [
+            "medkit",
+            "vest",
+            "boots"
+        ],
+        "spawnRate": {
+            "structures": 0.03,
+            "enemies": 0.1,
+            "items": 0.04
+        },
+        "color": "#ffffff"
+    }
+]

@@ -63,11 +63,7 @@ export default class Player {
             this.y = nextY;
         }
 
-        // Map Boundary Constrain
-        const mapW = this.game.tileMap.width * 64;
-        const mapH = this.game.tileMap.height * 64;
-        this.x = Math.max(this.radius, Math.min(mapW - this.radius, this.x));
-        this.y = Math.max(this.radius, Math.min(mapH - this.radius, this.y));
+        // Map Boundary Constrain removed for infinite map
 
         // Shooting & Item Usage logic
         if (this.fireTimer > 0) {

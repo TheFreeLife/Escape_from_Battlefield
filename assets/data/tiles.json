@@ -30,5 +30,21 @@
         "interactable": false,
         "color": "#555555",
         "svg": "<rect x='0' y='0' width='64' height='64' stroke='black' stroke-width='4' />"
+    },
+    {
+        "id": "sand",
+        "type": "ground",
+        "collidable": false,
+        "interactable": false,
+        "color": "#d2b48c",
+        "svg": "<path d='M0 0h64v64H0z' />"
+    },
+    {
+        "id": "snow",
+        "type": "ground",
+        "collidable": false,
+        "interactable": false,
+        "color": "#ffffff",
+        "svg": "<path d='M0 0h64v64H0z' />"
     }
 ]

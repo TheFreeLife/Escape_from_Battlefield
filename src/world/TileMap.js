@@ -4,8 +4,13 @@ export default class TileMap {
     constructor(game) {
         this.game = game;
         this.chunks = new Map(); // Key: "x,y", Value: Chunk
+        this.generator = null; // Set by Game
         this.width = 0; // In tiles
         this.height = 0; // In tiles
+    }
+
+    setGenerator(generator) {
+        this.generator = generator;
     }
 
     getChunkKey(cx, cy) {
@@ -89,7 +94,12 @@ export default class TileMap {
 
         for (let cy = startCy; cy <= endCy; cy++) {
             for (let cx = startCx; cx <= endCx; cx++) {
-                const chunk = this.getChunk(cx, cy);
+                let chunk = this.getChunk(cx, cy);
+                if (!chunk && this.generator) {
+                    this.generator.generateChunk(this, cx, cy);
+                    chunk = this.getChunk(cx, cy);
+                }
+
                 if (chunk) {
                     this.renderChunk(ctx, chunk, camera);
                 }

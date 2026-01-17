@@ -129,6 +129,15 @@ export default class Inventory {
                 this.selectedSlot = i;
             }
         }
+
+        // Mouse wheel for hotbar selection
+        if (input.wheel !== 0) {
+            if (input.wheel > 0) {
+                this.selectedSlot = (this.selectedSlot - 1 + this.hotbarSlots) % this.hotbarSlots;
+            } else {
+                this.selectedSlot = (this.selectedSlot + 1) % this.hotbarSlots;
+            }
+        }
     }
 
     updateHover(mx, my) {

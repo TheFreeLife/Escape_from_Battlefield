@@ -6,6 +6,7 @@ import Player from '../entities/Player.js';
 import Enemy from '../entities/Enemy.js';
 import Projectile from '../entities/Projectile.js';
 import Inventory from '../ui/Inventory.js';
+import Loot from '../entities/Loot.js';
 
 export default class Game {
     constructor() {
@@ -17,7 +18,8 @@ export default class Game {
         this.camera = { x: 0, y: 0, width: 0, height: 0 };
         this.enemies = [];
         this.projectiles = [];
-        this.zoom = 0.8; // Default zoom level (1.0 is normal, <1.0 is zoom out)
+        this.loots = [];
+        this.zoom = 0.8;
 
         this.resize();
         window.addEventListener('resize', () => this.resize());
@@ -33,19 +35,16 @@ export default class Game {
         await this.assetManager.loadData([
             { name: 'tiles', path: 'assets/data/tiles.json' },
             { name: 'items', path: 'assets/data/items.json' },
-            { name: 'structures', path: 'assets/data/structures.json' }
+            { name: 'structures', path: 'assets/data/structures.json' },
+            { name: 'biomes', path: 'assets/data/biomes.json' },
+            { name: 'enemies', path: 'assets/data/enemies.json' }
         ]);
         await this.assetManager.generateBitmaps();
 
         this.tileMap = new TileMap(this);
-
-        // Procedural generation
         const mapGenerator = new MapGenerator(this);
-        const mapW = 50;
-        const mapH = 50;
-        this.tileMap.width = mapW;
-        this.tileMap.height = mapH;
-        mapGenerator.generate(this.tileMap, mapW, mapH); // Generate 50x50 map
+        this.tileMap.setGenerator(mapGenerator);
+        this.mapGenerator = mapGenerator;
 
         this.player = new Player(this, 300, 300); // Start position
         this.inventory = new Inventory(this);
@@ -128,6 +127,15 @@ export default class Game {
                 this.enemies.splice(i, 1);
             }
         }
+
+        // Update Loots
+        for (let i = this.loots.length - 1; i >= 0; i--) {
+            const l = this.loots[i];
+            l.update(dt);
+            if (l.markedForDeletion) {
+                this.loots.splice(i, 1);
+            }
+        }
     }
 
     render() {
@@ -156,6 +164,11 @@ export default class Game {
             p.render(this.ctx, this.camera);
         }
 
+        // Render Loots
+        for (const l of this.loots) {
+            l.render(this.ctx, this.camera);
+        }
+
         this.ctx.restore();
 
         // Render UI (Not affected by zoom)
@@ -164,12 +177,25 @@ export default class Game {
             this.inventory.renderHotbar(this.ctx);
         }
 
-        // Placeholder debug text
+        // UI Layout
         this.ctx.fillStyle = '#fff';
-        this.ctx.font = '20px Arial';
-        this.ctx.fillText("Escape from Battlefield - Core Running", 20, 30);
-        if (this.player) {
-            this.ctx.fillText(`Pos: ${Math.floor(this.player.x)}, ${Math.floor(this.player.y)}`, 20, 60);
+        this.ctx.font = 'bold 20px Arial';
+        this.ctx.fillText("Escape from Battlefield", 20, 35);
+
+        if (this.player && this.mapGenerator) {
+            const tx = Math.floor(this.player.x / 64);
+            const ty = Math.floor(this.player.y / 64);
+            const biome = this.mapGenerator.getBiomeAt(tx, ty);
+
+            if (biome) {
+                this.ctx.fillStyle = biome.color || '#fff';
+                this.ctx.font = 'bold 18px Arial';
+                this.ctx.fillText(`현재 바이옴: ${biome.name}`, 20, 65);
+
+                this.ctx.fillStyle = '#aaa';
+                this.ctx.font = '14px Arial';
+                this.ctx.fillText(`좌표: ${tx}, ${ty}`, 20, 85);
+            }
         }
     }
 }
