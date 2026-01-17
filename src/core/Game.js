@@ -27,6 +27,12 @@ export default class Game {
         this.vehicles = [];
         this.zoom = 0.8;
 
+        // Minimap Cache (Optimized)
+        this.minimapCache = document.createElement('canvas');
+        this.minimapCache.width = 200;
+        this.minimapCache.height = 200;
+        this.lastMinimapUpdatePos = { x: -9999, y: -9999 };
+
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
@@ -279,6 +285,101 @@ export default class Game {
         }
     }
 
+    updateMinimapCache() {
+        const ctx = this.minimapCache.getContext('2d');
+        const size = this.minimapCache.width;
+        const scale = 0.05; // Zoom level
+        const centerX = size / 2;
+        const centerY = size / 2;
+
+        ctx.clearRect(0, 0, size, size);
+
+        // Render terrain tiles to cache
+        const range = (size / 2) / scale;
+        const startX = Math.floor((this.player.x - range) / 64);
+        const endX = Math.ceil((this.player.x + range) / 64);
+        const startY = Math.floor((this.player.y - range) / 64);
+        const endY = Math.ceil((this.player.y + range) / 64);
+
+        for (let ty = startY; ty <= endY; ty++) {
+            for (let tx = startX; tx <= endX; tx++) {
+                const biome = this.mapGenerator.getBiomeAt(tx, ty);
+                if (biome) {
+                    const sx = centerX + (tx * 64 - this.player.x) * scale;
+                    const sy = centerY + (ty * 64 - this.player.y) * scale;
+                    const ts = 64 * scale;
+                    ctx.fillStyle = biome.color;
+                    ctx.fillRect(sx, sy, ts + 0.5, ts + 0.5);
+                }
+            }
+        }
+    }
+
+    renderMinimap() {
+        const size = 180;
+        const margin = 20;
+        const x = this.canvas.width - size - margin;
+        const y = margin;
+        const ctx = this.ctx;
+
+        // Update cache if moved significantly
+        const dist = Math.sqrt((this.player.x - this.lastMinimapUpdatePos.x)**2 + (this.player.y - this.lastMinimapUpdatePos.y)**2);
+        if (dist > 64) {
+            this.updateMinimapCache();
+            this.lastMinimapUpdatePos = { x: this.player.x, y: this.player.y };
+        }
+
+        ctx.save();
+        
+        // Shadow & Border
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(x + size/2, y + size/2, size/2, 0, Math.PI*2);
+        ctx.fillStyle = '#000';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Clip content to circle
+        ctx.clip();
+
+        // Draw cached terrain
+        ctx.drawImage(this.minimapCache, x, y, size, size);
+
+        // Draw entities
+        const scale = 0.05;
+        const cx = x + size/2;
+        const cy = y + size/2;
+
+        const drawDot = (ex, ey, color, radius) => {
+            const sx = cx + (ex - this.player.x) * scale;
+            const sy = cy + (ey - this.player.y) * scale;
+            // Only draw if within minimap circle
+            const dx = sx - cx;
+            const dy = sy - cy;
+            if (dx*dx + dy*dy < (size/2)*(size/2)) {
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(sx, sy, radius, 0, Math.PI*2);
+                ctx.fill();
+            }
+        };
+
+        this.vehicles.forEach(v => drawDot(v.x, v.y, '#f1c40f', 4));
+        this.enemies.forEach(e => { if(!e.isDead) drawDot(e.x, e.y, '#e74c3c', 2.5); });
+        
+        // Player (Self)
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
     render() {
         // Clear screen
         this.ctx.fillStyle = '#1a1a1a';
@@ -327,6 +428,8 @@ export default class Game {
             this.inventory.render(this.ctx);
             this.inventory.renderHotbar(this.ctx);
         }
+
+        this.renderMinimap();
 
         // UI Layout
         this.ctx.fillStyle = '#fff';
