@@ -59,7 +59,7 @@ export default class MapGenerator {
         if (spawnBiome) {
             // 1. Enemies
             if (spawnBiome.enemies && spawnBiome.enemies.length > 0) {
-                const enemyAttempts = 3;
+                const enemyAttempts = 6;
                 for (let i = 0; i < enemyAttempts; i++) {
                     if (Math.random() < spawnBiome.spawnRate.enemies) {
                         const ex = (cx * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * 64;

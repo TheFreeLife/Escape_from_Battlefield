@@ -23,6 +23,31 @@ export default class Enemy {
         this.isDead = false;
         this.attackCooldown = 1.0;
         this.attackTimer = 0;
+
+        // --- AI System ---
+        this.spawnX = x;
+        this.spawnY = y;
+
+        // Randomly assign initial command
+        const commands = ['PATROL', 'GUARD', 'SURRENDER'];
+        const weights = [0.45, 0.45, 0.1]; // 45% Patrol, 45% Guard, 10% Surrender
+        const rand = Math.random();
+        let cumulative = 0;
+        for (let i = 0; i < commands.length; i++) {
+            cumulative += weights[i];
+            if (rand < cumulative) {
+                this.command = commands[i];
+                break;
+            }
+        }
+
+        this.aiState = this.command === 'SURRENDER' ? 'SURRENDER' : 'IDLE';
+        this.detectRadius = 400; // Radius to spot player
+        this.patrolRadius = 250; // Radius to wander around spawn
+        this.patrolTarget = null;
+        this.patrolPauseTimer = 0;
+
+        console.log(`Enemy spawned with command: ${this.command}`);
     }
 
     update(dt) {
@@ -32,50 +57,114 @@ export default class Enemy {
             this.attackTimer -= dt;
         }
 
-        // Simple chase logic
         const player = this.game.player;
-        if (player) {
+        if (player && this.aiState !== 'SURRENDER') {
             const dx = player.x - this.x;
             const dy = player.y - this.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            // Attack logic
-            const attackRange = this.radius + player.radius + 10;
-            if (dist < attackRange && this.attackTimer <= 0) {
-                player.health -= this.attackDamage;
-                this.attackTimer = this.attackCooldown;
-                console.log(`Enemy attacked player! Player health: ${player.health}`);
+            // 1. Detection Logic
+            if (this.aiState !== 'CHASE' && dist < this.detectRadius) {
+                this.aiState = 'CHASE';
+                console.log("Enemy spotted player! Chasing...");
             }
 
-            if (dist > this.radius + player.radius) { // Stop when touching
-                const vdx = (dx / dist) * this.speed * dt;
-                const vdy = (dy / dist) * this.speed * dt;
-
-                const checkCollision = (tx, ty) => {
-                    const buffer = this.radius * 0.8;
-                    const points = [
-                        { x: tx - buffer, y: ty - buffer },
-                        { x: tx + buffer, y: ty - buffer },
-                        { x: tx - buffer, y: ty + buffer },
-                        { x: tx + buffer, y: ty + buffer }
-                    ];
-                    return points.some(p => this.game.tileMap.isCollidable(p.x, p.y));
-                };
-
-                // Try move X
-                if (!checkCollision(this.x + vdx, this.y)) {
-                    this.x += vdx;
-                }
-                // Try move Y
-                if (!checkCollision(this.x, this.y + vdy)) {
-                    this.y += vdy;
-                }
+            // 2. Behavior based on State
+            if (this.aiState === 'CHASE') {
+                this.handleChase(dt, player, dist);
+            } else if (this.command === 'PATROL') {
+                this.handlePatrol(dt);
+            } else if (this.command === 'GUARD') {
+                this.handleGuard(dt);
             }
         }
 
-        // Map Boundary Constrain removed for infinite map
-
         // --- Unit-to-Unit Collision (Separation) ---
+        this.handleSeparation(dt);
+    }
+
+    handleChase(dt, player, dist) {
+        const attackRange = this.radius + player.radius + 10;
+
+        // Attack
+        if (dist < attackRange && this.attackTimer <= 0) {
+            player.health -= this.attackDamage;
+            this.attackTimer = this.attackCooldown;
+            // console.log(`Enemy attacked player! Player health: ${player.health}`);
+        }
+
+        // Move towards player
+        if (dist > this.radius + player.radius) {
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            this.moveTowards(this.x + (dx / dist) * this.speed * dt, this.y + (dy / dist) * this.speed * dt);
+        }
+    }
+
+    handlePatrol(dt) {
+        if (this.patrolPauseTimer > 0) {
+            this.patrolPauseTimer -= dt;
+            return;
+        }
+
+        if (!this.patrolTarget) {
+            // Pick a random point in patrol radius
+            const angle = Math.random() * Math.PI * 2;
+            const r = Math.random() * this.patrolRadius;
+            this.patrolTarget = {
+                x: this.spawnX + Math.cos(angle) * r,
+                y: this.spawnY + Math.sin(angle) * r
+            };
+        }
+
+        const dx = this.patrolTarget.x - this.x;
+        const dy = this.patrolTarget.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < 5) {
+            this.patrolTarget = null;
+            this.patrolPauseTimer = 1 + Math.random() * 2; // Pause for 1-3s
+        } else {
+            this.moveTowards(this.x + (dx / dist) * (this.speed * 0.5) * dt, this.y + (dy / dist) * (this.speed * 0.5) * dt);
+        }
+    }
+
+    handleGuard(dt) {
+        // Just stand still at spawn if possible, or current position
+        // Maybe slowly return to spawn if far?
+        const dx = this.spawnX - this.x;
+        const dy = this.spawnY - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 10) {
+            this.moveTowards(this.x + (dx / dist) * (this.speed * 0.3) * dt, this.y + (dy / dist) * (this.speed * 0.3) * dt);
+        }
+    }
+
+    moveTowards(tx, ty) {
+        const checkCollision = (cx, cy) => {
+            const buffer = this.radius * 0.8;
+            const points = [
+                { x: cx - buffer, y: cy - buffer },
+                { x: cx + buffer, y: cy - buffer },
+                { x: cx - buffer, y: cy + buffer },
+                { x: cx + buffer, y: cy + buffer }
+            ];
+            return points.some(p => this.game.tileMap.isCollidable(p.x, p.y));
+        };
+
+        const vdx = tx - this.x;
+        const vdy = ty - this.y;
+
+        if (!checkCollision(this.x + vdx, this.y)) {
+            this.x += vdx;
+        }
+        if (!checkCollision(this.x, this.y + vdy)) {
+            this.y += vdy;
+        }
+    }
+
+    handleSeparation(dt) {
         const checkTile = (tx, ty) => {
             const buffer = this.radius * 0.8;
             const points = [
@@ -164,6 +253,35 @@ export default class Enemy {
         ctx.closePath();
 
         this.renderHealthBar(ctx, screenX, screenY);
+        this.renderCommandStatus(ctx, screenX, screenY);
+    }
+
+    renderCommandStatus(ctx, x, y) {
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+
+        let label = this.command;
+        let color = '#fff';
+
+        if (this.aiState === 'CHASE') {
+            label = '!! CHASE !!';
+            color = '#e74c3c'; // Bright red for chase
+        } else {
+            switch (this.command) {
+                case 'PATROL': color = '#3498db'; break; // Blue
+                case 'GUARD': color = '#f1c40f'; break;  // Yellow
+                case 'SURRENDER': color = '#95a5a6'; break; // Grey
+            }
+        }
+
+        // Draw shadow for text readability
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillText(label, x + 1, y - this.radius - 14);
+
+        ctx.fillStyle = color;
+        ctx.fillText(label, x, y - this.radius - 15);
+
+        ctx.textAlign = 'left';
     }
 
     renderHealthBar(ctx, x, y) {
