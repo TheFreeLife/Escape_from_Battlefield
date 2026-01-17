@@ -14,12 +14,14 @@
             "zombie"
         ],
         "items": [
-            "medkit"
+            "medkit",
+            "mag_pistol",
+            "mag_ak47"
         ],
         "spawnRate": {
             "structures": 0.05,
             "enemies": 0.1,
-            "items": 0.05
+            "items": 0.08
         },
         "color": "#90ee90"
     },
@@ -41,12 +43,14 @@
         ],
         "items": [
             "medkit",
-            "rifle"
+            "ak47",
+            "mag_ak47",
+            "mag_pistol"
         ],
         "spawnRate": {
             "structures": 0.1,
             "enemies": 0.2,
-            "items": 0.08
+            "items": 0.12
         },
         "color": "#228b22"
     },
@@ -67,13 +71,16 @@
             "mutant"
         ],
         "items": [
-            "rifle",
-            "helmet"
+            "ak47",
+            "m40",
+            "helmet",
+            "mag_ak47",
+            "mag_m40"
         ],
         "spawnRate": {
             "structures": 0.05,
             "enemies": 0.15,
-            "items": 0.05
+            "items": 0.1
         },
         "color": "#edc9af"
     },
@@ -94,12 +101,14 @@
         "items": [
             "medkit",
             "vest",
-            "boots"
+            "boots",
+            "m40",
+            "mag_m40"
         ],
         "spawnRate": {
             "structures": 0.03,
             "enemies": 0.1,
-            "items": 0.04
+            "items": 0.07
         },
         "color": "#ffffff"
     }

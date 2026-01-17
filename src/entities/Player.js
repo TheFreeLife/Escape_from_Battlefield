@@ -79,9 +79,9 @@ export default class Player {
 
             if (itemDef && itemDef.type === 'weapon') {
                 this.shoot(selectedItem);
-            } else if (itemDef && itemDef.type === 'consumable') {
+            } else if (itemDef && (itemDef.type === 'consumable' || itemDef.type === 'magazine')) {
                 if (this.game.inventory.useItem(this.game.inventory.selectedSlot)) {
-                    this.fireTimer = 0.5; // Prevent spamming consumables
+                    this.fireTimer = 0.5; // Prevent spamming
                 }
             } else {
                 // Default: Punch

@@ -16,6 +16,7 @@ export default class Enemy {
         this.speed = data.speed;
         this.radius = data.radius;
         this.color = data.color;
+        this.maxHealth = data.health;
         this.health = data.health;
         this.attackDamage = data.damage;
 
@@ -161,5 +162,28 @@ export default class Enemy {
         ctx.fillStyle = this.color;
         ctx.fill();
         ctx.closePath();
+
+        this.renderHealthBar(ctx, screenX, screenY);
+    }
+
+    renderHealthBar(ctx, x, y) {
+        const barW = this.radius * 2;
+        const barH = 6;
+        const barX = x - this.radius;
+        const barY = y + this.radius + 8;
+
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(barX, barY, barW, barH);
+
+        // Fill
+        const healthRatio = Math.max(0, this.health / this.maxHealth);
+        ctx.fillStyle = healthRatio > 0.3 ? '#2ecc71' : '#e74c3c';
+        ctx.fillRect(barX, barY, barW * healthRatio, barH);
+
+        // Border
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(barX, barY, barW, barH);
     }
 }

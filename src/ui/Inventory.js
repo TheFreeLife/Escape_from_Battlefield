@@ -252,12 +252,72 @@ export default class Inventory {
                 if (!item) continue;
 
                 const itemDef = this.getItemDef(item.id);
-                if (itemDef && itemDef.type === 'attachment') {
-                    this.tryAttach(item, slot.type, slot.i);
-                    return;
+                if (itemDef) {
+                    if (itemDef.type === 'attachment') {
+                        this.tryAttach(item, slot.type, slot.i);
+                        return;
+                    }
+                    if (itemDef.type === 'magazine' || itemDef.id === 'medkit') {
+                        this.useItemAt(slot.type, slot.i);
+                        return;
+                    }
                 }
             }
         }
+    }
+
+    useItemAt(type, index) {
+        const item = type === 'storage' ? this.items[index] : this.hotbar[index];
+        if (!item) return false;
+
+        const itemDef = this.getItemDef(item.id);
+        if (!itemDef) return false;
+
+        let success = false;
+        if (itemDef.id === 'medkit') {
+            const player = this.game.player;
+            if (player.health < player.maxHealth) {
+                player.health = Math.min(player.maxHealth, player.health + 200);
+                success = true;
+            }
+        } else if (itemDef.type === 'magazine') {
+            // Find weapon
+            let weapon = null;
+            // Hotbar search
+            for (let i = 0; i < this.hotbarSlots; i++) {
+                if (this.hotbar[i] && this.hotbar[i].id === itemDef.weaponId) {
+                    weapon = this.hotbar[i];
+                    break;
+                }
+            }
+            // Storage search
+            if (!weapon) {
+                for (let i = 0; i < this.slots; i++) {
+                    if (this.items[i] && this.items[i].id === itemDef.weaponId) {
+                        weapon = this.items[i];
+                        break;
+                    }
+                }
+            }
+
+            if (weapon) {
+                // Instead of adding to totalAmmo pool, keep magazines as items
+                // UseItem could maybe "Smart Equip" if it's a mag? 
+                // Let's just say "Items of type magazine are used via R (reload)"
+                console.log(`Manual use of ${itemDef.name} for ${weapon.id}. Just keep it in inventory to reload.`);
+                success = false;
+            }
+        }
+
+        if (success) {
+            item.count--;
+            if (item.count <= 0) {
+                if (type === 'storage') this.items[index] = null;
+                else this.hotbar[index] = null;
+            }
+            return true;
+        }
+        return false;
     }
 
     tryAttach(attachmentItem, fromType, fromKey) {
@@ -282,38 +342,92 @@ export default class Inventory {
     reloadWeapon() {
         if (this.isReloading) return;
 
-        const item = this.getSelectedItem();
-        if (!item) return;
+        const weapon = this.getSelectedItem();
+        if (!weapon) return;
 
-        const itemDef = this.getItemDef(item.id);
-        if (!itemDef || itemDef.type !== 'weapon') return;
+        const weaponDef = this.getItemDef(weapon.id);
+        if (!weaponDef || weaponDef.type !== 'weapon') return;
 
-        const needed = itemDef.magSize - (item.ammo || 0);
-        if (needed <= 0 || item.totalAmmo <= 0) return;
+        // Check if weapon is already full
+        if (weapon.ammo >= weaponDef.magSize) return;
+
+        // Find magazine in inventory
+        const magInfo = this.findMagazine(weapon.id);
+        if (!magInfo) {
+            console.log(`No magazine found for ${weaponDef.name}`);
+            return;
+        }
 
         this.isReloading = true;
-        this.reloadTimer = itemDef.reloadTime || 1.0;
+        this.reloadTimer = weaponDef.reloadTime || 1.0;
         this.reloadingItemIdx = this.selectedSlot;
-        console.log(`Starting reload for ${itemDef.name}...`);
+        this.reloadingMagInfo = magInfo; // Store where we found the mag
+        console.log(`Starting reload for ${weaponDef.name} using ${magInfo.item.id}...`);
+    }
+
+    findMagazine(weaponId) {
+        // Search hotbar
+        for (let i = 0; i < this.hotbarSlots; i++) {
+            const item = this.hotbar[i];
+            if (!item) continue;
+            const itemDef = this.getItemDef(item.id);
+            if (itemDef && itemDef.type === 'magazine' && itemDef.weaponId === weaponId) {
+                return { type: 'hotbar', index: i, item };
+            }
+        }
+        // Search storage
+        for (let i = 0; i < this.slots; i++) {
+            const item = this.items[i];
+            if (!item) continue;
+            const itemDef = this.getItemDef(item.id);
+            if (itemDef && itemDef.type === 'magazine' && itemDef.weaponId === weaponId) {
+                return { type: 'storage', index: i, item };
+            }
+        }
+        return null;
     }
 
     completeReload() {
         if (!this.isReloading) return;
 
-        const item = this.hotbar[this.reloadingItemIdx];
-        if (item) {
-            const itemDef = this.getItemDef(item.id);
-            if (itemDef) {
-                const needed = itemDef.magSize - (item.ammo || 0);
-                const reloadAmount = Math.min(needed, item.totalAmmo);
-                item.ammo = (item.ammo || 0) + reloadAmount;
-                item.totalAmmo -= reloadAmount;
-                console.log(`Reloaded ${itemDef.name}. Ammo: ${item.ammo}/${item.totalAmmo}`);
+        const weapon = this.hotbar[this.reloadingItemIdx];
+        if (weapon && this.reloadingMagInfo) {
+            const weaponDef = this.getItemDef(weapon.id);
+            const { type, index, item: magItem } = this.reloadingMagInfo;
+
+            // Re-verify the magazine still exists in that spot
+            const currentItem = type === 'hotbar' ? this.hotbar[index] : this.items[index];
+            if (currentItem === magItem && magItem.count > 0) {
+                // Consume magazine
+                magItem.count--;
+                if (magItem.count <= 0) {
+                    if (type === 'hotbar') this.hotbar[index] = null;
+                    else this.items[index] = null;
+                }
+
+                // Set weapon ammo to full
+                weapon.ammo = weaponDef.magSize;
+                console.log(`Reload complete. consumed 1 magazine. Ammo: ${weapon.ammo}`);
+            } else {
+                // Try to find another mag if that one moved/vanished
+                const newMag = this.findMagazine(weapon.id);
+                if (newMag) {
+                    newMag.item.count--;
+                    if (newMag.item.count <= 0) {
+                        if (newMag.type === 'hotbar') this.hotbar[newMag.index] = null;
+                        else this.items[newMag.index] = null;
+                    }
+                    weapon.ammo = weaponDef.magSize;
+                    console.log(`Reload complete (found alternative mag). Ammo: ${weapon.ammo}`);
+                } else {
+                    console.log("Reload failed: Magazine lost.");
+                }
             }
         }
 
         this.isReloading = false;
         this.reloadingItemIdx = -1;
+        this.reloadingMagInfo = null;
     }
 
     cancelReload() {
@@ -555,24 +669,7 @@ export default class Inventory {
     }
 
     useItem(slotIndex) {
-        const item = this.hotbar[slotIndex];
-        if (!item) return;
-
-        const itemDef = this.getItemDef(item.id);
-        if (!itemDef) return;
-
-        if (itemDef.id === 'medkit' && item.count > 0) {
-            // Heal player
-            const player = this.game.player;
-            if (player.health < player.maxHealth) {
-                player.health = Math.min(player.maxHealth, player.health + 200);
-                item.count--;
-                if (item.count <= 0) this.hotbar[slotIndex] = null;
-                console.log("Used Medkit! Health:", player.health);
-                return true;
-            }
-        }
-        return false;
+        return this.useItemAt('hotbar', slotIndex);
     }
 
     render(ctx) {
@@ -935,10 +1032,20 @@ export default class Inventory {
             }
         }
 
-        // Ammo Numbers
-        ctx.fillStyle = '#fff';
+        // Calculate total magazines available
+        let magCount = 0;
+        const allItems = [...this.hotbar, ...this.items];
+        allItems.forEach(i => {
+            if (i) {
+                const iDef = this.getItemDef(i.id);
+                if (iDef && iDef.type === 'magazine' && iDef.weaponId === item.id) {
+                    magCount += i.count;
+                }
+            }
+        });
+
         const ammoStr = `${item.ammo || 0}`;
-        const totalStr = ` / ${item.totalAmmo || 0}`;
+        const totalStr = ` / ${magCount} MAG`;
 
         if (this.isReloading) {
             ctx.font = 'bold 36px Arial';
@@ -977,7 +1084,7 @@ export default class Inventory {
             ctx.fillText(totalStr, x + ammoWidth, y);
 
             // Reload Hint if low
-            if (item.ammo === 0 && item.totalAmmo > 0) {
+            if (item.ammo === 0 && magCount > 0) {
                 ctx.fillStyle = '#e74c3c';
                 ctx.font = 'italic 14px Arial';
                 ctx.fillText("PRESS 'R' TO RELOAD", x, y + 20);
