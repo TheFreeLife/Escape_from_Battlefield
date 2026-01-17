@@ -27,8 +27,13 @@ export default class Inventory {
         this.lastMouseDown = false;
         this.hoveredSlotInfo = null; // { item, x, y, size }
 
+        // Reload system
+        this.isReloading = false;
+        this.reloadTimer = 0;
+        this.reloadingItemIdx = -1; // Index in hotbar
+
         // Test Items
-        this.addHotbarItem({ id: 'rifle', count: 1 }, 0);
+        this.addHotbarItem({ id: 'pistol', count: 1 }, 0);
         this.addHotbarItem({ id: 'medkit', count: 5 }, 1);
         this.addHotbarItem({ id: 'ak47', count: 1 }, 2);
         this.addItem({ id: 'medkit', count: 2 });
@@ -80,6 +85,11 @@ export default class Inventory {
         // 2. Find empty slot if still has count
         for (let i = 0; i < this.slots; i++) {
             if (!this.items[i]) {
+                // Initialize weapon ammo if pickup
+                if (itemDef && itemDef.type === 'weapon') {
+                    item.ammo = itemDef.magSize;
+                    item.totalAmmo = itemDef.magSize * 4;
+                }
                 this.items[i] = item;
                 return true;
             }
@@ -89,6 +99,11 @@ export default class Inventory {
 
     addHotbarItem(item, slot) {
         if (slot >= 0 && slot < this.hotbarSlots) {
+            const itemDef = this.getItemDef(item.id);
+            if (itemDef && itemDef.type === 'weapon') {
+                item.ammo = itemDef.magSize;
+                item.totalAmmo = itemDef.magSize * 4;
+            }
             this.hotbar[slot] = item;
             return true;
         }
@@ -131,13 +146,84 @@ export default class Inventory {
             }
         }
 
+        // Reload progress
+        if (this.isReloading) {
+            this.reloadTimer -= dt;
+            if (this.reloadTimer <= 0) {
+                this.completeReload();
+            }
+        }
+
         // Mouse wheel for hotbar selection
         if (input.wheel !== 0) {
+            const oldSlot = this.selectedSlot;
             if (input.wheel > 0) {
                 this.selectedSlot = (this.selectedSlot - 1 + this.hotbarSlots) % this.hotbarSlots;
             } else {
                 this.selectedSlot = (this.selectedSlot + 1) % this.hotbarSlots;
             }
+            if (oldSlot !== this.selectedSlot) {
+                this.cancelReload();
+            }
+        }
+
+        for (let i = 0; i < this.hotbarSlots; i++) {
+            if (input.isKeyPressed(`Digit${i + 1}`)) {
+                if (this.selectedSlot !== i) {
+                    this.selectedSlot = i;
+                    this.cancelReload();
+                }
+            }
+        }
+
+        // Reload
+        if (input.isKeyPressed('KeyR')) {
+            this.reloadWeapon();
+        }
+    }
+
+    reloadWeapon() {
+        if (this.isReloading) return;
+
+        const item = this.getSelectedItem();
+        if (!item) return;
+
+        const itemDef = this.getItemDef(item.id);
+        if (!itemDef || itemDef.type !== 'weapon') return;
+
+        const needed = itemDef.magSize - (item.ammo || 0);
+        if (needed <= 0 || item.totalAmmo <= 0) return;
+
+        this.isReloading = true;
+        this.reloadTimer = itemDef.reloadTime || 1.0;
+        this.reloadingItemIdx = this.selectedSlot;
+        console.log(`Starting reload for ${itemDef.name}...`);
+    }
+
+    completeReload() {
+        if (!this.isReloading) return;
+
+        const item = this.hotbar[this.reloadingItemIdx];
+        if (item) {
+            const itemDef = this.getItemDef(item.id);
+            if (itemDef) {
+                const needed = itemDef.magSize - (item.ammo || 0);
+                const reloadAmount = Math.min(needed, item.totalAmmo);
+                item.ammo = (item.ammo || 0) + reloadAmount;
+                item.totalAmmo -= reloadAmount;
+                console.log(`Reloaded ${itemDef.name}. Ammo: ${item.ammo}/${item.totalAmmo}`);
+            }
+        }
+
+        this.isReloading = false;
+        this.reloadingItemIdx = -1;
+    }
+
+    cancelReload() {
+        if (this.isReloading) {
+            console.log("Reload cancelled.");
+            this.isReloading = false;
+            this.reloadingItemIdx = -1;
         }
     }
 
@@ -175,11 +261,17 @@ export default class Inventory {
 
     handleInputClick(mx, my) {
         const layout = this.getLayout();
+        const input = this.game.input;
+        const isShift = input.isKeyPressed('ShiftLeft') || input.isKeyPressed('ShiftRight');
 
-        // 1. Storage slots (No restrictions)
+        // 1. Storage slots
         for (let i = 0; i < this.slots; i++) {
             const rect = layout.storage[i];
             if (this.pointInRect(mx, my, rect)) {
+                if (isShift && this.items[i]) {
+                    this.handleQuickMove('storage', i);
+                    return;
+                }
                 const temp = this.items[i];
                 this.items[i] = this.heldItem;
                 this.heldItem = temp;
@@ -187,10 +279,14 @@ export default class Inventory {
             }
         }
 
-        // 2. Hotbar slots (No restrictions)
+        // 2. Hotbar slots
         for (let i = 0; i < this.hotbarSlots; i++) {
             const rect = layout.hotbar[i];
             if (this.pointInRect(mx, my, rect)) {
+                if (isShift && this.hotbar[i]) {
+                    this.handleQuickMove('hotbar', i);
+                    return;
+                }
                 const temp = this.hotbar[i];
                 this.hotbar[i] = this.heldItem;
                 this.heldItem = temp;
@@ -198,10 +294,14 @@ export default class Inventory {
             }
         }
 
-        // 3. Equipment slots (Strict type/slot check)
+        // 3. Equipment slots
         for (const slotKey in layout.equipment) {
             const rect = layout.equipment[slotKey];
             if (this.pointInRect(mx, my, rect)) {
+                if (isShift && this.equipment[slotKey]) {
+                    this.handleQuickMove('equipment', slotKey);
+                    return;
+                }
                 if (this.heldItem) {
                     const itemDef = this.getItemDef(this.heldItem.id);
                     const canEquip = itemDef && itemDef.type === 'equipment' &&
@@ -216,6 +316,82 @@ export default class Inventory {
                 return;
             }
         }
+    }
+
+    handleQuickMove(fromType, fromKey) {
+        let item = null;
+        if (fromType === 'storage') item = this.items[fromKey];
+        else if (fromType === 'hotbar') item = this.hotbar[fromKey];
+        else if (fromType === 'equipment') item = this.equipment[fromKey];
+
+        if (!item) return;
+        const itemDef = this.getItemDef(item.id);
+        if (!itemDef) return;
+
+        // Try to move to equipment if from storage/hotbar
+        if (fromType !== 'equipment' && itemDef.type === 'equipment') {
+            const slotKey = itemDef.slot;
+            if (slotKey.startsWith('acc')) {
+                // Check acc1 then acc2
+                if (!this.equipment['acc1']) {
+                    this.equipment['acc1'] = item;
+                    this.clearSlot(fromType, fromKey);
+                    return;
+                } else if (!this.equipment['acc2']) {
+                    this.equipment['acc2'] = item;
+                    this.clearSlot(fromType, fromKey);
+                    return;
+                }
+            } else if (this.equipment[slotKey] === null) {
+                this.equipment[slotKey] = item;
+                this.clearSlot(fromType, fromKey);
+                return;
+            }
+            // If slot full, fall through to move between storage/hotbar
+        }
+
+        // Move between storage and hotbar
+        if (fromType === 'storage') {
+            // Try hotbar first
+            for (let i = 0; i < this.hotbarSlots; i++) {
+                if (!this.hotbar[i]) {
+                    this.hotbar[i] = item;
+                    this.clearSlot(fromType, fromKey);
+                    return;
+                }
+            }
+        } else if (fromType === 'hotbar') {
+            // Move to storage
+            for (let i = 0; i < this.slots; i++) {
+                if (!this.items[i]) {
+                    this.items[i] = item;
+                    this.clearSlot(fromType, fromKey);
+                    return;
+                }
+            }
+        } else if (fromType === 'equipment') {
+            // Move to storage, then hotbar if full
+            for (let i = 0; i < this.slots; i++) {
+                if (!this.items[i]) {
+                    this.items[i] = item;
+                    this.clearSlot(fromType, fromKey);
+                    return;
+                }
+            }
+            for (let i = 0; i < this.hotbarSlots; i++) {
+                if (!this.hotbar[i]) {
+                    this.hotbar[i] = item;
+                    this.clearSlot(fromType, fromKey);
+                    return;
+                }
+            }
+        }
+    }
+
+    clearSlot(type, key) {
+        if (type === 'storage') this.items[key] = null;
+        else if (type === 'hotbar') this.hotbar[key] = null;
+        else if (type === 'equipment') this.equipment[key] = null;
     }
 
     getItemDef(itemId) {
@@ -547,6 +723,85 @@ export default class Inventory {
             const item = this.hotbar[i];
             if (item) this.drawItem(ctx, item, slotX, slotY, slotSize);
         }
+
+        this.renderAmmoHUD(ctx);
+    }
+
+    renderAmmoHUD(ctx) {
+        const item = this.getSelectedItem();
+        if (!item) return;
+
+        const itemDef = this.getItemDef(item.id);
+        if (!itemDef || itemDef.type !== 'weapon') return;
+
+        const margin = 30;
+        const x = margin;
+        const y = this.game.canvas.height - margin;
+
+        ctx.save();
+
+        // Background Glow
+        const gradient = ctx.createRadialGradient(x + 50, y - 30, 0, x + 50, y - 30, 100);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x - 20, y - 100, 200, 120);
+
+        // Weapon Name
+        ctx.fillStyle = '#aaa';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(itemDef.name.toUpperCase(), x, y - 45);
+
+        // Ammo Numbers
+        ctx.fillStyle = '#fff';
+        const ammoStr = `${item.ammo || 0}`;
+        const totalStr = ` / ${item.totalAmmo || 0}`;
+
+        if (this.isReloading) {
+            ctx.font = 'bold 36px Arial';
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillText("RELOADING", x, y);
+
+            // Progress Bar
+            const barW = 200;
+            const barH = 8;
+            const barY = y + 15;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(x, barY, barW, barH);
+
+            const itemDefMain = this.getItemDef(item.id);
+            const totalTime = itemDefMain.reloadTime || 1.0;
+            const progress = Math.min(1, Math.max(0, 1 - (this.reloadTimer / totalTime)));
+
+            const grad = ctx.createLinearGradient(x, barY, x + barW, barY);
+            grad.addColorStop(0, '#f1c40f');
+            grad.addColorStop(1, '#e67e22');
+
+            ctx.fillStyle = grad;
+            ctx.fillRect(x, barY, barW * progress, barH);
+
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, barY, barW, barH);
+        } else {
+            ctx.font = 'bold 36px Arial';
+            ctx.fillText(ammoStr, x, y);
+
+            const ammoWidth = ctx.measureText(ammoStr).width;
+            ctx.fillStyle = '#666';
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText(totalStr, x + ammoWidth, y);
+
+            // Reload Hint if low
+            if (item.ammo === 0 && item.totalAmmo > 0) {
+                ctx.fillStyle = '#e74c3c';
+                ctx.font = 'italic 14px Arial';
+                ctx.fillText("PRESS 'R' TO RELOAD", x, y + 20);
+            }
+        }
+
+        ctx.restore();
     }
 
     drawItem(ctx, item, x, y, size) {

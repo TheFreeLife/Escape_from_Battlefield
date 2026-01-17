@@ -78,7 +78,7 @@ export default class Player {
             const itemDef = selectedItem ? this.game.inventory.getItemDef(selectedItem.id) : null;
 
             if (itemDef && itemDef.type === 'weapon') {
-                this.shoot(itemDef);
+                this.shoot(selectedItem);
             } else if (itemDef && itemDef.type === 'consumable') {
                 if (this.game.inventory.useItem(this.game.inventory.selectedSlot)) {
                     this.fireTimer = 0.5; // Prevent spamming consumables
@@ -116,9 +116,18 @@ export default class Player {
         }
     }
 
-    shoot(weaponDef) {
+    shoot(item) {
         const input = this.game.input;
         const camera = this.game.camera;
+        const itemDef = this.game.inventory.getItemDef(item.id);
+
+        if (!itemDef) return;
+
+        // Check Ammo
+        if (item.ammo !== undefined && item.ammo <= 0) {
+            // Out of ammo sound or visual feedback TBD
+            return;
+        }
 
         // Target position in world space - account for zoom
         const targetX = input.mouse.x / this.game.zoom + camera.x;
@@ -129,12 +138,17 @@ export default class Player {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist > 0) {
-            const damage = weaponDef ? weaponDef.damage || 1 : 1;
-            const fireRate = weaponDef ? weaponDef.fireRate || this.fireRate : this.fireRate;
+            const damage = itemDef.damage || 1;
+            const fireRate = itemDef.fireRate || this.fireRate;
 
             const prj = new Projectile(this.game, this.x, this.y, dx / dist, dy / dist, damage);
             this.game.projectiles.push(prj);
             this.fireTimer = fireRate;
+
+            // Deduct Ammo
+            if (item.ammo !== undefined) {
+                item.ammo--;
+            }
         }
     }
 
@@ -194,11 +208,30 @@ export default class Player {
             ctx.closePath();
         }
 
-        // Simple circle for player for now
+        // Simple circle for player
         ctx.beginPath();
         ctx.arc(screenX, screenY, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
         ctx.closePath();
+
+        // Reload Visual (Progress ring around player)
+        if (this.game.inventory.isReloading) {
+            const progress = 1 - (this.game.inventory.reloadTimer / (this.game.inventory.getSelectedItem()?.reloadTime || 1));
+
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, this.radius + 10, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * progress));
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            ctx.closePath();
+
+            // Text
+            ctx.fillStyle = '#f1c40f';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText("RELOADING...", screenX, screenY - this.radius - 20);
+            ctx.textAlign = 'left';
+        }
     }
 }
