@@ -32,6 +32,10 @@ export default class Inventory {
         this.reloadTimer = 0;
         this.reloadingItemIdx = -1; // Index in hotbar
 
+        // Aim system
+        this.isAiming = false;
+        this.aimProgress = 0; // For smooth transition
+
         // Test Items
         this.addHotbarItem({ id: 'pistol', count: 1 }, 0);
         this.addHotbarItem({ id: 'medkit', count: 5 }, 1);
@@ -153,7 +157,22 @@ export default class Inventory {
                 this.lastRightMouseDown = false;
             }
 
+            this.isAiming = false;
+            this.aimProgress = 0;
             return;
+        }
+
+        // Gameplay Aiming (Right Click to Aim with Scope)
+        const item = this.getSelectedItem();
+        const itemDef = item ? this.getItemDef(item.id) : null;
+        const hasOptic = item && item.attachments?.optic;
+
+        if (input.mouse.rightDown && !this.isOpen && hasOptic) {
+            this.isAiming = true;
+            this.aimProgress = Math.min(1, this.aimProgress + 0.1);
+        } else {
+            this.isAiming = false;
+            this.aimProgress = Math.max(0, this.aimProgress - 0.1);
         }
 
         // Zoom logic
@@ -205,10 +224,12 @@ export default class Inventory {
         const item = this.getSelectedItem();
         let targetZoom = 0.8; // Base zoom
 
-        if (item && item.attachments?.optic) {
+        if (item && item.attachments?.optic && (this.isAiming || this.aimProgress > 0)) {
             const opticDef = this.getItemDef(item.attachments.optic.id);
             if (opticDef && opticDef.zoom) {
-                targetZoom = 0.8 / opticDef.zoom;
+                // If aiming, zoom out (smaller number in our system) to see further
+                const zoomFactor = 1 + (opticDef.zoom - 1) * this.aimProgress;
+                targetZoom = 0.8 / zoomFactor;
             }
         }
 
@@ -748,6 +769,10 @@ export default class Inventory {
     renderHotbar(ctx) {
         if (this.isOpen) return;
 
+        if (this.aimProgress > 0) {
+            this.renderAimOverlay(ctx);
+        }
+
         const slotSize = 60;
         const padding = 10;
         const totalW = (slotSize + padding) * this.hotbarSlots - padding;
@@ -801,6 +826,68 @@ export default class Inventory {
         }
 
         this.renderAmmoHUD(ctx);
+    }
+
+    renderAimOverlay(ctx) {
+        const player = this.game.player;
+        const camera = this.game.camera;
+        const input = this.game.input;
+
+        // Player screen position
+        const screenX = (player.x - camera.x) * this.game.zoom;
+        const screenY = (player.y - camera.y) * this.game.zoom;
+
+        const targetX = input.mouse.x;
+        const targetY = input.mouse.y;
+        const angle = Math.atan2(targetY - screenY, targetX - screenX);
+
+        // Sight Arc configuration
+        const optic = this.getSelectedItem().attachments.optic;
+        const opticDef = this.getItemDef(optic.id);
+
+        // Scope power affects arc width (Higher zoom = narrower arc)
+        const baseArc = Math.PI * 0.6; // 108 deg base
+        const arcWidth = baseArc / (opticDef.zoom || 1);
+
+        ctx.save();
+
+        // Create mask
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = this.game.canvas.width;
+        offCanvas.height = this.game.canvas.height;
+        const offCtx = offCanvas.getContext('2d');
+
+        // Black out everything
+        offCtx.fillStyle = `rgba(0, 0, 0, ${1.0 * this.aimProgress})`;
+        offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+
+        // Cut out the vision cone
+        offCtx.globalCompositeOperation = 'destination-out';
+        offCtx.beginPath();
+        offCtx.moveTo(screenX, screenY);
+        // Extend arc far enough
+        const radius = Math.max(offCanvas.width, offCanvas.height) * 1.5;
+        offCtx.arc(screenX, screenY, radius, angle - arcWidth / 2, angle + arcWidth / 2);
+        offCtx.fill();
+
+        // Add vignette/blur effect
+        offCtx.globalCompositeOperation = 'source-over';
+        const grad = offCtx.createRadialGradient(screenX, screenY, 100, screenX, screenY, 400);
+        grad.addColorStop(0, 'rgba(0,0,0,0)');
+        grad.addColorStop(1, `rgba(0,0,0,${0.3 * this.aimProgress})`);
+        offCtx.fillStyle = grad;
+        // offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height); // This might blur too much
+
+        ctx.drawImage(offCanvas, 0, 0);
+
+        // Draw scope vignette (the black ring)
+        ctx.strokeStyle = `rgba(0,0,0,${this.aimProgress})`;
+        ctx.lineWidth = 40;
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.restore();
     }
 
     renderAmmoHUD(ctx) {
