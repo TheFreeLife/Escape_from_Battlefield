@@ -28,9 +28,14 @@
                     <button id="tool-pen" class="tool-btn selected" title="펜">🖊️</button>
                     <button id="tool-eraser" class="tool-btn" title="지우개">🧽</button>
                     <button id="tool-fill" class="tool-btn" title="채우기">🫗</button>
-                    <button id="tool-rect" class="tool-btn" title="직사각형">⬛</button>
-                    <button id="tool-circle" class="tool-btn" title="원">⚪</button>
-                    <button id="tool-triangle" class="tool-btn" title="삼각형">🔺</button>
+                    <div class="tool-group">
+                        <button id="tool-shape-main" class="tool-btn" title="도형">⬛</button>
+                        <div id="shape-sub-palette" class="hidden">
+                            <button id="tool-rect" class="sub-tool-btn" title="직사각형">⬛</button>
+                            <button id="tool-circle" class="sub-tool-btn" title="원">⚪</button>
+                            <button id="tool-triangle" class="sub-tool-btn" title="삼각형">🔺</button>
+                        </div>
+                    </div>
                 </div>
                 <h3>Active Layer</h3>
                 <div id="layer-selection">

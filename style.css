@@ -125,6 +125,46 @@ body, html {
     background: #444;
 }
 
+.tool-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+#shape-sub-palette {
+    position: absolute;
+    top: 45px;
+    left: 0;
+    background: #222;
+    border: 1px solid #555;
+    padding: 5px;
+    display: flex;
+    gap: 5px;
+    z-index: 210;
+    border-radius: 4px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.sub-tool-btn {
+    width: 35px;
+    height: 35px;
+    font-size: 16px;
+    background: #333;
+    border: 1px solid #444;
+    color: white;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.sub-tool-btn:hover {
+    background: #444;
+}
+
+.sub-tool-btn.selected {
+    border-color: #f1c40f;
+    background: #555;
+}
+
 #tile-palette {
     display: grid;
     grid-template-columns: repeat(4, 1fr);

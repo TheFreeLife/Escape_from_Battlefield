@@ -15,21 +15,63 @@ export default class MapEditor {
         this.init();
     }
 
-    init() {
-        const palette = document.getElementById('tile-palette');
-        const tiles = this.game.assetManager.getData('tiles') || [];
-        const toolBtns = ['pen', 'eraser', 'fill', 'rect', 'circle', 'triangle'];
-        toolBtns.forEach(tool => {
-            const btn = document.getElementById(`tool-${tool}`);
-            if (btn) {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.tool-btn').forEach(el => el.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    this.selectedTool = tool;
+        init() {
+
+            const palette = document.getElementById('tile-palette');
+
+            const tiles = this.game.assetManager.getData('tiles') || [];
+
+            
+
+            // Tool selection (Basic)
+
+            ['pen', 'eraser', 'fill'].forEach(tool => {
+
+                const btn = document.getElementById(`tool-${tool}`);
+
+                if (btn) btn.addEventListener('click', () => this.selectTool(tool));
+
+            });
+
+    
+
+            // Shape Tool Logic
+
+            const shapeMainBtn = document.getElementById('tool-shape-main');
+
+            const shapeSubPalette = document.getElementById('shape-sub-palette');
+
+            
+
+            shapeMainBtn.addEventListener('click', () => {
+
+                shapeSubPalette.classList.toggle('hidden');
+
+            });
+
+    
+
+            ['rect', 'circle', 'triangle'].forEach(tool => {
+
+                const btn = document.getElementById(`tool-${tool}`);
+
+                if (btn) btn.addEventListener('click', () => {
+
+                    this.selectTool(tool);
+
+                    // Update main button icon to match selected shape
+
+                    shapeMainBtn.innerText = btn.innerText;
+
+                    shapeSubPalette.classList.add('hidden');
+
                 });
-            }
-        });
-        document.getElementsByName('active-layer').forEach(input => {
+
+            });
+
+    
+
+            document.getElementsByName('active-layer').forEach(input => {
             input.addEventListener('change', (e) => {
                 this.activeLayer = e.target.value;
                 this.updatePaletteFilter();
@@ -40,6 +82,21 @@ export default class MapEditor {
         document.getElementById('clear-editor-btn').addEventListener('click', () => {
             if(confirm("정말 모든 타일을 삭제하시겠습니까?")) this.tiles.clear();
         });
+    }
+
+    selectTool(tool) {
+        // Clear all selected states
+        document.querySelectorAll('.tool-btn, .sub-tool-btn').forEach(el => el.classList.remove('selected'));
+        
+        const btn = document.getElementById(`tool-${tool}`);
+        if (btn) btn.classList.add('selected');
+        
+        // If it's a shape, also highlight the main shape button
+        if (['rect', 'circle', 'triangle'].includes(tool)) {
+            document.getElementById('tool-shape-main').classList.add('selected');
+        }
+        
+        this.selectedTool = tool;
     }
 
     updatePaletteFilter() {
