@@ -11,7 +11,7 @@
     {
         "id": "fortified_barrier",
         "layout": [
-            [["sand", "sandbag"], ["sand", "sandbag"], ["sand", "sandbag"]],
+            [[null, "sandbag"], ["sand", "sandbag"], ["sand", "sandbag"]],
             [["concrete", "fence"], ["concrete", "fence"], ["concrete", "fence"]]
         ]
     }
