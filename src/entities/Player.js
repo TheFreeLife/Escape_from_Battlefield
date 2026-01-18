@@ -16,6 +16,15 @@ export default class Player {
         this.maxHealth = 1000;
         this.health = 1000;
 
+        // Stamina system (Sprinting)
+        this.maxStamina = 200;
+        this.stamina = 200;
+        this.isSprinting = false;
+        this.isExhausted = false; // Cannot sprint until recovered some stamina
+        this.staminaDrainRate = 30; // Per second
+        this.staminaRegenRate = 7.5; // Per second
+        this.sprintSpeedMultiplier = 1.6;
+
         // Combat Visuals
         this.punchVisualTimer = 0;
         this.punchAngle = 0;
@@ -48,6 +57,29 @@ export default class Player {
         if (input.isKeyPressed('KeyA') || input.isKeyPressed('ArrowLeft')) dx -= 1;
         if (input.isKeyPressed('KeyD') || input.isKeyPressed('ArrowRight')) dx += 1;
 
+        // Sprinting Logic
+        const isMoving = dx !== 0 || dy !== 0;
+        const shiftPressed = input.isKeyPressed('ShiftLeft') || input.isKeyPressed('ShiftRight');
+        
+        if (shiftPressed && isMoving && !this.isExhausted && this.stamina > 0) {
+            this.isSprinting = true;
+            this.stamina = Math.max(0, this.stamina - this.staminaDrainRate * dt);
+            if (this.stamina <= 0) {
+                this.isExhausted = true;
+                this.isSprinting = false;
+            }
+        } else {
+            this.isSprinting = false;
+            this.stamina = Math.min(this.maxStamina, this.stamina + this.staminaRegenRate * dt);
+            
+            // Recover from exhausted state when stamina reaches 20%
+            if (this.isExhausted && this.stamina > 20) {
+                this.isExhausted = false;
+            }
+        }
+
+        const currentSpeed = this.isSprinting ? this.speed * this.sprintSpeedMultiplier : this.speed;
+
         // Normalize diagonal movement
         if (dx !== 0 || dy !== 0) {
             const length = Math.sqrt(dx * dx + dy * dy);
@@ -55,8 +87,8 @@ export default class Player {
             dy /= length;
         }
 
-        const nextX = this.x + dx * this.speed * dt;
-        const nextY = this.y + dy * this.speed * dt;
+        const nextX = this.x + dx * currentSpeed * dt;
+        const nextY = this.y + dy * currentSpeed * dt;
 
         // Use unified collision check
         if (!this.game.checkCollision(nextX, this.y, this.radius, this)) {
@@ -154,12 +186,23 @@ export default class Player {
         if (dist > 0) {
             const damage = itemDef.damage || 1;
             const fireRate = itemDef.fireRate || this.fireRate;
-            const bSpeed = itemDef.bulletSpeed || 600;
+            const bSpeed = itemDef.bulletSpeed || 1200;
             const range = itemDef.range || 1200; // Default range
             const life = range / bSpeed;
+            const numPellets = itemDef.pellets || 1;
+            const spread = itemDef.spread || 0;
 
-            const prj = new Projectile(this.game, this.x, this.y, dx / dist, dy / dist, damage, bSpeed, life);
-            this.game.projectiles.push(prj);
+            const baseAngle = Math.atan2(dy, dx);
+
+            for (let i = 0; i < numPellets; i++) {
+                const finalAngle = baseAngle + (Math.random() - 0.5) * spread;
+                const pdx = Math.cos(finalAngle);
+                const pdy = Math.sin(finalAngle);
+
+                const prj = new Projectile(this.game, this.x, this.y, pdx, pdy, damage, bSpeed, life);
+                this.game.projectiles.push(prj);
+            }
+
             this.fireTimer = fireRate;
 
             // Deduct Ammo
@@ -284,6 +327,33 @@ export default class Player {
         }
 
         // Punch Visual (Arc)
+        if (this.punchVisualTimer > 0) {
+            const alpha = this.punchVisualTimer / 0.15;
+            const punchRange = 100;
+            const punchArc = Math.PI * 0.5;
+
+            ctx.save();
+            ctx.beginPath();
+            // Create a gradient for the "swipe" look
+            const grad = ctx.createRadialGradient(screenX, screenY, this.radius, screenX, screenY, punchRange);
+            grad.addColorStop(0, `rgba(255, 255, 255, 0)`);
+            grad.addColorStop(0.5, `rgba(255, 255, 255, ${alpha * 0.4})`);
+            grad.addColorStop(1, `rgba(255, 255, 255, 0)`);
+            
+            ctx.fillStyle = grad;
+            ctx.moveTo(screenX, screenY);
+            ctx.arc(screenX, screenY, punchRange, this.punchAngle - punchArc / 2, this.punchAngle + punchArc / 2);
+            ctx.fill();
+
+            // Also draw a sharp edge for the swing
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, punchRange - 5, this.punchAngle - punchArc / 2, this.punchAngle + punchArc / 2);
+            ctx.stroke();
+
+            ctx.restore();
+        }
 
         // Simple circle for player
         ctx.beginPath();
@@ -291,6 +361,15 @@ export default class Player {
         ctx.fillStyle = this.color;
         ctx.fill();
         ctx.closePath();
+
+        // Exhausted State Text
+        if (this.isExhausted) {
+            ctx.fillStyle = '#e74c3c';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText("탈진 상태!", screenX, screenY - this.radius - 10);
+            ctx.textAlign = 'left';
+        }
 
         // Reload Visual (Progress ring around player)
         if (this.game.inventory.isReloading) {

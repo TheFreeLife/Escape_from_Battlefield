@@ -46,6 +46,8 @@ export default class Inventory {
         this.addHotbarItem({ id: 'ak47', count: 1 }, 2);
         this.addHotbarItem({ id: 'm40', count: 1 }, 3);
         this.addHotbarItem({ id: 'grenade', count: 3 }, 4);
+        this.addHotbarItem({ id: 'm16', count: 1 }, 5);
+        this.addHotbarItem({ id: 'db_shotgun', count: 1 }, 6);
         this.addItem({ id: 'medkit', count: 2 });
         this.addItem({ id: 'helmet', count: 1 });
         this.addItem({ id: 'vest', count: 1 });
@@ -1006,6 +1008,25 @@ export default class Inventory {
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(`${Math.ceil(player.health)} / ${player.maxHealth}`, barX + barW / 2, barY + 10);
+        
+        // Stamina Bar (Below Health Bar)
+        const stamBarH = 6;
+        const stamBarY = barY + barH + 4;
+        
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(barX, stamBarY, barW, stamBarH);
+        
+        // Fill
+        const stamRatio = Math.max(0, player.stamina / player.maxStamina);
+        ctx.fillStyle = player.isExhausted ? '#95a5a6' : '#3498db'; // Grey if exhausted, blue otherwise
+        ctx.fillRect(barX, stamBarY, barW * stamRatio, stamBarH);
+        
+        // Border
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(barX, stamBarY, barW, stamBarH);
+
         ctx.textAlign = 'left';
 
         for (let i = 0; i < this.hotbarSlots; i++) {
