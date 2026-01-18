@@ -1,112 +1,38 @@
 [
     {
         "id": "small_outpost",
+        "name": "작은 초소",
         "layout": [
-            [
-                [
-                    "concrete",
-                    "wall_concrete"
-                ],
-                [
-                    "concrete",
-                    "wall_concrete"
-                ],
-                [
-                    "concrete",
-                    "wall_concrete"
-                ],
-                [
-                    "concrete",
-                    "wall_concrete"
-                ]
-            ],
-            [
-                [
-                    "concrete",
-                    "wall_concrete"
-                ],
-                [
-                    "dirt",
-                    "bush"
-                ],
-                [
-                    "dirt",
-                    "bush"
-                ],
-                [
-                    "concrete",
-                    "wall_concrete"
-                ]
-            ],
-            [
-                [
-                    "concrete",
-                    "wall_concrete"
-                ],
-                [
-                    "dirt",
-                    null
-                ],
-                [
-                    "dirt",
-                    null
-                ],
-                [
-                    "concrete",
-                    null
-                ]
-            ],
-            [
-                [
-                    "concrete",
-                    "wall_concrete"
-                ],
-                [
-                    "concrete",
-                    "wall_concrete"
-                ],
-                [
-                    "concrete",
-                    "wall_concrete"
-                ],
-                [
-                    "concrete",
-                    "wall_concrete"
-                ]
-            ]
+            [["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"]],
+            [["concrete", "wall_concrete"], ["dirt", "bush"],           ["dirt", "bush"],           ["concrete", "wall_concrete"]],
+            [["concrete", "wall_concrete"], ["dirt", null],             ["dirt", null],             ["concrete", null]],
+            [["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"]]
         ]
     },
     {
         "id": "fortified_barrier",
+        "name": "강화 방벽",
         "layout": [
-            [
-                [
-                    null,
-                    "sandbag"
-                ],
-                [
-                    null,
-                    "sandbag"
-                ],
-                [
-                    "sand",
-                    "sandbag"
-                ]
-            ],
-            [
-                [
-                    "concrete",
-                    "fence"
-                ],
-                [
-                    "concrete",
-                    "fence"
-                ],
-                [
-                    "concrete",
-                    "fence"
-                ]
-            ]
+            [["sand", "sandbag"], ["sand", "sandbag"], ["sand", "sandbag"]],
+            [["concrete", "fence"], ["concrete", "fence"], ["concrete", "fence"]]
+        ]
+    },
+    {
+        "id": "checkpoint",
+        "name": "도로 검문소",
+        "layout": [
+            [["concrete", "wall_concrete"], ["concrete", null], ["concrete", null], ["concrete", "wall_concrete"]],
+            [["concrete", null],            ["concrete", null], ["concrete", null], ["concrete", null]],
+            [["concrete", "sandbag"],       ["concrete", null], ["concrete", null], ["concrete", "sandbag"]]
+        ]
+    },
+    {
+        "id": "forest_hideout",
+        "name": "숲속 은신처",
+        "layout": [
+            [["grass", "bush"], ["grass", "bush"], ["grass", "bush"]],
+            [["grass", "bush"], ["dirt", null],    ["grass", "bush"]],
+            [["grass", "bush"], ["grass", "bush"], ["grass", "bush"]]
         ]
     }
 ]

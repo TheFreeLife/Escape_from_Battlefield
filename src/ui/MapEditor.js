@@ -79,6 +79,7 @@ export default class MapEditor {
         });
         this.updatePaletteFilter();
         document.getElementById('export-btn').addEventListener('click', () => this.exportArray());
+        document.getElementById('import-btn').addEventListener('click', () => this.importArray());
         document.getElementById('clear-editor-btn').addEventListener('click', () => {
             if(confirm("정말 모든 타일을 삭제하시겠습니까?")) this.tiles.clear();
         });
@@ -276,6 +277,38 @@ export default class MapEditor {
             cropped.push(row);
         }
         document.getElementById('export-output').value = JSON.stringify(cropped).replace(/]]\[\[/g, ']],\n    [[').replace('[[[', '[\n    [[').replace(']]]', ']]\n]');
+    }
+
+    importArray() {
+        const input = document.getElementById('export-output').value.trim();
+        if (!input) return;
+
+        try {
+            const data = JSON.parse(input);
+            if (!Array.isArray(data) || !Array.isArray(data[0])) {
+                throw new Error("Invalid format: Not a 2D array.");
+            }
+
+            if (confirm("현재 작업 중인 타일들이 모두 삭제됩니다. 계속하시겠습니까?")) {
+                this.tiles.clear();
+                data.forEach((row, y) => {
+                    row.forEach((cell, x) => {
+                        if (Array.isArray(cell)) {
+                            const [floor, block] = cell;
+                            if (floor !== null || block !== null) {
+                                this.tiles.set(`${x},${y}`, { floor, block });
+                            }
+                        }
+                    });
+                });
+                console.log("Import complete.");
+                // Center the view on imported data
+                this.offsetX = 100;
+                this.offsetY = 100;
+            }
+        } catch (e) {
+            alert("가져오기 실패: 올바른 배열 형식이 아닙니다.\n" + e.message);
+        }
     }
 
     render(ctx) {
