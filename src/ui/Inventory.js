@@ -107,24 +107,24 @@ export default class Inventory {
 
     addItem(item) {
         const itemDef = this.getItemDef(item.id);
-        const isStackable = itemDef && (itemDef.type === 'consumable' || itemDef.type === 'magazine' || itemDef.type === 'tank_shell');
+        const isStackable = itemDef && (itemDef.type === 'consumable' || itemDef.type === 'magazine' || itemDef.type === 'tank_shell' || itemDef.type === 'apc_ammo');
 
         // 1. Try to stack if it's stackable
         if (isStackable) {
+            // Check hotbar first (players usually use items from here)
+            for (let i = 0; i < this.hotbarSlots; i++) {
+                if (this.hotbar[i] && this.hotbar[i].id === item.id && this.hotbar[i].count < 99) {
+                    const addAmount = Math.min(item.count, 99 - this.hotbar[i].count);
+                    this.hotbar[i].count += addAmount;
+                    item.count -= addAmount;
+                    if (item.count <= 0) return true;
+                }
+            }
             // Check storage
             for (let i = 0; i < this.slots; i++) {
                 if (this.items[i] && this.items[i].id === item.id && this.items[i].count < 99) {
                     const addAmount = Math.min(item.count, 99 - this.items[i].count);
                     this.items[i].count += addAmount;
-                    item.count -= addAmount;
-                    if (item.count <= 0) return true;
-                }
-            }
-            // Check hotbar
-            for (let i = 0; i < this.hotbarSlots; i++) {
-                if (this.hotbar[i] && this.hotbar[i].id === item.id && this.hotbar[i].count < 99) {
-                    const addAmount = Math.min(item.count, 99 - this.hotbar[i].count);
-                    this.hotbar[i].count += addAmount;
                     item.count -= addAmount;
                     if (item.count <= 0) return true;
                 }
@@ -536,6 +536,13 @@ export default class Inventory {
         const input = this.game.input;
         const isShift = input.isKeyPressed('ShiftLeft') || input.isKeyPressed('ShiftRight');
 
+        // Helper to check if two items can be merged
+        const canMerge = (item1, item2) => {
+            if (!item1 || !item2 || item1.id !== item2.id) return false;
+            const def = this.getItemDef(item1.id);
+            return def && (def.type === 'consumable' || def.type === 'magazine' || def.type === 'tank_shell' || def.type === 'apc_ammo');
+        };
+
         // 0. Vehicle Storage
         if (this.isVehicleStorageOpen) {
             const vSlots = this.currentVehicleStorage.storageSlots;
@@ -556,6 +563,21 @@ export default class Inventory {
                         this.handleQuickMove('vehicle', i);
                         return;
                     }
+
+                    // Merging logic for vehicle storage
+                    if (this.heldItem && canMerge(this.heldItem, this.currentVehicleStorage.storage[i])) {
+                        const target = this.currentVehicleStorage.storage[i];
+                        const total = target.count + this.heldItem.count;
+                        if (total <= 99) {
+                            target.count = total;
+                            this.heldItem = null;
+                        } else {
+                            target.count = 99;
+                            this.heldItem.count = total - 99;
+                        }
+                        return;
+                    }
+
                     const temp = this.currentVehicleStorage.storage[i];
                     this.currentVehicleStorage.storage[i] = this.heldItem;
                     this.heldItem = temp;
@@ -572,6 +594,21 @@ export default class Inventory {
                     this.handleQuickMove('storage', i);
                     return;
                 }
+
+                // Merging logic for storage
+                if (this.heldItem && canMerge(this.heldItem, this.items[i])) {
+                    const target = this.items[i];
+                    const total = target.count + this.heldItem.count;
+                    if (total <= 99) {
+                        target.count = total;
+                        this.heldItem = null;
+                    } else {
+                        target.count = 99;
+                        this.heldItem.count = total - 99;
+                    }
+                    return;
+                }
+
                 const temp = this.items[i];
                 this.items[i] = this.heldItem;
                 this.heldItem = temp;
@@ -587,6 +624,21 @@ export default class Inventory {
                     this.handleQuickMove('hotbar', i);
                     return;
                 }
+
+                // Merging logic for hotbar
+                if (this.heldItem && canMerge(this.heldItem, this.hotbar[i])) {
+                    const target = this.hotbar[i];
+                    const total = target.count + this.heldItem.count;
+                    if (total <= 99) {
+                        target.count = total;
+                        this.heldItem = null;
+                    } else {
+                        target.count = 99;
+                        this.heldItem.count = total - 99;
+                    }
+                    return;
+                }
+
                 const temp = this.hotbar[i];
                 this.hotbar[i] = this.heldItem;
                 this.heldItem = temp;
@@ -1286,77 +1338,75 @@ export default class Inventory {
 
         ctx.save();
 
-        // Find current loaded shell
-        let currentShell = null;
+        // Find current loaded ammo/shell info from storage
+        let nextItem = null;
         for (let i = 0; i < vehicle.storageSlots; i++) {
             if (vehicle.storage[i]) {
-                currentShell = vehicle.storage[i];
+                nextItem = vehicle.storage[i];
                 break;
             }
         }
 
-        // Background Glow (Slightly wider for Tank UI)
+        // Background Glow
         const gradient = ctx.createRadialGradient(x + 50, y - 30, 0, x + 50, y - 30, 150);
         gradient.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
         gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = gradient;
         ctx.fillRect(x - 20, y - 100, 300, 140);
 
-        if (currentShell) {
-            const def = this.getItemDef(currentShell.id);
-            
-            // 1. Shell Type Name (Top)
-            ctx.fillStyle = def.color || '#aaa';
-            ctx.font = 'bold 16px Arial';
-            ctx.fillText(def.name.toUpperCase(), x, y - 45);
+        // APC uses currentMagAmmo, Tank uses the shell count directly
+        const isAPC = vehicle.type === 'apc';
+        const ammoCount = isAPC ? (vehicle.currentMagAmmo || 0) : (nextItem ? nextItem.count : 0);
+        const hasAmmo = isAPC ? (ammoCount > 0 || nextItem !== null) : nextItem !== null;
 
-            // 2. Shell Count (Large Number)
+        if (hasAmmo) {
+            const def = nextItem ? this.getItemDef(nextItem.id) : null;
+            const name = def ? def.name : (isAPC ? "HMG" : "CANNON");
+            const color = def ? def.color : "#fff";
+            
+            ctx.fillStyle = color;
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText(name.toUpperCase(), x, y - 45);
+
             ctx.font = 'bold 36px Arial';
             ctx.fillStyle = '#fff';
-            const countStr = currentShell.count.toString();
+            const countStr = ammoCount.toString();
             ctx.fillText(countStr, x, y);
 
-            // Measure width BEFORE changing font to 20px
             const countWidth = ctx.measureText(countStr).width;
-
-            // 3. Label (Next to number)
             ctx.fillStyle = '#666';
             ctx.font = 'bold 20px Arial';
-            ctx.fillText(" SHELLS LOADED", x + countWidth + 5, y);
+            ctx.fillText(isAPC ? " ROUNDS" : " SHELLS LOADED", x + countWidth + 5, y);
 
-            // 4. Fire Cooldown Bar (Bottom)
+            // Reserve info for APC
+            if (isAPC && nextItem) {
+                ctx.fillStyle = '#aaa';
+                ctx.font = '12px Arial';
+                ctx.fillText(`PREPARED MAGS: ${nextItem.count}`, x, y + 35);
+            }
+
+            // Cooldown/Reload Bar
             if (vehicle.fireTimer > 0) {
                 const barW = 200;
                 const barH = 8;
                 const barY = y + 15;
-                const progress = 1 - (vehicle.fireTimer / vehicle.fireCooldown);
+                const totalCooldown = isAPC && ammoCount === 0 ? 1.0 : (vehicle.fireCooldown || 0.1);
+                const progress = 1 - (vehicle.fireTimer / (totalCooldown || 1));
                 
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
                 ctx.fillRect(x, barY, barW, barH);
-                
-                const barGrad = ctx.createLinearGradient(x, barY, x + barW, barY);
-                barGrad.addColorStop(0, '#f1c40f');
-                barGrad.addColorStop(1, '#e67e22');
-                
-                ctx.fillStyle = barGrad;
-                ctx.fillRect(x, barY, barW * progress, barH);
-                
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(x, barY, barW, barH);
-
                 ctx.fillStyle = '#f1c40f';
-                ctx.font = 'italic 12px Arial';
-                ctx.fillText("RELOADING CANNON...", x + barW + 10, barY + 8);
+                ctx.fillRect(x, barY, barW * progress, barH);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.strokeRect(x, barY, barW, barH);
             }
         } else {
             ctx.fillStyle = '#e74c3c';
             ctx.font = 'bold 36px Arial';
             ctx.fillText("OUT OF AMMO", x, y);
-            
             ctx.fillStyle = '#aaa';
             ctx.font = 'italic 14px Arial';
-            ctx.fillText("PRESS [T] TO LOAD TANK SHELLS", x, y + 25);
+            ctx.fillText("PRESS [T] TO LOAD AMMUNITION", x, y + 25);
         }
 
         ctx.restore();

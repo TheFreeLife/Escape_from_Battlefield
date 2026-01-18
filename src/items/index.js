@@ -4,6 +4,7 @@ import { equipment } from './equipment.js';
 import { attachments } from './attachments.js';
 import { magazines } from './magazines.js';
 import { tankShells } from './tankShells.js';
+import { apcAmmo } from './apcAmmo.js';
 
 export const allItems = [
     ...weapons,
@@ -11,7 +12,8 @@ export const allItems = [
     ...equipment,
     ...attachments,
     ...magazines,
-    ...tankShells
+    ...tankShells,
+    ...apcAmmo
 ];
 
 export const getItem = (id) => allItems.find(item => item.id === id);

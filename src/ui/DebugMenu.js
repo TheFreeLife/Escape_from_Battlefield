@@ -90,7 +90,7 @@ export default class DebugMenu {
                 if (btnY > 270 && this.checkBtn(mx, my, 10, btnY, btnW, btnH)) this.spawnItem(w.id);
             });
         } else if (this.activeCategory === 'spawn_ammo') {
-            const ammos = this.game.assetManager.getData('items').filter(it => it.type === 'magazine' || it.type === 'tank_shell');
+            const ammos = this.game.assetManager.getData('items').filter(it => it.type === 'magazine' || it.type === 'tank_shell' || it.type === 'apc_ammo');
             ammos.forEach((a, i) => {
                 const btnY = actionYStart + i * 35 - this.scrollOffset;
                 if (btnY > 270 && this.checkBtn(mx, my, 10, btnY, btnW, btnH)) this.spawnItem(a.id);
@@ -103,6 +103,7 @@ export default class DebugMenu {
         } else if (this.activeCategory === 'spawn_vehicle') {
             if (this.checkBtn(mx, my, 10, actionYStart, btnW, btnH)) this.spawnVehicle('truck');
             if (this.checkBtn(mx, my, 10, actionYStart + 35, btnW, btnH)) this.spawnVehicle('tank');
+            if (this.checkBtn(mx, my, 10, actionYStart + 70, btnW, btnH)) this.spawnVehicle('apc');
         } else if (this.activeCategory === 'world') {
             if (this.checkBtn(mx, my, 10, actionYStart, btnW, btnH)) this.game.enemies = [];
             if (this.checkBtn(mx, my, 10, actionYStart + 35, btnW, btnH)) this.game.projectiles = [];
@@ -135,7 +136,11 @@ export default class DebugMenu {
 
     spawnVehicle(type) {
         const p = this.game.player;
-        const v = type === 'tank' ? new Tank(this.game, p.x + 120, p.y + 120) : new Vehicle(this.game, p.x + 120, p.y + 120);
+        let v;
+        if (type === 'tank') v = new Tank(this.game, p.x + 120, p.y + 120);
+        else if (type === 'apc') v = new APC(this.game, p.x + 120, p.y + 120);
+        else v = new Vehicle(this.game, p.x + 120, p.y + 120);
+        
         this.game.vehicles.push(v);
     }
 
@@ -197,7 +202,7 @@ export default class DebugMenu {
                 this.drawBtn(ctx, 10, actionYStart + i * 35 - this.scrollOffset, btnW, btnH, w.name);
             });
         } else if (this.activeCategory === 'spawn_ammo') {
-            const ammos = this.game.assetManager.getData('items').filter(it => it.type === 'magazine' || it.type === 'tank_shell');
+            const ammos = this.game.assetManager.getData('items').filter(it => it.type === 'magazine' || it.type === 'tank_shell' || it.type === 'apc_ammo');
             ammos.forEach((a, i) => {
                 this.drawBtn(ctx, 10, actionYStart + i * 35 - this.scrollOffset, btnW, btnH, a.name);
             });

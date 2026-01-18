@@ -11,6 +11,7 @@ import Loot from '../entities/Loot.js';
 import Grenade from '../entities/Grenade.js';
 import Vehicle from '../entities/Vehicle.js';
 import Tank from '../entities/Tank.js';
+import APC from '../entities/APC.js';
 
 import { allItems } from '../items/index.js';
 
@@ -141,6 +142,7 @@ export default class Game {
         // Spawn test vehicles
         this.vehicles.push(new Vehicle(this, 500, 500));
         this.vehicles.push(new Tank(this, 700, 300));
+        this.vehicles.push(new APC(this, 900, 500));
 
         // Generate bitmaps for items
         const items = this.assetManager.getData('items');
