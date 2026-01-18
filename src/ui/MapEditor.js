@@ -80,6 +80,7 @@ export default class MapEditor {
         this.updatePaletteFilter();
         document.getElementById('export-btn').addEventListener('click', () => this.exportArray());
         document.getElementById('import-btn').addEventListener('click', () => this.importArray());
+        document.getElementById('test-editor-btn').addEventListener('click', () => this.testCurrentStructure());
         document.getElementById('clear-editor-btn').addEventListener('click', () => {
             if(confirm("정말 모든 타일을 삭제하시겠습니까?")) this.tiles.clear();
         });
@@ -309,6 +310,31 @@ export default class MapEditor {
         } catch (e) {
             alert("가져오기 실패: 올바른 배열 형식이 아닙니다.\n" + e.message);
         }
+    }
+
+    testCurrentStructure() {
+        if (this.tiles.size === 0) { alert("배치된 타일이 없습니다."); return; }
+
+        // 1. Get cropped layout array
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        this.tiles.forEach((_, key) => {
+            const [x, y] = key.split(',').map(Number);
+            minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+        });
+
+        const layout = [];
+        for(let y = minY; y <= maxY; y++) {
+            const row = [];
+            for(let x = minX; x <= maxX; x++) {
+                const cell = this.getTileAt(x, y);
+                row.push([cell.floor, cell.block]);
+            }
+            layout.push(row);
+        }
+
+        // 2. Launch Test Mode in Game
+        this.game.startTestMode(layout);
     }
 
     render(ctx) {

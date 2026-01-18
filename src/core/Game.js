@@ -44,9 +44,61 @@ export default class Game {
         this.accumulator = 0;
         this.deltaTime = 1 / 60; // Fixed time step
 
-        this.gameState = 'MENU'; // MENU, PLAYING
+        this.gameState = 'MENU'; // MENU, PLAYING, EDITOR
+        this.testStructure = null; // For editor testing
         this.init();
         this.setupMenu();
+    }
+
+    handleBackNavigation() {
+        const mainMenu = document.getElementById('main-menu');
+        const editorUi = document.getElementById('editor-ui');
+
+        if (this.gameState === 'PLAYING') {
+            if (this.testStructure) {
+                // Return to Editor from Test Mode
+                this.gameState = 'EDITOR';
+                this.testStructure = null;
+                editorUi.classList.remove('hidden');
+            } else {
+                // Return to Menu from Game
+                this.gameState = 'MENU';
+                mainMenu.classList.remove('hidden');
+            }
+        } else if (this.gameState === 'EDITOR') {
+            // Return to Menu from Editor
+            this.gameState = 'MENU';
+            editorUi.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
+        }
+    }
+
+    startTestMode(layout) {
+        this.testStructure = layout;
+        this.gameState = 'PLAYING';
+        
+        // Hide UI
+        document.getElementById('editor-ui').classList.add('hidden');
+        document.getElementById('main-menu').classList.add('hidden');
+
+        // Reset Game World
+        this.resetGame();
+    }
+
+    resetGame() {
+        this.enemies = [];
+        this.projectiles = [];
+        this.loots = [];
+        this.grenades = [];
+        this.vehicles = [];
+        this.tileMap.chunks.clear(); // Clear all generated terrain
+        
+        // Re-initialize player at origin
+        this.player.x = 300;
+        this.player.y = 300;
+        this.player.health = this.player.maxHealth;
+        this.player.stamina = this.player.maxStamina;
+        this.player.isInVehicle = false;
     }
 
     setupMenu() {
@@ -56,8 +108,10 @@ export default class Game {
         const editorUi = document.getElementById('editor-ui');
         
         startBtn.addEventListener('click', () => {
+            this.testStructure = null; // Clear test mode data
             this.gameState = 'PLAYING';
             mainMenu.classList.add('hidden');
+            this.resetGame(); // Fully reset terrain and entities
         });
 
         editorBtn.addEventListener('click', () => {
@@ -218,6 +272,16 @@ export default class Game {
     }
 
     update(dt) {
+        // ESC to go back
+        if (this.input.isKeyPressed('Escape')) {
+            if (!this.lastEscState) {
+                this.handleBackNavigation();
+                this.lastEscState = true;
+            }
+        } else {
+            this.lastEscState = false;
+        }
+
         if (this.gameState === 'EDITOR' && this.mapEditor) {
             this.mapEditor.update(dt);
             return;

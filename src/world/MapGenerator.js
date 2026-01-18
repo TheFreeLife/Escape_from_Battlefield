@@ -15,15 +15,41 @@ export default class MapGenerator {
         const biomes = this.game.assetManager.getData('biomes');
         if (!biomes) return null;
 
+        // Test Mode: Always return Plains
+        if (this.game.testStructure) {
+            return biomes.find(b => b.id === 'plains') || biomes[0];
+        }
+
         const n = this.biomeNoise.perlin2D(tx / 100, ty / 100, 2, 0.5);
         const index = Math.floor(n * biomes.length);
         return biomes[Math.min(index, biomes.length - 1)];
     }
 
     generateChunk(tileMap, cx, cy) {
-        const chunk = tileMap.createChunk(cx, cy);
-        const structures = this.game.assetManager.getData('structures');
+        let chunk = tileMap.getChunk(cx, cy);
+        if (!chunk) chunk = tileMap.createChunk(cx, cy);
+        
+        // --- 1. Test Mode Handling ---
+        if (this.game.testStructure) {
+            const biomes = this.game.assetManager.getData('biomes');
+            const plains = biomes?.find(b => b.id === 'plains');
+            const tileId = plains?.tiles[0] || 'grass';
+            
+            for (let ly = 0; ly < CHUNK_SIZE; ly++) {
+                for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+                    chunk.setTile(lx, ly, tileId, 'floor');
+                }
+            }
 
+            if (cx === 0 && cy === 0) {
+                // Place test structure at (10, 10)
+                this.placeStructure(tileMap, { layout: this.game.testStructure }, 10, 10);
+            }
+            chunk.isGenerated = true;
+            return;
+        }
+
+        // --- 2. Normal Mode Terrain Generation ---
         for (let ly = 0; ly < CHUNK_SIZE; ly++) {
             for (let lx = 0; lx < CHUNK_SIZE; lx++) {
                 const tx = cx * CHUNK_SIZE + lx;
@@ -36,18 +62,19 @@ export default class MapGenerator {
                 const tileIndex = Math.floor(tn * biome.tiles.length);
                 const tileId = biome.tiles[Math.min(tileIndex, biome.tiles.length - 1)];
 
-                chunk.setTile(lx, ly, tileId);
+                chunk.setTile(lx, ly, tileId, 'floor');
             }
         }
+        
+        chunk.isGenerated = true;
 
-        // Place structures in chunk
+        // --- 3. Structure Placement ---
+        const structures = this.game.assetManager.getData('structures');
         if (structures) {
-            // Safe zone: don't spawn structures near (0,0) to prevent player from being stuck
             const distFromOrigin = Math.sqrt(cx * cx + cy * cy);
-            if (distFromOrigin > 2) { // Skip chunks within 2 units from center
+            if (distFromOrigin > 2) {
                 const biome = this.getBiomeAt(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
                 if (biome) {
-                    // Try to place structures multiple times per chunk
                     const structureAttempts = 3; 
                     for (let i = 0; i < structureAttempts; i++) {
                         if (Math.random() < biome.spawnRate.structures) {
@@ -67,10 +94,10 @@ export default class MapGenerator {
             }
         }
 
-        // Spawn Entities (Enemies & Items)
+        // --- 4. Entity Spawning (Enemies, Loot, Vehicles) ---
         const spawnBiome = this.getBiomeAt(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
         if (spawnBiome) {
-            // 1. Enemies
+            // Enemies
             if (spawnBiome.enemies && spawnBiome.enemies.length > 0) {
                 const enemyAttempts = 6;
                 for (let i = 0; i < enemyAttempts; i++) {
@@ -93,7 +120,7 @@ export default class MapGenerator {
                 }
             }
 
-            // 2. Items (Ground Loot)
+            // Ground Loot
             if (spawnBiome.items && spawnBiome.items.length > 0) {
                 const itemAttempts = 2;
                 for (let i = 0; i < itemAttempts; i++) {
@@ -109,8 +136,8 @@ export default class MapGenerator {
                 }
             }
 
-            // 3. Vehicles
-            if (Math.random() < 0.05) { // 5% chance per chunk
+            // Vehicles
+            if (Math.random() < 0.05) {
                 const vx = (cx * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * 64;
                 const vy = (cy * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * 64;
 
@@ -129,7 +156,6 @@ export default class MapGenerator {
                     if (floorId !== null) tileMap.setTile(startX + x, startY + y, floorId, 'floor');
                     if (blockId !== null) tileMap.setTile(startX + x, startY + y, blockId, 'block');
                 } else if (cell !== null) {
-                    // Fallback for old simple strings
                     tileMap.setTile(startX + x, startY + y, cell, 'block');
                 }
             });

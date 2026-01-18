@@ -15,7 +15,7 @@ export default class Input {
 
     onKeyDown(e) {
         // Prevent default browser shortcuts for game keys
-        if (e.code === 'F1' || e.code === 'F3' || e.code === 'Tab') {
+        if (e.code === 'F1' || e.code === 'F3' || e.code === 'Tab' || e.code === 'Escape') {
             e.preventDefault();
         }
         this.keys[e.code] = true;

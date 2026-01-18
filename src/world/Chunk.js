@@ -8,6 +8,7 @@ export default class Chunk {
         // Two layers of tiles
         this.floors = Array(CHUNK_SIZE).fill().map(() => Array(CHUNK_SIZE).fill(null));
         this.blocks = Array(CHUNK_SIZE).fill().map(() => Array(CHUNK_SIZE).fill(null));
+        this.isGenerated = false; // Flag to check if generator processed this chunk
     }
 
     setTile(x, y, tileId, layer = 'floor') {
