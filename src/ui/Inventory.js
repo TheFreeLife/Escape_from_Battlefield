@@ -72,6 +72,9 @@ export default class Inventory {
         this.addItem({ id: 'm249_mag', count: 2 });
         this.addItem({ id: 'rpg7_mag', count: 3 });
         this.addItem({ id: 'famas_mag', count: 5 });
+
+        this.addItem({ id: 'tank_shell_he', count: 10 });
+        this.addItem({ id: 'tank_shell_ap', count: 10 });
     }
 
     openVehicleStorage(vehicle) {
@@ -104,9 +107,9 @@ export default class Inventory {
 
     addItem(item) {
         const itemDef = this.getItemDef(item.id);
-        const isStackable = itemDef && itemDef.type === 'consumable';
+        const isStackable = itemDef && (itemDef.type === 'consumable' || itemDef.type === 'magazine' || itemDef.type === 'tank_shell');
 
-        // 1. Try to stack if it's consumable
+        // 1. Try to stack if it's stackable
         if (isStackable) {
             // Check storage
             for (let i = 0; i < this.slots; i++) {
@@ -172,6 +175,16 @@ export default class Inventory {
             this.lastEState = true;
         } else {
             this.lastEState = false;
+        }
+
+        // Allow closing vehicle storage with 'T' key
+        if (input.isKeyPressed('KeyT')) {
+            if (!this.lastTState && this.isVehicleStorageOpen) {
+                this.toggle();
+            }
+            this.lastTState = true;
+        } else {
+            this.lastTState = false;
         }
 
         if (this.isOpen) {
@@ -525,9 +538,20 @@ export default class Inventory {
 
         // 0. Vehicle Storage
         if (this.isVehicleStorageOpen) {
-            for (let i = 0; i < 10; i++) {
+            const vSlots = this.currentVehicleStorage.storageSlots;
+            for (let i = 0; i < vSlots; i++) {
                 const rect = layout.vehicleStorage[i];
                 if (this.pointInRect(mx, my, rect)) {
+                    // Check item type restriction
+                    if (this.heldItem) {
+                        const itemDef = this.getItemDef(this.heldItem.id);
+                        const accepted = this.currentVehicleStorage.acceptedItemTypes;
+                        if (accepted && !accepted.includes(itemDef.type)) {
+                            console.log(`This vehicle only accepts: ${accepted.join(', ')}`);
+                            return; // Block placement
+                        }
+                    }
+                    
                     if (isShift && this.currentVehicleStorage.storage[i]) {
                         this.handleQuickMove('vehicle', i);
                         return;
@@ -615,7 +639,14 @@ export default class Inventory {
 
         // Move from player to vehicle if vehicle storage is open
         if (this.isVehicleStorageOpen && fromType !== 'vehicle') {
-            for (let i = 0; i < 10; i++) {
+            // Check item type restriction
+            const accepted = this.currentVehicleStorage.acceptedItemTypes;
+            if (accepted && !accepted.includes(itemDef.type)) {
+                return; // Cannot move this item type to this vehicle
+            }
+
+            const vSlots = this.currentVehicleStorage.storageSlots;
+            for (let i = 0; i < vSlots; i++) {
                 if (!this.currentVehicleStorage.storage[i]) {
                     this.currentVehicleStorage.storage[i] = item;
                     this.clearSlot(fromType, fromKey);
@@ -720,15 +751,16 @@ export default class Inventory {
             vehicleStorage: []
         };
 
-        // Vehicle Storage Slots (2 rows of 5)
+        // Vehicle Storage Slots
         if (this.isVehicleStorageOpen) {
+            const vSlots = this.currentVehicleStorage.storageSlots;
             const vCols = 5;
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < vSlots; i++) {
                 const col = i % vCols;
                 const row = Math.floor(i / vCols);
                 layout.vehicleStorage.push({
                     x: winX + 25 + col * (slotSize + padding),
-                    y: winY + 60 + row * (slotSize + padding), // Fixed: added row offset
+                    y: winY + 60 + row * (slotSize + padding),
                     size: slotSize
                 });
             }
@@ -1133,6 +1165,14 @@ export default class Inventory {
     }
 
     renderAmmoHUD(ctx) {
+        const player = this.game.player;
+        
+        // 1. If in a vehicle that provides its own Ammo HUD (like a Tank)
+        if (player.isInVehicle && player.currentVehicle.providesAmmoHUD) {
+            this.renderVehicleAmmoHUD(ctx, player.currentVehicle);
+            return;
+        }
+
         const item = this.getSelectedItem();
         if (!item) return;
 
@@ -1234,6 +1274,89 @@ export default class Inventory {
                 ctx.font = 'italic 14px Arial';
                 ctx.fillText("PRESS 'R' TO RELOAD", x, y + 20);
             }
+        }
+
+        ctx.restore();
+    }
+
+    renderVehicleAmmoHUD(ctx, vehicle) {
+        const margin = 30;
+        const x = margin;
+        const y = this.game.canvas.height - margin;
+
+        ctx.save();
+
+        // Find current loaded shell
+        let currentShell = null;
+        for (let i = 0; i < vehicle.storageSlots; i++) {
+            if (vehicle.storage[i]) {
+                currentShell = vehicle.storage[i];
+                break;
+            }
+        }
+
+        // Background Glow (Slightly wider for Tank UI)
+        const gradient = ctx.createRadialGradient(x + 50, y - 30, 0, x + 50, y - 30, 150);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x - 20, y - 100, 300, 140);
+
+        if (currentShell) {
+            const def = this.getItemDef(currentShell.id);
+            
+            // 1. Shell Type Name (Top)
+            ctx.fillStyle = def.color || '#aaa';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText(def.name.toUpperCase(), x, y - 45);
+
+            // 2. Shell Count (Large Number)
+            ctx.font = 'bold 36px Arial';
+            ctx.fillStyle = '#fff';
+            const countStr = currentShell.count.toString();
+            ctx.fillText(countStr, x, y);
+
+            // Measure width BEFORE changing font to 20px
+            const countWidth = ctx.measureText(countStr).width;
+
+            // 3. Label (Next to number)
+            ctx.fillStyle = '#666';
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText(" SHELLS LOADED", x + countWidth + 5, y);
+
+            // 4. Fire Cooldown Bar (Bottom)
+            if (vehicle.fireTimer > 0) {
+                const barW = 200;
+                const barH = 8;
+                const barY = y + 15;
+                const progress = 1 - (vehicle.fireTimer / vehicle.fireCooldown);
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.fillRect(x, barY, barW, barH);
+                
+                const barGrad = ctx.createLinearGradient(x, barY, x + barW, barY);
+                barGrad.addColorStop(0, '#f1c40f');
+                barGrad.addColorStop(1, '#e67e22');
+                
+                ctx.fillStyle = barGrad;
+                ctx.fillRect(x, barY, barW * progress, barH);
+                
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x, barY, barW, barH);
+
+                ctx.fillStyle = '#f1c40f';
+                ctx.font = 'italic 12px Arial';
+                ctx.fillText("RELOADING CANNON...", x + barW + 10, barY + 8);
+            }
+        } else {
+            ctx.fillStyle = '#e74c3c';
+            ctx.font = 'bold 36px Arial';
+            ctx.fillText("OUT OF AMMO", x, y);
+            
+            ctx.fillStyle = '#aaa';
+            ctx.font = 'italic 14px Arial';
+            ctx.fillText("PRESS [T] TO LOAD TANK SHELLS", x, y + 25);
         }
 
         ctx.restore();

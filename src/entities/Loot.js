@@ -38,6 +38,18 @@ export default class Loot {
             ctx.fillRect(screenX - 10, screenY - 10, 20, 20);
         }
 
+        // Render Count (xN)
+        if (this.count > 1) {
+            ctx.save();
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 12px Arial';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.strokeText(`x${this.count}`, screenX + 10, screenY + 18);
+            ctx.fillText(`x${this.count}`, screenX + 10, screenY + 18);
+            ctx.restore();
+        }
+
         // Interaction Hint
         const player = this.game.player;
         if (player && !player.isInVehicle) {

@@ -6,9 +6,11 @@ import Player from '../entities/Player.js';
 import Enemy from '../entities/Enemy.js';
 import Projectile from '../entities/Projectile.js';
 import Inventory from '../ui/Inventory.js';
+import DebugMenu from '../ui/DebugMenu.js';
 import Loot from '../entities/Loot.js';
 import Grenade from '../entities/Grenade.js';
 import Vehicle from '../entities/Vehicle.js';
+import Tank from '../entities/Tank.js';
 
 import { allItems } from '../items/index.js';
 
@@ -134,9 +136,11 @@ export default class Game {
 
         this.player = new Player(this, 300, 300); // Start position
         this.inventory = new Inventory(this);
+        this.debugMenu = new DebugMenu(this);
 
-        // Spawn test vehicle
+        // Spawn test vehicles
         this.vehicles.push(new Vehicle(this, 500, 500));
+        this.vehicles.push(new Tank(this, 700, 300));
 
         // Generate bitmaps for items
         const items = this.assetManager.getData('items');
@@ -184,6 +188,21 @@ export default class Game {
     }
 
     update(dt) {
+        // Debug Menu Toggle
+        if (this.input.isKeyPressed('F1') || this.input.isKeyPressed('Backquote')) {
+            if (!this.lastDebugState) {
+                this.debugMenu.toggle();
+                this.lastDebugState = true;
+            }
+        } else {
+            this.lastDebugState = false;
+        }
+
+        if (this.debugMenu.isVisible) {
+            this.debugMenu.update(dt);
+            // Optionally pause or continue game based on preference
+        }
+
         // Handle Global Interaction (F Key) - Move this BEFORE the inventory early return
         if (this.input.isKeyPressed('KeyF')) {
             if (!this.lastFState) {
@@ -437,6 +456,7 @@ export default class Game {
         }
 
         this.renderMinimap();
+        if (this.debugMenu) this.debugMenu.render(this.ctx);
 
         // UI Layout
         this.ctx.fillStyle = '#fff';

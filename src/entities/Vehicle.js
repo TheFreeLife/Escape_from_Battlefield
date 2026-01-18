@@ -12,6 +12,9 @@ export default class Vehicle {
         this.acceleration = 200;
         this.friction = 0.95;
         this.isOccupied = false;
+        this.hasExternalStorage = true; // One-line toggle for external trunk access
+        this.providesAmmoHUD = false; // Whether this vehicle shows ammo in the bottom-left HUD
+        this.acceptedItemTypes = null; // null means any item is accepted
 
         this.interactionRadius = 100;
         this.isCollidable = true;
@@ -40,8 +43,8 @@ export default class Vehicle {
                 this.enter();
                 return 'ENTERED';
             }
-        } else {
-            // Back side -> Trunk
+        } else if (this.hasExternalStorage) {
+            // Back side -> Trunk (Only if enabled)
             this.toggleStorage();
             return 'STORAGE';
         }
@@ -193,12 +196,19 @@ export default class Vehicle {
                 const dy = player.y - this.y;
                 const localX = dx * Math.cos(-this.angle) - dy * Math.sin(-this.angle);
                 
-                const label = localX > 0 ? "[F] 탑승" : "[F] 적재함";
+                let label = null;
+                if (localX > 0) {
+                    label = "[F] 탑승";
+                } else if (this.hasExternalStorage) {
+                    label = "[F] 적재함";
+                }
 
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 16px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(label, screenX, screenY - 60);
+                if (label) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(label, screenX, screenY - 60);
+                }
             }
         }
     }
