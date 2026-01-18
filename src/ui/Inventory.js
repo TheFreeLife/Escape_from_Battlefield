@@ -41,14 +41,20 @@ export default class Inventory {
         this.aimProgress = 0; // For smooth transition
 
         // Test Items
-        this.addHotbarItem({ id: 'pistol', count: 1 }, 0);
-        this.addHotbarItem({ id: 'medkit', count: 5 }, 1);
-        this.addHotbarItem({ id: 'ak47', count: 1 }, 2);
-        this.addHotbarItem({ id: 'm40', count: 1 }, 3);
-        this.addHotbarItem({ id: 'grenade', count: 3 }, 4);
-        this.addHotbarItem({ id: 'm16', count: 1 }, 5);
-        this.addHotbarItem({ id: 'db_shotgun', count: 1 }, 6);
-        this.addItem({ id: 'medkit', count: 2 });
+        this.addHotbarItem({ id: 'deagle', count: 1 }, 0);
+        this.addHotbarItem({ id: 'm4a1', count: 1 }, 1);
+        this.addHotbarItem({ id: 'vector', count: 1 }, 2);
+        this.addHotbarItem({ id: 'awm', count: 1 }, 3);
+        this.addHotbarItem({ id: 'remington870', count: 1 }, 4);
+        this.addHotbarItem({ id: 'm249', count: 1 }, 5);
+        this.addHotbarItem({ id: 'rpg7', count: 1 }, 6);
+        this.addHotbarItem({ id: 'famas', count: 1 }, 7);
+        
+        this.addItem({ id: 'ak47', count: 1 });
+        this.addItem({ id: 'p90', count: 1 });
+        this.addItem({ id: 'db_shotgun', count: 1 });
+        this.addItem({ id: 'magnum', count: 1 });
+        this.addItem({ id: 'medkit', count: 5 });
         this.addItem({ id: 'helmet', count: 1 });
         this.addItem({ id: 'vest', count: 1 });
         this.addItem({ id: 'boots', count: 1 });
@@ -217,7 +223,7 @@ export default class Inventory {
         // Mouse wheel for hotbar selection
         if (input.wheel !== 0) {
             const oldSlot = this.selectedSlot;
-            if (input.wheel > 0) {
+            if (input.wheel < 0) {
                 this.selectedSlot = (this.selectedSlot - 1 + this.hotbarSlots) % this.hotbarSlots;
             } else {
                 this.selectedSlot = (this.selectedSlot + 1) % this.hotbarSlots;

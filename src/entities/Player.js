@@ -73,12 +73,24 @@ export default class Player {
             this.stamina = Math.min(this.maxStamina, this.stamina + this.staminaRegenRate * dt);
             
             // Recover from exhausted state when stamina reaches 20%
-            if (this.isExhausted && this.stamina > 20) {
+            if (this.isExhausted && this.stamina > (this.maxStamina * 0.2)) {
                 this.isExhausted = false;
             }
         }
 
-        const currentSpeed = this.isSprinting ? this.speed * this.sprintSpeedMultiplier : this.speed;
+        // Apply weight penalty to speed
+        let speedMultiplier = 1.0;
+        const selectedItem = this.game.inventory.getSelectedItem();
+        const itemDef = selectedItem ? this.game.inventory.getItemDef(selectedItem.id) : null;
+        
+        if (itemDef && itemDef.weight) {
+            // Each 1kg reduces speed by 3%. Max penalty 50%.
+            speedMultiplier = Math.max(0.5, 1.0 - (itemDef.weight * 0.03));
+        }
+
+        let currentSpeed = this.isSprinting ? this.speed * this.sprintSpeedMultiplier : this.speed;
+        currentSpeed *= speedMultiplier;
+        this.currentSpeed = currentSpeed; // Store for UI display
 
         // Normalize diagonal movement
         if (dx !== 0 || dy !== 0) {
@@ -107,9 +119,6 @@ export default class Player {
         if (this.punchVisualTimer > 0) {
             this.punchVisualTimer -= dt;
         }
-
-        const selectedItem = this.game.inventory.getSelectedItem();
-        const itemDef = selectedItem ? this.game.inventory.getItemDef(selectedItem.id) : null;
 
         if (input.mouse.leftDown) {
             if (itemDef && itemDef.type === 'grenade') {
@@ -199,7 +208,10 @@ export default class Player {
                 const pdx = Math.cos(finalAngle);
                 const pdy = Math.sin(finalAngle);
 
-                const prj = new Projectile(this.game, this.x, this.y, pdx, pdy, damage, bSpeed, life);
+                const prj = new Projectile(this.game, this.x, this.y, pdx, pdy, damage, bSpeed, life, {
+                    isExplosive: itemDef.isExplosive,
+                    explodeRadius: itemDef.explodeRadius
+                });
                 this.game.projectiles.push(prj);
             }
 

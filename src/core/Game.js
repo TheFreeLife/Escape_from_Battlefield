@@ -456,6 +456,10 @@ export default class Game {
                 this.ctx.fillStyle = '#aaa';
                 this.ctx.font = '14px Arial';
                 this.ctx.fillText(`좌표: ${tx}, ${ty}`, 20, 85);
+
+                this.ctx.fillStyle = '#00ff00';
+                this.ctx.font = 'bold 14px Arial';
+                this.ctx.fillText(`이동 속도: ${Math.round(this.player.currentSpeed || 0)} px/s`, 20, 105);
             }
         }
     }
