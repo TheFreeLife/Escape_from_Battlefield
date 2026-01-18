@@ -2,17 +2,111 @@
     {
         "id": "small_outpost",
         "layout": [
-            [["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"]],
-            [["concrete", "wall_concrete"], ["dirt", "bush"], ["dirt", "bush"], ["concrete", "wall_concrete"]],
-            [["concrete", "wall_concrete"], ["dirt", null], ["dirt", null], ["concrete", null]],
-            [["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"]]
+            [
+                [
+                    "concrete",
+                    "wall_concrete"
+                ],
+                [
+                    "concrete",
+                    "wall_concrete"
+                ],
+                [
+                    "concrete",
+                    "wall_concrete"
+                ],
+                [
+                    "concrete",
+                    "wall_concrete"
+                ]
+            ],
+            [
+                [
+                    "concrete",
+                    "wall_concrete"
+                ],
+                [
+                    "dirt",
+                    "bush"
+                ],
+                [
+                    "dirt",
+                    "bush"
+                ],
+                [
+                    "concrete",
+                    "wall_concrete"
+                ]
+            ],
+            [
+                [
+                    "concrete",
+                    "wall_concrete"
+                ],
+                [
+                    "dirt",
+                    null
+                ],
+                [
+                    "dirt",
+                    null
+                ],
+                [
+                    "concrete",
+                    null
+                ]
+            ],
+            [
+                [
+                    "concrete",
+                    "wall_concrete"
+                ],
+                [
+                    "concrete",
+                    "wall_concrete"
+                ],
+                [
+                    "concrete",
+                    "wall_concrete"
+                ],
+                [
+                    "concrete",
+                    "wall_concrete"
+                ]
+            ]
         ]
     },
     {
         "id": "fortified_barrier",
         "layout": [
-            [[null, "sandbag"], ["sand", "sandbag"], ["sand", "sandbag"]],
-            [["concrete", "fence"], ["concrete", "fence"], ["concrete", "fence"]]
+            [
+                [
+                    null,
+                    "sandbag"
+                ],
+                [
+                    null,
+                    "sandbag"
+                ],
+                [
+                    "sand",
+                    "sandbag"
+                ]
+            ],
+            [
+                [
+                    "concrete",
+                    "fence"
+                ],
+                [
+                    "concrete",
+                    "fence"
+                ],
+                [
+                    "concrete",
+                    "fence"
+                ]
+            ]
         ]
     }
 ]
