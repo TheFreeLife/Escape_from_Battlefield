@@ -6,7 +6,7 @@ export default class Player {
         this.game = game;
         this.x = x;
         this.y = y;
-        this.speed = 200; // Pixels per second
+        this.speed = 250; // Pixels per second (Increased from 200)
         this.radius = 32; // Half of TILE_SIZE (64)
         this.color = '#3498db';
         this.fireRate = 0.2; // Seconds between shots
@@ -84,8 +84,13 @@ export default class Player {
         const itemDef = selectedItem ? this.game.inventory.getItemDef(selectedItem.id) : null;
         
         if (itemDef && itemDef.weight) {
-            // Each 1kg reduces speed by 3%. Max penalty 50%.
-            speedMultiplier = Math.max(0.5, 1.0 - (itemDef.weight * 0.03));
+            // Each 1kg reduces speed by 5%. Max penalty 60%.
+            speedMultiplier = Math.max(0.4, 1.0 - (itemDef.weight * 0.05));
+        }
+
+        // Apply aiming penalty (0.6x speed when aiming with scope)
+        if (this.game.inventory.isAiming) {
+            speedMultiplier *= 0.6;
         }
 
         let currentSpeed = this.isSprinting ? this.speed * this.sprintSpeedMultiplier : this.speed;

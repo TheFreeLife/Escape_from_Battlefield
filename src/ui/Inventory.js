@@ -62,6 +62,16 @@ export default class Inventory {
         this.addItem({ id: 'scope_2x', count: 1 });
         this.addItem({ id: 'scope_4x', count: 1 });
         this.addItem({ id: 'laser_sight', count: 1 });
+
+        // Add matching magazines
+        this.addItem({ id: 'm4a1_mag', count: 5 });
+        this.addItem({ id: 'deagle_mag', count: 3 });
+        this.addItem({ id: 'vector_mag', count: 5 });
+        this.addItem({ id: 'awm_mag', count: 4 });
+        this.addItem({ id: 'remington870_mag', count: 5 });
+        this.addItem({ id: 'm249_mag', count: 2 });
+        this.addItem({ id: 'rpg7_mag', count: 3 });
+        this.addItem({ id: 'famas_mag', count: 5 });
     }
 
     openVehicleStorage(vehicle) {
