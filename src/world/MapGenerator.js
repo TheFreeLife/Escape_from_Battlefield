@@ -42,17 +42,27 @@ export default class MapGenerator {
 
         // Place structures in chunk
         if (structures) {
-            const biome = this.getBiomeAt(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
-            if (biome && Math.random() < biome.spawnRate.structures) {
-                const prefabId = biome.structures[Math.floor(Math.random() * biome.structures.length)];
-                const prefab = structures.find(s => s.id === prefabId);
+            // Safe zone: don't spawn structures near (0,0) to prevent player from being stuck
+            const distFromOrigin = Math.sqrt(cx * cx + cy * cy);
+            if (distFromOrigin > 2) { // Skip chunks within 2 units from center
+                const biome = this.getBiomeAt(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
+                if (biome) {
+                    // Try to place structures multiple times per chunk
+                    const structureAttempts = 3; 
+                    for (let i = 0; i < structureAttempts; i++) {
+                        if (Math.random() < biome.spawnRate.structures) {
+                            const prefabId = biome.structures[Math.floor(Math.random() * biome.structures.length)];
+                            const prefab = structures.find(s => s.id === prefabId);
 
-                if (prefab) {
-                    const pHeight = prefab.layout.length;
-                    const pWidth = prefab.layout[0].length;
-                    const sx = Math.floor(Math.random() * (CHUNK_SIZE - pWidth));
-                    const sy = Math.floor(Math.random() * (CHUNK_SIZE - pHeight));
-                    this.placeStructure(tileMap, prefab, cx * CHUNK_SIZE + sx, cy * CHUNK_SIZE + sy);
+                            if (prefab) {
+                                const pHeight = prefab.layout.length;
+                                const pWidth = prefab.layout[0].length;
+                                const sx = Math.floor(Math.random() * (CHUNK_SIZE - pWidth));
+                                const sy = Math.floor(Math.random() * (CHUNK_SIZE - pHeight));
+                                this.placeStructure(tileMap, prefab, cx * CHUNK_SIZE + sx, cy * CHUNK_SIZE + sy);
+                            }
+                        }
+                    }
                 }
             }
         }

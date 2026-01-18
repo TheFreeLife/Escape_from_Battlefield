@@ -2,24 +2,12 @@
     {
         "id": "plains",
         "name": "평원",
-        "tiles": [
-            "grass",
-            "grass",
-            "dirt"
-        ],
-        "structures": [
-            "concrete_barrier"
-        ],
-        "enemies": [
-            "zombie"
-        ],
-        "items": [
-            "medkit",
-            "mag_pistol",
-            "mag_ak47"
-        ],
+        "tiles": ["grass", "grass", "dirt"],
+        "structures": ["small_outpost", "fortified_barrier"],
+        "enemies": ["zombie"],
+        "items": ["medkit", "pistol_mag", "ak47_mag"],
         "spawnRate": {
-            "structures": 0.05,
+            "structures": 0.4,
             "enemies": 0.25,
             "items": 0.08
         },
@@ -28,27 +16,12 @@
     {
         "id": "forest",
         "name": "숲",
-        "tiles": [
-            "grass",
-            "dirt",
-            "dirt"
-        ],
-        "structures": [
-            "guard_tower",
-            "concrete_barrier"
-        ],
-        "enemies": [
-            "zombie",
-            "soldier"
-        ],
-        "items": [
-            "medkit",
-            "ak47",
-            "mag_ak47",
-            "mag_pistol"
-        ],
+        "tiles": ["grass", "dirt", "dirt"],
+        "structures": ["small_outpost", "fortified_barrier"],
+        "enemies": ["zombie", "soldier"],
+        "items": ["medkit", "ak47", "ak47_mag", "pistol_mag"],
         "spawnRate": {
-            "structures": 0.1,
+            "structures": 0.5,
             "enemies": 0.5,
             "items": 0.12
         },
@@ -57,28 +30,12 @@
     {
         "id": "desert",
         "name": "사막",
-        "tiles": [
-            "sand",
-            "sand",
-            "dirt"
-        ],
-        "structures": [
-            "barracks_small",
-            "concrete_barrier"
-        ],
-        "enemies": [
-            "soldier",
-            "mutant"
-        ],
-        "items": [
-            "ak47",
-            "m40",
-            "helmet",
-            "mag_ak47",
-            "mag_m40"
-        ],
+        "tiles": ["sand", "sand", "dirt"],
+        "structures": ["small_outpost", "fortified_barrier"],
+        "enemies": ["soldier", "mutant"],
+        "items": ["ak47", "awm", "helmet", "ak47_mag", "awm_mag"],
         "spawnRate": {
-            "structures": 0.05,
+            "structures": 0.4,
             "enemies": 0.4,
             "items": 0.1
         },
@@ -87,26 +44,12 @@
     {
         "id": "tundra",
         "name": "툰드라",
-        "tiles": [
-            "snow",
-            "snow",
-            "dirt"
-        ],
-        "structures": [
-            "guard_tower"
-        ],
-        "enemies": [
-            "mutant"
-        ],
-        "items": [
-            "medkit",
-            "vest",
-            "boots",
-            "m40",
-            "mag_m40"
-        ],
+        "tiles": ["snow", "snow", "dirt"],
+        "structures": ["small_outpost", "fortified_barrier"],
+        "enemies": ["mutant"],
+        "items": ["medkit", "vest", "boots", "awm", "awm_mag"],
         "spawnRate": {
-            "structures": 0.03,
+            "structures": 0.3,
             "enemies": 0.35,
             "items": 0.07
         },
