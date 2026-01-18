@@ -50,6 +50,28 @@ export default class Projectile {
             }
         }
 
+        // Collision with vehicles
+        if (this.game.vehicles) {
+            for (const vehicle of this.game.vehicles) {
+                // To prevent self-collision when shooting from a vehicle, 
+                // we could check if this projectile was fired by this vehicle.
+                // For now, a simple distance check.
+                const dx = vehicle.x - this.x;
+                const dy = vehicle.y - this.y;
+                const distSq = dx * dx + dy * dy;
+                const minDist = vehicle.radius + this.radius;
+
+                // If bullet is not brand new (to avoid instant collision with firing vehicle)
+                if (this.life < 1.95 && distSq < minDist * minDist) {
+                    if (this.isExplosive) {
+                        this.explode();
+                    }
+                    this.markedForDeletion = true;
+                    break;
+                }
+            }
+        }
+
         // Wall collision
         if (this.game.tileMap.isCollidable(this.x, this.y)) {
             if (this.isExplosive) this.explode();
