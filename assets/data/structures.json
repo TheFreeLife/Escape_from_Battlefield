@@ -1,43 +1,18 @@
 [
     {
-        "id": "barracks_small",
-        "width": 6,
-        "height": 4,
-        "legend": {
-            "#": "wall_concrete",
-            ".": "concrete",
-            " ": null
-        },
+        "id": "small_outpost",
         "layout": [
-            "######",
-            "#....#",
-            "#.....",
-            "######"
+            [["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"]],
+            [["concrete", "wall_concrete"], ["dirt", "bush"], ["dirt", "bush"], ["concrete", "wall_concrete"]],
+            [["concrete", "wall_concrete"], ["dirt", null], ["dirt", null], ["concrete", null]],
+            [["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"]]
         ]
     },
     {
-        "id": "guard_tower",
-        "width": 3,
-        "height": 3,
-        "legend": {
-            "#": "wall_concrete",
-            ".": "concrete"
-        },
+        "id": "fortified_barrier",
         "layout": [
-            "###",
-            "#.#",
-            "###"
-        ]
-    },
-    {
-        "id": "concrete_barrier",
-        "width": 1,
-        "height": 1,
-        "legend": {
-            "#": "wall_concrete"
-        },
-        "layout": [
-            "#"
+            [["sand", "sandbag"], ["sand", "sandbag"], ["sand", "sandbag"]],
+            [["concrete", "fence"], ["concrete", "fence"], ["concrete", "fence"]]
         ]
     }
 ]

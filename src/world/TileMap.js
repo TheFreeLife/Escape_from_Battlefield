@@ -27,20 +27,20 @@ export default class TileMap {
         return chunk;
     }
 
-    setTile(x, y, tileId) {
+    setTile(x, y, tileId, layer = 'floor') {
         const cx = Math.floor(x / CHUNK_SIZE);
         const cy = Math.floor(y / CHUNK_SIZE);
-        const lx = x - cx * CHUNK_SIZE; // Local X
-        const ly = y - cy * CHUNK_SIZE; // Local Y
+        const lx = x - cx * CHUNK_SIZE;
+        const ly = y - cy * CHUNK_SIZE;
 
         let chunk = this.getChunk(cx, cy);
         if (!chunk) {
             chunk = this.createChunk(cx, cy);
         }
-        chunk.setTile(lx, ly, tileId);
+        chunk.setTile(lx, ly, tileId, layer);
     }
 
-    getTile(x, y) {
+    getTile(x, y, layer = 'floor') {
         const cx = Math.floor(x / CHUNK_SIZE);
         const cy = Math.floor(y / CHUNK_SIZE);
         const lx = x - cx * CHUNK_SIZE;
@@ -48,23 +48,28 @@ export default class TileMap {
 
         const chunk = this.getChunk(cx, cy);
         if (chunk) {
-            return chunk.getTile(lx, ly);
+            return chunk.getTile(lx, ly, layer);
         }
         return null;
     }
 
-    getTileAtWorldPos(worldX, worldY) {
+    getTileAtWorldPos(worldX, worldY, layer = 'floor') {
         const tx = Math.floor(worldX / TILE_SIZE);
         const ty = Math.floor(worldY / TILE_SIZE);
-        return this.getTile(tx, ty);
+        return this.getTile(tx, ty, layer);
     }
 
     isCollidable(worldX, worldY) {
-        const tileId = this.getTileAtWorldPos(worldX, worldY);
-        if (!tileId) return false;
+        const floorId = this.getTileAtWorldPos(worldX, worldY, 'floor');
+        const blockId = this.getTileAtWorldPos(worldX, worldY, 'block');
 
-        const tileDef = this.game.assetManager.getData('tiles')?.find(t => t.id === tileId);
-        return tileDef ? !!tileDef.collidable : false;
+        const checkCol = (id) => {
+            if (!id) return false;
+            const def = this.game.assetManager.getData('tiles')?.find(t => t.id === id);
+            return def ? !!def.collidable : false;
+        };
+
+        return checkCol(floorId) || checkCol(blockId);
     }
 
     isInteractable(worldX, worldY) {
@@ -110,19 +115,27 @@ export default class TileMap {
     renderChunk(ctx, chunk, camera) {
         for (let y = 0; y < CHUNK_SIZE; y++) {
             for (let x = 0; x < CHUNK_SIZE; x++) {
-                const tileId = chunk.tiles[y][x];
-                if (tileId) {
-                    const worldX = (chunk.cx * CHUNK_SIZE + x) * TILE_SIZE;
-                    const worldY = (chunk.cy * CHUNK_SIZE + y) * TILE_SIZE;
+                const worldX = (chunk.cx * CHUNK_SIZE + x) * TILE_SIZE;
+                const worldY = (chunk.cy * CHUNK_SIZE + y) * TILE_SIZE;
 
-                    // Frustum culling (simple rect check)
-                    if (worldX + TILE_SIZE > camera.x && worldX < camera.x + camera.width &&
-                        worldY + TILE_SIZE > camera.y && worldY < camera.y + camera.height) {
+                if (worldX + TILE_SIZE > camera.x && worldX < camera.x + camera.width &&
+                    worldY + TILE_SIZE > camera.y && worldY < camera.y + camera.height) {
+                    
+                    const screenX = Math.floor(worldX - camera.x);
+                    const screenY = Math.floor(worldY - camera.y);
 
-                        const img = this.game.assetManager.get(tileId);
-                        if (img) {
-                            ctx.drawImage(img, Math.floor(worldX - camera.x), Math.floor(worldY - camera.y));
-                        }
+                    // 1. Draw Floor
+                    const floorId = chunk.floors[y][x];
+                    if (floorId) {
+                        const img = this.game.assetManager.get(floorId);
+                        if (img) ctx.drawImage(img, screenX, screenY);
+                    }
+
+                    // 2. Draw Block
+                    const blockId = chunk.blocks[y][x];
+                    if (blockId) {
+                        const img = this.game.assetManager.get(blockId);
+                        if (img) ctx.drawImage(img, screenX, screenY);
                     }
                 }
             }

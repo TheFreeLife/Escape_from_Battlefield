@@ -7,6 +7,7 @@ import Enemy from '../entities/Enemy.js';
 import Projectile from '../entities/Projectile.js';
 import Inventory from '../ui/Inventory.js';
 import DebugMenu from '../ui/DebugMenu.js';
+import MapEditor from '../ui/MapEditor.js';
 import Loot from '../entities/Loot.js';
 import Grenade from '../entities/Grenade.js';
 import Vehicle from '../entities/Vehicle.js';
@@ -43,7 +44,34 @@ export default class Game {
         this.accumulator = 0;
         this.deltaTime = 1 / 60; // Fixed time step
 
+        this.gameState = 'MENU'; // MENU, PLAYING
         this.init();
+        this.setupMenu();
+    }
+
+    setupMenu() {
+        const startBtn = document.getElementById('start-btn');
+        const editorBtn = document.getElementById('editor-btn');
+        const mainMenu = document.getElementById('main-menu');
+        const editorUi = document.getElementById('editor-ui');
+        
+        startBtn.addEventListener('click', () => {
+            this.gameState = 'PLAYING';
+            mainMenu.classList.add('hidden');
+        });
+
+        editorBtn.addEventListener('click', () => {
+            this.gameState = 'EDITOR';
+            mainMenu.classList.add('hidden');
+            editorUi.classList.remove('hidden');
+            if (!this.mapEditor) this.mapEditor = new MapEditor(this);
+        });
+
+        document.getElementById('exit-editor-btn').addEventListener('click', () => {
+            this.gameState = 'MENU';
+            mainMenu.classList.remove('hidden');
+            editorUi.classList.add('hidden');
+        });
     }
 
     /**
@@ -190,6 +218,12 @@ export default class Game {
     }
 
     update(dt) {
+        if (this.gameState === 'EDITOR' && this.mapEditor) {
+            this.mapEditor.update(dt);
+            return;
+        }
+        if (this.gameState !== 'PLAYING') return;
+
         // Debug Menu Toggle
         if (this.input.isKeyPressed('F1') || this.input.isKeyPressed('Backquote')) {
             if (!this.lastDebugState) {
@@ -409,6 +443,20 @@ export default class Game {
     }
 
     render() {
+        if (this.gameState === 'MENU') {
+            // Clear screen for menu background
+            this.ctx.fillStyle = '#1a1a1a';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            return;
+        }
+
+        if (this.gameState === 'EDITOR' && this.mapEditor) {
+            this.ctx.fillStyle = '#000';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            this.mapEditor.render(this.ctx);
+            return;
+        }
+
         // Clear screen
         this.ctx.fillStyle = '#1a1a1a';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);

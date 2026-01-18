@@ -48,8 +48,10 @@ export default class MapGenerator {
                 const prefab = structures.find(s => s.id === prefabId);
 
                 if (prefab) {
-                    const sx = Math.floor(Math.random() * (CHUNK_SIZE - prefab.width));
-                    const sy = Math.floor(Math.random() * (CHUNK_SIZE - prefab.height));
+                    const pHeight = prefab.layout.length;
+                    const pWidth = prefab.layout[0].length;
+                    const sx = Math.floor(Math.random() * (CHUNK_SIZE - pWidth));
+                    const sy = Math.floor(Math.random() * (CHUNK_SIZE - pHeight));
                     this.placeStructure(tileMap, prefab, cx * CHUNK_SIZE + sx, cy * CHUNK_SIZE + sy);
                 }
             }
@@ -111,10 +113,14 @@ export default class MapGenerator {
 
     placeStructure(tileMap, prefab, startX, startY) {
         prefab.layout.forEach((row, y) => {
-            [...row].forEach((char, x) => {
-                const tileId = prefab.legend[char];
-                if (tileId) {
-                    tileMap.setTile(startX + x, startY + y, tileId);
+            row.forEach((cell, x) => {
+                if (Array.isArray(cell)) {
+                    const [floorId, blockId] = cell;
+                    if (floorId !== null) tileMap.setTile(startX + x, startY + y, floorId, 'floor');
+                    if (blockId !== null) tileMap.setTile(startX + x, startY + y, blockId, 'block');
+                } else if (cell !== null) {
+                    // Fallback for old simple strings
+                    tileMap.setTile(startX + x, startY + y, cell, 'block');
                 }
             });
         });
