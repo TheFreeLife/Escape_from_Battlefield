@@ -1,38 +1,49 @@
 [
     {
-        "id": "small_outpost",
-        "name": "작은 초소",
+        "id": "military_outpost",
+        "name": "군사 전초기지",
         "layout": [
-            [["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"]],
-            [["concrete", "wall_concrete"], ["dirt", "bush"],           ["dirt", "bush"],           ["concrete", "wall_concrete"]],
-            [["concrete", "wall_concrete"], ["dirt", null],             ["dirt", null],             ["concrete", null]],
-            [["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"], ["concrete", "wall_concrete"]]
+            [["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, {"id": "soldier", "command": "GUARD"}, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, "ak47"], ["concrete", null, null, "mag_ak47"], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, {"id": "soldier", "command": "PATROL", "patrolRadius": 100}, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, "medkit"], ["concrete", null, null, "grenade"], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null]]
         ]
     },
     {
-        "id": "fortified_barrier",
-        "name": "강화 방벽",
+        "id": "abandoned_clinic",
+        "name": "버려진 진료소",
         "layout": [
-            [["sand", "sandbag"], ["sand", "sandbag"], ["sand", "sandbag"]],
-            [["concrete", "fence"], ["concrete", "fence"], ["concrete", "fence"]]
+            [["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, {"id": "zombie", "command": "GUARD"}, null], ["concrete", "wall_concrete", null, null], ["concrete", null, null, "medkit"], ["concrete", null, null, "medkit"], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, {"id": "zombie", "command": "PATROL"}, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, "pistol"], ["concrete", null, null, "mag_pistol"], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null]]
         ]
     },
     {
-        "id": "checkpoint",
-        "name": "도로 검문소",
+        "id": "supply_warehouse",
+        "name": "보급 창고",
         "layout": [
-            [["concrete", "wall_concrete"], ["concrete", null], ["concrete", null], ["concrete", "wall_concrete"]],
-            [["concrete", null],            ["concrete", null], ["concrete", null], ["concrete", null]],
-            [["concrete", "sandbag"],       ["concrete", null], ["concrete", null], ["concrete", "sandbag"]]
+            [["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, "m4a1"], ["concrete", null, null, "mag_ak47"], ["concrete", null, null, "mag_ak47"], ["concrete", null, null, null], ["concrete", null, {"id": "soldier", "command": "GUARD"}, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, null, "grenade"], ["concrete", null, null, "grenade"], ["concrete", null, null, "medkit"], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", null, {"id": "soldier", "command": "PATROL"}, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
+            [["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null]]
         ]
     },
     {
-        "id": "forest_hideout",
-        "name": "숲속 은신처",
+        "id": "defensive_line",
+        "name": "방어선",
         "layout": [
-            [["grass", "bush"], ["grass", "bush"], ["grass", "bush"]],
-            [["grass", "bush"], ["dirt", null],    ["grass", "bush"]],
-            [["grass", "bush"], ["grass", "bush"], ["grass", "bush"]]
+            [["dirt", "sandbag", null, null], ["dirt", "sandbag", {"id": "soldier", "command": "GUARD"}, null], ["dirt", "sandbag", null, null], ["dirt", "sandbag", null, null], ["dirt", "sandbag", {"id": "soldier", "command": "GUARD"}, null], ["dirt", "sandbag", null, null]],
+            [["dirt", null, null, "ak47"], ["dirt", null, null, "mag_ak47"], ["dirt", null, null, null], ["dirt", null, null, "medkit"], ["dirt", null, null, null], ["dirt", null, null, null]],
+            [["grass", "fence", null, null], ["grass", "fence", null, null], ["grass", "fence", null, null], ["grass", "fence", null, null], ["grass", "fence", null, null], ["grass", "fence", null, null]]
         ]
     }
 ]

@@ -62,11 +62,14 @@ export default class MapGenerator {
             const structures = this.game.assetManager.getData('structures');
             if (structures) {
                 const distFromOrigin = Math.sqrt(cx * cx + cy * cy);
-                if (distFromOrigin > 2) {
+                if (distFromOrigin >= 1) {
                     const biome = this.getBiomeAt(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
                     if (biome) {
                         const structureAttempts = 3; 
+                        let structuresInChunk = 0;
                         for (let i = 0; i < structureAttempts; i++) {
+                            if (structuresInChunk >= 1) break; // Limit to 1 major structure per chunk for better spacing
+                            
                             if (Math.random() < biome.spawnRate.structures) {
                                 const prefabId = biome.structures[Math.floor(Math.random() * biome.structures.length)];
                                 const prefab = structures.find(s => s.id === prefabId);
@@ -76,7 +79,13 @@ export default class MapGenerator {
                                     const pWidth = prefab.layout[0].length;
                                     const sx = Math.floor(Math.random() * (CHUNK_SIZE - pWidth));
                                     const sy = Math.floor(Math.random() * (CHUNK_SIZE - pHeight));
-                                    this.placeStructure(tileMap, prefab, cx * CHUNK_SIZE + sx, cy * CHUNK_SIZE + sy);
+                                    const startX = cx * CHUNK_SIZE + sx;
+                                    const startY = cy * CHUNK_SIZE + sy;
+
+                                    if (this.canPlaceStructure(tileMap, prefab, startX, startY)) {
+                                        this.placeStructure(tileMap, prefab, startX, startY);
+                                        structuresInChunk++;
+                                    }
                                 }
                             }
                         }
@@ -137,6 +146,22 @@ export default class MapGenerator {
                 }
             }
         }
+    }
+
+    canPlaceStructure(tileMap, prefab, startX, startY) {
+        const pHeight = prefab.layout.length;
+        const pWidth = prefab.layout[0].length;
+        const padding = 2; // Tiles of empty space required around the structure
+        
+        for (let y = -padding; y < pHeight + padding; y++) {
+            for (let x = -padding; x < pWidth + padding; x++) {
+                // Check if there's already a block at this location
+                if (tileMap.getTile(startX + x, startY + y, 'block')) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     placeStructure(tileMap, prefab, startX, startY) {
