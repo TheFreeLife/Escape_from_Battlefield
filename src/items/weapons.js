@@ -4,6 +4,7 @@ export const weapons = [
         name: 'Combat Knife',
         type: 'weapon',
         subType: 'melee',
+        caliber: null,
         color: '#7f8c8d',
         damage: 15,
         fireRate: 0.3,
@@ -17,6 +18,7 @@ export const weapons = [
         name: 'Military Shovel',
         type: 'weapon',
         subType: 'melee',
+        caliber: null,
         color: '#5d4037',
         damage: 25,
         fireRate: 0.6,
@@ -30,6 +32,7 @@ export const weapons = [
         name: 'Sledgehammer',
         type: 'weapon',
         subType: 'melee',
+        caliber: null,
         color: '#34495e',
         damage: 50,
         fireRate: 1.0,
@@ -43,6 +46,7 @@ export const weapons = [
         name: 'P1911 Pistol',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '9mm',
         color: '#95a5a6',
         fireRate: 0.45,
         damage: 3,
@@ -50,7 +54,7 @@ export const weapons = [
         reloadTime: 1.5,
         bulletSpeed: 1000,
         weight: 1.1,
-        description: '표준 부무장 권총입니다. 신뢰성이 높습니다.',
+        description: '표준 부무장 권총입니다. 9mm 탄환을 사용합니다.',
         svg: `<path d="M20,32 L44,32 L44,38 L20,38 Z M20,38 L26,54 L18,54 L14,38 Z" fill="#444" />`
     },
     {
@@ -58,6 +62,7 @@ export const weapons = [
         name: 'Glock 18',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '9mm',
         color: '#34495e',
         fireRate: 0.06,
         damage: 3,
@@ -65,7 +70,7 @@ export const weapons = [
         reloadTime: 1.2,
         bulletSpeed: 950,
         weight: 0.9,
-        description: '빠른 연사가 가능한 폴리머 프레임 권총입니다.',
+        description: '빠른 연사가 가능한 권총입니다. 9mm 탄환을 사용합니다.',
         svg: `<path d="M20,34 L46,34 L46,40 L20,40 Z M20,40 L25,52 L18,52 L15,40 Z" fill="#222" />`
     },
     {
@@ -73,6 +78,7 @@ export const weapons = [
         name: 'Desert Eagle',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '.50 AE',
         color: '#bdc3c7',
         fireRate: 0.4,
         damage: 40,
@@ -80,7 +86,7 @@ export const weapons = [
         reloadTime: 1.8,
         bulletSpeed: 1100,
         weight: 2.0,
-        description: '권총 중 최강의 데미지를 자랑하는 핸드캐논입니다.',
+        description: '강력한 .50 AE 탄환을 사용하는 핸드캐논입니다.',
         svg: `<path d="M15,30 L50,30 L50,42 L15,42 Z M15,42 L22,54 L12,54 L8,42 Z" fill="#7f8c8d" />`
     },
     {
@@ -88,6 +94,7 @@ export const weapons = [
         name: '.357 Magnum',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '.357',
         color: '#7f8c8d',
         fireRate: 0.6,
         damage: 50,
@@ -95,7 +102,7 @@ export const weapons = [
         reloadTime: 2.5,
         bulletSpeed: 1000,
         weight: 1.5,
-        description: '묵직한 손맛과 강력한 한 방을 가진 리볼버입니다.',
+        description: '묵직한 .357 탄환을 사용하는 리볼버입니다.',
         svg: `<circle cx="25" cy="35" r="10" fill="#444" /><path d="M25,30 L50,30 L50,38 L25,38 Z M15,35 L22,52 L12,52 L8,35 Z" fill="#666" />`
     },
     {
@@ -103,6 +110,7 @@ export const weapons = [
         name: 'AK-47',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '7.62mm',
         color: '#d35400',
         fireRate: 0.1,
         damage: 10,
@@ -110,7 +118,7 @@ export const weapons = [
         reloadTime: 2.0,
         bulletSpeed: 1400,
         weight: 4.3,
-        description: '높은 공격력과 강력한 반동을 가진 돌격소총입니다.',
+        description: '높은 저지력의 7.62mm 탄환을 사용하는 돌격소총입니다.',
         svg: `<path d="M4,30 L16,30 L16,42 L4,48 Z" fill="#5d4037" /><path d="M16,32 L58,32 L58,36 L16,36 Z" fill="#333" /><path d="M25,36 Q28,55 35,55 L42,55 Q35,50 32,36 Z" fill="#222" />`
     },
     {
@@ -118,6 +126,7 @@ export const weapons = [
         name: 'M4A1',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '5.56mm',
         color: '#2c3e50',
         fireRate: 0.08,
         damage: 7,
@@ -125,7 +134,7 @@ export const weapons = [
         reloadTime: 2.0,
         bulletSpeed: 1500,
         weight: 3.4,
-        description: '낮은 반동과 높은 연사력을 가진 올라운더 소총입니다.',
+        description: '표준 5.56mm 탄환을 사용하는 올라운더 소총입니다.',
         svg: `<path d="M4,32 L15,32 L15,42 L4,42 Z" fill="#111" /><path d="M15,34 L58,34 L58,38 L15,38 Z" fill="#2c3e50" /><path d="M22,38 L25,52 L32,52 L28,38 Z" fill="#111" />`
     },
     {
@@ -133,6 +142,7 @@ export const weapons = [
         name: 'SCAR-H',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '7.62mm',
         color: '#b7950b',
         fireRate: 0.15,
         damage: 15,
@@ -140,7 +150,7 @@ export const weapons = [
         reloadTime: 2.3,
         bulletSpeed: 1300,
         weight: 4.5,
-        description: '강력한 저지력을 가진 중거리용 돌격소총입니다.',
+        description: '강력한 7.62mm 탄환을 사용하는 소총입니다.',
         svg: `<path d="M4,30 L18,30 L18,44 L4,44 Z" fill="#917300" /><path d="M18,32 L58,32 L58,39 L18,39 Z" fill="#d4ac0d" /><path d="M25,39 L28,54 L35,54 L32,39 Z" fill="#917300" />`
     },
     {
@@ -148,6 +158,7 @@ export const weapons = [
         name: 'FAMAS',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '5.56mm',
         color: '#212f3d',
         fireRate: 0.05,
         damage: 6,
@@ -155,7 +166,7 @@ export const weapons = [
         reloadTime: 2.1,
         bulletSpeed: 1450,
         weight: 3.8,
-        description: '엄청난 연사 속도로 근거리 적을 압도합니다.',
+        description: '빠른 연사력으로 5.56mm 탄환을 쏟아붓습니다.',
         svg: `<path d="M4,38 L58,38 L58,45 L4,45 Z" fill="#111" /><path d="M10,28 L40,28 L40,38 L10,38 Z" fill="#333" /><path d="M15,45 L20,55 L30,55 L25,45 Z" fill="#111" />`
     },
     {
@@ -163,6 +174,7 @@ export const weapons = [
         name: 'MP5',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '9mm',
         color: '#1c2833',
         fireRate: 0.07,
         damage: 5,
@@ -170,7 +182,7 @@ export const weapons = [
         reloadTime: 1.6,
         bulletSpeed: 1000,
         weight: 2.8,
-        description: '안정적인 밸런스를 가진 표준 기관단총입니다.',
+        description: '9mm 탄환을 사용하는 안정적인 기관단총입니다.',
         svg: `<path d="M10,32 L45,32 L45,38 L10,38 Z M15,38 L20,52 L12,52 L10,38 Z" fill="#222" /><path d="M25,28 L35,28 L35,32 L25,32 Z" fill="#444" />`
     },
     {
@@ -178,6 +190,7 @@ export const weapons = [
         name: 'Kriss Vector',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '9mm',
         color: '#17202a',
         fireRate: 0.04,
         damage: 4,
@@ -185,7 +198,7 @@ export const weapons = [
         reloadTime: 1.5,
         bulletSpeed: 950,
         weight: 3.2,
-        description: '극강의 연사력을 가진 근접전의 제왕입니다.',
+        description: '극강의 연사력을 가진 9mm 탄환을 발사합니다.',
         svg: `<path d="M10,28 L40,28 L40,45 L10,45 Z M15,45 L22,58 L12,58 L8,45 Z" fill="#111" /><path d="M40,32 L55,32 L55,36 L40,36 Z" fill="#333" />`
     },
     {
@@ -193,6 +206,7 @@ export const weapons = [
         name: 'P90',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '5.7mm',
         color: '#2c3e50',
         fireRate: 0.06,
         damage: 4,
@@ -200,7 +214,7 @@ export const weapons = [
         reloadTime: 2.5,
         bulletSpeed: 1050,
         weight: 3.0,
-        description: '50발의 대용량 탄창으로 난전에 유리합니다.',
+        description: '5.7mm 탄환 50발을 사용하는 대용량 기관단총입니다.',
         svg: `<path d="M10,30 Q10,25 25,25 L55,25 L55,45 L45,45 Q45,35 35,35 L20,35 Q10,35 10,30 Z" fill="#333" />`
     },
     {
@@ -208,6 +222,7 @@ export const weapons = [
         name: 'AWM',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '.338',
         color: '#4a5d23',
         fireRate: 1.5,
         damage: 150,
@@ -215,7 +230,7 @@ export const weapons = [
         reloadTime: 3.5,
         bulletSpeed: 2800,
         weight: 6.8,
-        description: '빗나가지 않는다면 한 방에 적을 제거할 수 있습니다.',
+        description: '치명적인 .338 라푸아 매그넘 탄환을 사용합니다.',
         svg: `<path d="M4,34 L18,34 L25,48 L4,48 Z" fill="#4a5d23" /><path d="M18,38 L58,38 L58,42 L18,42 Z" fill="#111" /><path d="M22,28 L45,28 L45,34 L22,34 Z" fill="#222" />`
     },
     {
@@ -223,6 +238,7 @@ export const weapons = [
         name: 'Kar98k',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '7.62mm',
         color: '#5d4037',
         fireRate: 1.0,
         damage: 90,
@@ -230,7 +246,7 @@ export const weapons = [
         reloadTime: 2.8,
         bulletSpeed: 2200,
         weight: 3.9,
-        description: '고전적이지만 치명적인 볼트액션 저격소총입니다.',
+        description: '7.62mm 탄환을 사용하는 볼트액션 저격소총입니다.',
         svg: `<path d="M4,36 L58,36 L58,40 L4,40 Z" fill="#5d4037" /><path d="M25,32 L35,32 L35,36 L25,36 Z" fill="#222" /><path d="M15,40 L20,52 L12,52 L8,40 Z" fill="#5d4037" />`
     },
     {
@@ -238,6 +254,7 @@ export const weapons = [
         name: 'SVD Dragunov',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '7.62mm',
         color: '#2c3e50',
         fireRate: 0.4,
         damage: 45,
@@ -245,7 +262,7 @@ export const weapons = [
         reloadTime: 2.5,
         bulletSpeed: 1900,
         weight: 4.3,
-        description: '반자동으로 사격 가능한 지정사수소총입니다.',
+        description: '7.62mm 탄환을 사용하는 지정사수소총입니다.',
         svg: `<path d="M4,38 L15,38 L25,50 L4,50 Z" fill="#5d4037" /><path d="M15,40 L58,40 L58,43 L15,43 Z" fill="#111" /><path d="M22,32 L38,32 L38,38 L22,38 Z" fill="#222" />`
     },
     {
@@ -253,6 +270,7 @@ export const weapons = [
         name: 'Remington 870',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '12g',
         color: '#1c2833',
         fireRate: 0.8,
         damage: 8,
@@ -262,7 +280,7 @@ export const weapons = [
         pellets: 10,
         spread: 0.25,
         weight: 3.2,
-        description: '강력한 한 방을 가진 펌프액션 산탄총입니다.',
+        description: '12게이지 산탄을 사용하는 산탄총입니다.',
         svg: `<path d="M10,36 L58,36 L58,42 L10,42 Z" fill="#333" /><path d="M20,42 L45,42 L45,46 L20,46 Z" fill="#555" /><path d="M10,42 L18,54 L10,54 L6,42 Z" fill="#222" />`
     },
     {
@@ -270,6 +288,7 @@ export const weapons = [
         name: 'AA-12',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '12g',
         color: '#2e4053',
         fireRate: 0.2,
         damage: 5,
@@ -279,7 +298,7 @@ export const weapons = [
         pellets: 6,
         spread: 0.3,
         weight: 5.2,
-        description: '근거리에서 탄막을 형성하는 자동 산탄총입니다.',
+        description: '12게이지 산탄을 빠르게 발사하는 자동 산탄총입니다.',
         svg: `<path d="M10,30 L55,30 L55,48 L10,48 Z" fill="#222" /><path d="M25,48 L28,58 L38,58 L35,48 Z" fill="#111" /><circle cx="31" cy="55" r="10" fill="#333" />`
     },
     {
@@ -287,6 +306,7 @@ export const weapons = [
         name: 'Double Barrel',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '12g',
         color: '#7e5109',
         fireRate: 0.5,
         damage: 6,
@@ -296,7 +316,7 @@ export const weapons = [
         pellets: 12,
         spread: 0.35,
         weight: 3.0,
-        description: '두 발의 파괴적인 산탄을 발사합니다.',
+        description: '강력한 12게이지 산탄 두 발을 발사합니다.',
         svg: `<path d="M4,36 L18,34 L18,46 L4,44 Z" fill="#5d4037" /><path d="M18,36 L58,36 L58,39 L18,39 Z" fill="#777" /><path d="M18,38 L58,38 L58,41 L18,41 Z" fill="#555" />`
     },
     {
@@ -304,6 +324,7 @@ export const weapons = [
         name: 'M249 SAW',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '5.56mm',
         color: '#1e8449',
         fireRate: 0.07,
         damage: 7,
@@ -311,7 +332,7 @@ export const weapons = [
         reloadTime: 5.0,
         bulletSpeed: 1350,
         weight: 7.5,
-        description: '끊임없는 화력을 제공하는 분대지원화기입니다.',
+        description: '5.56mm 탄환 100발을 쏟아붓는 분대지원화기입니다.',
         svg: `<path d="M10,34 L58,34 L58,46 L10,46 Z" fill="#1e8449" /><path d="M25,46 L45,46 L45,55 L25,55 Z" fill="#145a32" />`
     },
     {
@@ -319,6 +340,7 @@ export const weapons = [
         name: 'PKM',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '7.62mm',
         color: '#515a5a',
         fireRate: 0.1,
         damage: 12,
@@ -326,7 +348,7 @@ export const weapons = [
         reloadTime: 5.5,
         bulletSpeed: 1250,
         weight: 9.0,
-        description: '투박하지만 파괴적인 화력을 가진 기관총입니다.',
+        description: '강력한 7.62mm 탄환 100발을 사용하는 기관총입니다.',
         svg: `<path d="M4,38 L18,38 L22,55 L4,55 Z" fill="#424949" /><path d="M18,36 L58,36 L58,42 L18,42 Z" fill="#212f3d" /><path d="M30,42 L50,42 L50,52 L30,52 Z" fill="#212f3d" />`
     },
     {
@@ -334,6 +356,7 @@ export const weapons = [
         name: 'RPG-7',
         type: 'weapon',
         subType: 'ranged',
+        caliber: 'rocket',
         color: '#5d4037',
         fireRate: 2.0,
         damage: 200,
@@ -343,7 +366,7 @@ export const weapons = [
         isExplosive: true,
         explodeRadius: 160,
         weight: 7.0,
-        description: '강력한 폭발로 범위 내 적과 차량을 파괴합니다.',
+        description: '파괴적인 로켓탄을 발사합니다.',
         svg: `<path d="M4,38 L58,38 L58,41 L4,41 Z" fill="#5d4037" /><path d="M40,34 L55,39.5 L40,45 Z" fill="#2ecc71" /><path d="M20,41 L25,52 L32,52 L28,41 Z" fill="#222" />`
     },
     {
@@ -351,6 +374,7 @@ export const weapons = [
         name: 'M79 Launcher',
         type: 'weapon',
         subType: 'ranged',
+        caliber: '40mm',
         color: '#1c2833',
         fireRate: 1.5,
         damage: 100,
@@ -360,7 +384,7 @@ export const weapons = [
         isExplosive: true,
         explodeRadius: 120,
         weight: 2.7,
-        description: '곡사로 유탄을 발사하여 벽 뒤의 적을 타격합니다.',
+        description: '40mm 유탄을 발사하는 유탄발사기입니다.',
         svg: `<path d="M4,36 L20,36 L25,52 L4,52 Z" fill="#5d4037" /><path d="M20,40 L55,40 L55,45 L20,45 Z" fill="#333" />`
     }
 ];
