@@ -213,7 +213,11 @@ export default class Player {
                 const pdx = Math.cos(finalAngle);
                 const pdy = Math.sin(finalAngle);
 
-                const prj = new Projectile(this.game, this.x, this.y, pdx, pdy, damage, bSpeed, life, {
+                const prj = new Projectile(this.game, this.x, this.y, pdx, pdy, {
+                    owner: this,
+                    damage: damage,
+                    speed: bSpeed,
+                    life: life,
                     isExplosive: itemDef.isExplosive,
                     explodeRadius: itemDef.explodeRadius
                 });

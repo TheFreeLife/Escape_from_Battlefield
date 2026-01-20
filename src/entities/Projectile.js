@@ -1,21 +1,33 @@
 import Grenade from './Grenade.js';
 
 export default class Projectile {
-    constructor(game, x, y, dx, dy, damage = 1, speed = 600, life = 2.0, config = {}) {
+    constructor(game, x, y, dx, dy, config = {}) {
         this.game = game;
         this.x = x;
         this.y = y;
         this.dx = dx;
         this.dy = dy;
-        this.speed = speed;
-        this.radius = config.isExplosive ? 8 : 5;
-        this.damage = damage;
-        this.life = life; // Seconds
+        
+        // Handle both old (direct params) and new (config object) styles for safety
+        if (typeof config === 'number') {
+            this.damage = config;
+            this.speed = arguments[6] || 600;
+            this.life = arguments[7] || 2.0;
+            this.owner = null;
+            this.isExplosive = false;
+        } else {
+            this.damage = config.damage || 1;
+            this.speed = config.speed || 600;
+            this.life = config.life || 2.0;
+            this.owner = config.owner || null;
+            this.isExplosive = config.isExplosive || false;
+            this.explodeRadius = config.explodeRadius || 128;
+            this.color = config.color || '#f1c40f';
+        }
+        
+        this.radius = this.isExplosive ? 8 : 5;
         this.markedForDeletion = false;
-
-        // Explosive properties
-        this.isExplosive = config.isExplosive || false;
-        this.explodeRadius = config.explodeRadius || 128;
+        this.spawnTime = Date.now();
     }
 
     update(dt) {
@@ -26,54 +38,82 @@ export default class Projectile {
             return;
         }
 
+        const oldX = this.x;
+        const oldY = this.y;
         this.x += this.dx * this.speed * dt;
         this.y += this.dy * this.speed * dt;
 
-        // Collision with enemies
+        // 1. Collision with Player (if owner is not player)
+        const player = this.game.player;
+        if (player && this.owner !== player) {
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < (player.radius || 20) + this.radius) {
+                if (this.isExplosive) {
+                    this.explode();
+                } else {
+                    player.health -= this.damage;
+                    // console.log(`Player hit! Health: ${player.health}`);
+                }
+                this.markedForDeletion = true;
+                return;
+            }
+        }
+
+        // 2. Collision with Enemies (if owner is not an enemy)
         if (this.game.enemies) {
+            const isOwnerEnemy = this.owner && this.game.enemies.includes(this.owner);
+            
             for (const enemy of this.game.enemies) {
-                if (!enemy.isDead) {
+                if (!enemy.isDead && enemy !== this.owner) {
+                    // Prevent friendly fire between enemies
+                    if (isOwnerEnemy) continue;
+
                     const dx = enemy.x - this.x;
                     const dy = enemy.y - this.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const distSq = dx * dx + dy * dy;
+                    const minDist = enemy.radius + this.radius;
 
-                    if (dist < enemy.radius + this.radius) {
+                    if (distSq < minDist * minDist) {
                         if (this.isExplosive) {
                             this.explode();
                         } else {
                             enemy.takeDamage(this.damage);
                         }
                         this.markedForDeletion = true;
-                        break;
+                        return;
                     }
                 }
             }
         }
 
-        // Collision with vehicles
+        // 3. Collision with vehicles
         if (this.game.vehicles) {
             for (const vehicle of this.game.vehicles) {
-                // To prevent self-collision when shooting from a vehicle, 
-                // we could check if this projectile was fired by this vehicle.
-                // For now, a simple distance check.
+                if (vehicle === this.owner) continue;
+
                 const dx = vehicle.x - this.x;
                 const dy = vehicle.y - this.y;
                 const distSq = dx * dx + dy * dy;
                 const minDist = vehicle.radius + this.radius;
 
-                // If bullet is not brand new (to avoid instant collision with firing vehicle)
-                if (this.life < 1.95 && distSq < minDist * minDist) {
+                // Don't collide with own vehicle immediately after spawn
+                if (Date.now() - this.spawnTime < 50) continue;
+
+                if (distSq < minDist * minDist) {
                     if (this.isExplosive) {
                         this.explode();
                     }
                     this.markedForDeletion = true;
-                    break;
+                    return;
                 }
             }
         }
 
-        // Wall collision
-        if (this.game.tileMap.isCollidable(this.x, this.y)) {
+        // 4. Wall collision
+        if (this.game.tileMap && this.game.tileMap.isCollidable(this.x, this.y)) {
             if (this.isExplosive) this.explode();
             this.markedForDeletion = true;
         }

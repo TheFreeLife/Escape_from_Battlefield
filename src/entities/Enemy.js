@@ -1,3 +1,5 @@
+import Projectile from './Projectile.js';
+
 export default class Enemy {
     constructor(game, x, y, enemyId = 'soldier', config = null) {
         this.game = game;
@@ -21,7 +23,7 @@ export default class Enemy {
         this.attackDamage = data.damage * (config?.damageMult || 1.0);
 
         this.isDead = false;
-        this.attackCooldown = 1.0;
+        this.attackCooldown = enemyId === 'soldier' ? 0.8 : 1.0;
         this.attackTimer = 0;
 
         // --- AI System ---
@@ -46,8 +48,10 @@ export default class Enemy {
         }
 
         this.aiState = this.command === 'SURRENDER' ? 'SURRENDER' : 'IDLE';
-        this.detectRadius = 400; // Radius to spot player
-        this.patrolRadius = config?.patrolRadius || 250; // Radius to wander around spawn
+        this.detectRadius = 500; // Increased for ranged enemies
+        this.shootRange = 400;   // Range to start shooting
+        this.keepDist = 250;    // Target distance to keep from player
+        this.patrolRadius = config?.patrolRadius || 250;
         this.patrolTarget = null;
         this.patrolPauseTimer = 0;
 
@@ -77,7 +81,11 @@ export default class Enemy {
 
             // 2. Behavior based on State
             if (this.aiState === 'CHASE') {
-                this.handleChase(dt, player, dist);
+                if (this.enemyId === 'soldier') {
+                    this.handleRangedChase(dt, player, dist);
+                } else {
+                    this.handleChase(dt, player, dist);
+                }
             } else if (this.command === 'PATROL') {
                 this.handlePatrol(dt);
             } else if (this.command === 'GUARD') {
@@ -85,9 +93,49 @@ export default class Enemy {
             }
         }
 
-        // Separation is still useful for smooth sliding between entities, 
-        // but it will also respect the unified collision check
         this.handleSeparation(dt);
+    }
+
+    handleRangedChase(dt, player, dist) {
+        // Shooting Logic
+        if (dist < this.shootRange && this.attackTimer <= 0) {
+            this.shootAt(player);
+            this.attackTimer = this.attackCooldown;
+        }
+
+        // Positioning Logic (Stay within optimal range)
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        
+        if (dist > this.keepDist + 50) {
+            // Move closer
+            this.moveTowards(this.x + (dx / dist) * this.speed * dt, this.y + (dy / dist) * this.speed * dt);
+        } else if (dist < this.keepDist - 50) {
+            // Move back (retreat)
+            this.moveTowards(this.x - (dx / dist) * this.speed * 0.6 * dt, this.y - (dy / dist) * this.speed * 0.6 * dt);
+        }
+    }
+
+    shootAt(target) {
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        // Add some random spread to enemy aim
+        const spread = 0.1;
+        const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * spread;
+        
+        const vx = Math.cos(angle);
+        const vy = Math.sin(angle);
+        
+        const p = new Projectile(this.game, this.x + vx * this.radius, this.y + vy * this.radius, vx, vy, {
+            owner: this,
+            damage: this.attackDamage,
+            speed: 800,
+            color: '#f1c40f'
+        });
+        
+        this.game.projectiles.push(p);
     }
 
     handleChase(dt, player, dist) {
@@ -210,10 +258,12 @@ export default class Enemy {
     }
 
     takeDamage(amount) {
+        if (this.isDead) return;
         this.health -= amount;
         if (this.health <= 0) {
+            this.health = 0;
             this.isDead = true;
-            // Drop loot logic could go here
+            console.log(`Enemy ${this.enemyId} died.`);
         }
     }
 
