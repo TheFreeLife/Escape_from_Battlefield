@@ -114,7 +114,12 @@ export default class Projectile {
 
         // 4. Wall collision
         if (this.game.tileMap && this.game.tileMap.isCollidable(this.x, this.y)) {
-            if (this.isExplosive) this.explode();
+            if (this.isExplosive) {
+                this.explode();
+            } else {
+                // Apply damage to the tile itself
+                this.game.tileMap.damageTile(this.x, this.y, this.damage);
+            }
             this.markedForDeletion = true;
         }
     }

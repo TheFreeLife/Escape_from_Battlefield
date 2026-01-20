@@ -225,6 +225,12 @@ export default class Player {
                     }
                 }
             }
+
+            // Damage nearby tiles
+            const tipX = this.x + Math.cos(attackAngle) * attackRange;
+            const tipY = this.y + Math.sin(attackAngle) * attackRange;
+            this.game.tileMap.damageTile(tipX, tipY, attackDamage);
+
             return;
         }
 
@@ -317,6 +323,11 @@ export default class Player {
                 }
             }
         }
+
+        // Damage tiles with punch
+        const punchX = this.x + Math.cos(punchAngle) * (punchRange * 0.7);
+        const punchY = this.y + Math.sin(punchAngle) * (punchRange * 0.7);
+        this.game.tileMap.damageTile(punchX, punchY, punchDamage);
     }
 
     throwGrenade(item) {

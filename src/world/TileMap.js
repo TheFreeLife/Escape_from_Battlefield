@@ -98,6 +98,31 @@ export default class TileMap {
         return checkInt(floorId) || checkInt(blockId);
     }
 
+    damageTile(worldX, worldY, amount) {
+        const tx = Math.floor(worldX / TILE_SIZE);
+        const ty = Math.floor(worldY / TILE_SIZE);
+        const blockId = this.getTile(tx, ty, 'block');
+        
+        if (!blockId) return;
+
+        const tileDef = this.game.assetManager.getData('tiles')?.find(t => t.id === blockId);
+        if (tileDef && tileDef.destructible) {
+            let metadata = this.getMetadata(tx, ty);
+            if (!metadata) {
+                metadata = { health: tileDef.health || 10 };
+            }
+            
+            metadata.health -= amount;
+            
+            if (metadata.health <= 0) {
+                this.setTile(tx, ty, null, 'block'); // Remove the tile
+                console.log(`Tile destroyed at ${tx}, ${ty}`);
+            } else {
+                this.setTile(tx, ty, blockId, 'block', metadata);
+            }
+        }
+    }
+
     render(ctx, camera) {
         // Calculate visible chunks based on camera
         const startCol = Math.floor(camera.x / TILE_SIZE);
