@@ -83,6 +83,11 @@ export default class MapEditor {
         document.getElementById('unit-settings-cancel').addEventListener('click', () => this.closeUnitSettings());
         document.getElementById('unit-settings-delete').addEventListener('click', () => this.deleteUnit());
 
+        // Loot Box Settings Modal Events
+        document.getElementById('add-loot-entry-btn').addEventListener('click', () => this.addLootEntry());
+        document.getElementById('loot-settings-save').addEventListener('click', () => this.saveLootSettings());
+        document.getElementById('loot-settings-cancel').addEventListener('click', () => this.closeLootSettings());
+
         this.updatePaletteFilter();
         document.getElementById('export-btn').addEventListener('click', () => this.exportArray());
         document.getElementById('import-btn').addEventListener('click', () => this.importArray());
@@ -214,12 +219,12 @@ export default class MapEditor {
     }
 
     getTileAt(x, y) {
-        return this.tiles.get(`${x},${y}`) || { floor: null, block: null, unit: null, item: null };
+        return this.tiles.get(`${x},${y}`) || { floor: null, block: null, unit: null, item: null, metadata: null };
     }
 
     setTileAt(x, y, tileId, layer) {
         const key = `${x},${y}`;
-        const cell = this.tiles.get(key) || { floor: null, block: null, unit: null, item: null };
+        const cell = this.tiles.get(key) || { floor: null, block: null, unit: null, item: null, metadata: null };
         
         if (layer === 'units') {
             if (tileId === null) {
@@ -239,10 +244,78 @@ export default class MapEditor {
             cell.item = tileId;
         } else {
             cell[layer] = tileId;
+            // Initialize metadata for loot box if newly placed
+            if (layer === 'block' && tileId === 'loot_box' && !cell.metadata) {
+                cell.metadata = { lootTable: [] };
+            }
         }
 
         if (cell.floor === null && cell.block === null && cell.unit === null && cell.item === null) this.tiles.delete(key);
         else this.tiles.set(key, cell);
+    }
+
+    openLootSettings(gx, gy) {
+        const cell = this.getTileAt(gx, gy);
+        if (cell.block !== 'loot_box') return;
+
+        this.editingLootPos = { x: gx, y: gy };
+        const modal = document.getElementById('loot-box-settings-modal');
+        const list = document.getElementById('loot-entries-list');
+        list.innerHTML = '';
+        modal.classList.remove('hidden');
+
+        const lootTable = cell.metadata?.lootTable || [];
+        lootTable.forEach(entry => this.addLootEntry(entry.id, entry.chance));
+        
+        // Add one empty entry if table is empty
+        if (lootTable.length === 0) this.addLootEntry('', 100);
+    }
+
+    addLootEntry(selectedId = '', chance = 100) {
+        const list = document.getElementById('loot-entries-list');
+        const div = document.createElement('div');
+        div.className = 'loot-entry';
+        
+        // Get all available items from AssetManager
+        const items = this.game.assetManager.getData('items') || [];
+        
+        // Create dropdown options
+        let optionsHtml = '<option value="">-- 아이템 선택 --</option>';
+        items.forEach(item => {
+            const selected = item.id === selectedId ? 'selected' : '';
+            optionsHtml += `<option value="${item.id}" ${selected}>${item.name} (${item.id})</option>`;
+        });
+
+        div.innerHTML = `
+            <select class="loot-item-id">
+                ${optionsHtml}
+            </select>
+            <input type="number" class="loot-item-chance" value="${chance}" min="0" max="100">
+            <button class="remove-entry-btn">×</button>
+        `;
+        div.querySelector('.remove-entry-btn').addEventListener('click', () => div.remove());
+        list.appendChild(div);
+    }
+
+    saveLootSettings() {
+        if (!this.editingLootPos) return;
+        const cell = this.getTileAt(this.editingLootPos.x, this.editingLootPos.y);
+        const entries = document.querySelectorAll('.loot-entry');
+        const lootTable = [];
+        
+        entries.forEach(div => {
+            const id = div.querySelector('.loot-item-id').value.trim();
+            const chance = parseInt(div.querySelector('.loot-item-chance').value);
+            if (id) lootTable.push({ id, chance });
+        });
+
+        cell.metadata = { ...cell.metadata, lootTable };
+        this.closeLootSettings();
+    }
+
+    closeLootSettings() {
+        document.getElementById('loot-box-settings-modal').classList.add('hidden');
+        this.editingLootPos = null;
     }
 
     openUnitSettings(gx, gy) {
@@ -287,8 +360,10 @@ export default class MapEditor {
     update(dt) {
         if (this.game.gameState !== 'EDITOR') return;
         
-        const modal = document.getElementById('unit-settings-modal');
-        const isModalOpen = modal && !modal.classList.contains('hidden');
+        const unitModal = document.getElementById('unit-settings-modal');
+        const lootModal = document.getElementById('loot-box-settings-modal');
+        const isModalOpen = (unitModal && !unitModal.classList.contains('hidden')) || 
+                           (lootModal && !lootModal.classList.contains('hidden'));
         
         const input = this.game.input;
         const mx = input.mouse.x; const my = input.mouse.y;
@@ -297,10 +372,11 @@ export default class MapEditor {
         const gx = Math.floor((mx - this.offsetX) / ts);
         const gy = Math.floor((my - this.offsetY) / ts);
         
-        // Check if mouse is over sidebar or modal
+        // Check if mouse is over sidebar or modals
         let isOverUI = mx > this.game.canvas.width - 300;
         if (isModalOpen) {
-            const rect = modal.getBoundingClientRect();
+            const activeModal = !unitModal.classList.contains('hidden') ? unitModal : lootModal;
+            const rect = activeModal.getBoundingClientRect();
             if (mx >= rect.left && mx <= rect.right && my >= rect.top && my <= rect.bottom) {
                 isOverUI = true;
             }
@@ -313,15 +389,15 @@ export default class MapEditor {
             this.offsetX += dx;
             this.offsetY += dy;
             
-            // Track total movement to distinguish between click and pan
             this.rightClickMoveDist = (this.rightClickMoveDist || 0) + Math.sqrt(dx*dx + dy*dy);
         } else {
-            // If right button was just released and movement was minimal, it's a click
             if (this.lastRightDown && !input.mouse.rightDown && !isOverUI && !isModalOpen) {
                 if ((this.rightClickMoveDist || 0) < 5) {
                     const cell = this.getTileAt(gx, gy);
                     if (cell.unit) {
                         this.openUnitSettings(gx, gy);
+                    } else if (cell.block === 'loot_box') {
+                        this.openLootSettings(gx, gy);
                     }
                 }
                 this.rightClickMoveDist = 0;
@@ -440,7 +516,7 @@ export default class MapEditor {
             const row = [];
             for(let x = minX; x <= maxX; x++) {
                 const cell = this.getTileAt(x, y);
-                row.push([cell.floor, cell.block, cell.unit, cell.item]);
+                row.push([cell.floor, cell.block, cell.unit, cell.item, cell.metadata]);
             }
             cropped.push(row);
         }
@@ -465,15 +541,19 @@ export default class MapEditor {
                 data.forEach((row, y) => {
                     row.forEach((cell, x) => {
                         if (Array.isArray(cell)) {
-                            const [floor, block, unit, item] = cell;
+                            const [floor, block, unit, item, metadata] = cell;
                             if (floor !== null || block !== null || unit !== null || item !== null) {
-                                this.tiles.set(`${x},${y}`, { floor, block, unit: unit || null, item: item || null });
+                                this.tiles.set(`${x},${y}`, { 
+                                    floor, block, 
+                                    unit: unit || null, 
+                                    item: item || null,
+                                    metadata: metadata || null 
+                                });
                             }
                         }
                     });
                 });
                 console.log("Import complete.");
-                // Center the view on imported data
                 this.offsetX = 100;
                 this.offsetY = 100;
             }
@@ -485,7 +565,6 @@ export default class MapEditor {
     testCurrentStructure() {
         if (this.tiles.size === 0) { alert("배치된 타일이 없습니다."); return; }
 
-        // 1. Get cropped layout array
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         this.tiles.forEach((_, key) => {
             const [x, y] = key.split(',').map(Number);
@@ -498,12 +577,11 @@ export default class MapEditor {
             const row = [];
             for(let x = minX; x <= maxX; x++) {
                 const cell = this.getTileAt(x, y);
-                row.push([cell.floor, cell.block, cell.unit, cell.item]);
+                row.push([cell.floor, cell.block, cell.unit, cell.item, cell.metadata]);
             }
             layout.push(row);
         }
 
-        // 2. Launch Test Mode in Game
         this.game.startTestMode(layout);
     }
 

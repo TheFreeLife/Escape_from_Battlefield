@@ -183,9 +183,48 @@ export default class Player {
 
         if (!itemDef) return;
 
-        // Check Ammo
-        if (item.ammo !== undefined && item.ammo <= 0) {
-            // Out of ammo sound or visual feedback TBD
+        // 1. Melee Weapon Logic
+        if (itemDef.subType === 'melee') {
+            const targetX = input.mouse.x / this.game.zoom + camera.x;
+            const targetY = input.mouse.y / this.game.zoom + camera.y;
+
+            const attackAngle = Math.atan2(targetY - this.y, targetX - this.x);
+            const attackRange = itemDef.range || 80;
+            const attackDamage = itemDef.damage || 1;
+            const attackArc = Math.PI * 0.6; // 108 degrees
+
+            // Set visual states
+            this.punchAngle = attackAngle;
+            this.punchVisualTimer = 0.15;
+            this.fireTimer = itemDef.fireRate || 0.4;
+            this.lastFireRate = this.fireTimer;
+
+            for (const enemy of this.game.enemies) {
+                if (enemy.isDead) continue;
+
+                const dx = enemy.x - this.x;
+                const dy = enemy.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < attackRange + enemy.radius) {
+                    const angleToEnemy = Math.atan2(dy, dx);
+                    let diff = angleToEnemy - attackAngle;
+
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+
+                    if (Math.abs(diff) < attackArc / 2) {
+                        enemy.takeDamage(attackDamage);
+                        console.log(`Hit enemy with ${itemDef.name}! Damage: ${attackDamage}`);
+                    }
+                }
+            }
+            return;
+        }
+
+        // 2. Ranged Weapon Logic
+        const ammo = item.ammo !== undefined ? item.ammo : (itemDef.magSize || 0);
+        if (ammo <= 0) {
             return;
         }
 
@@ -201,7 +240,7 @@ export default class Player {
             const damage = itemDef.damage || 1;
             const fireRate = itemDef.fireRate || this.fireRate;
             const bSpeed = itemDef.bulletSpeed || 1200;
-            const range = itemDef.range || 1200; // Default range
+            const range = itemDef.range || 1200; 
             const life = range / bSpeed;
             const numPellets = itemDef.pellets || 1;
             const spread = itemDef.spread || 0;
@@ -225,11 +264,11 @@ export default class Player {
             }
 
             this.fireTimer = fireRate;
+            this.lastFireRate = fireRate;
 
-            // Deduct Ammo
-            if (item.ammo !== undefined) {
-                item.ammo--;
-            }
+            // Deduct Ammo - ensure ammo property exists
+            if (item.ammo === undefined) item.ammo = ammo;
+            item.ammo--;
         }
     }
 
@@ -308,81 +347,114 @@ export default class Player {
     render(ctx, camera) {
         if (this.isInVehicle) return;
 
-        // Render relative to camera
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
 
-        // Laser Sight Visual
+        // Calculate angle towards mouse
+        const input = this.game.input;
+        const targetX = input.mouse.x / this.game.zoom + camera.x;
+        const targetY = input.mouse.y / this.game.zoom + camera.y;
+        const angle = Math.atan2(targetY - this.y, targetX - this.x);
+
         const selectedItem = this.game.inventory.getSelectedItem();
+        const itemDef = selectedItem ? this.game.inventory.getItemDef(selectedItem.id) : null;
+
+        // 1. Weapon Rendering (Hand-held feeling)
+        if (itemDef && itemDef.type === 'weapon' && !this.game.inventory.isOpen) {
+            ctx.save();
+            ctx.translate(screenX, screenY);
+            ctx.rotate(angle);
+
+            const isMelee = itemDef.subType === 'melee';
+            const weaponImg = this.game.assetManager.get(itemDef.id);
+            
+            // Recoil/Swing offsets
+            let offX = 25;
+            let offY = 15;
+            let rotOffset = 0;
+
+            if (this.fireTimer > 0) {
+                const animRate = this.lastFireRate || itemDef.fireRate || 0.2;
+                const p = Math.min(1.0, this.fireTimer / animRate);
+                
+                if (isMelee) {
+                    // Swing animation
+                    rotOffset = Math.sin(p * Math.PI) * 1.5;
+                    offX += Math.sin(p * Math.PI) * 20;
+                } else {
+                    // Recoil animation
+                    offX -= p * 15;
+                }
+            }
+
+            if (weaponImg) {
+                const w = 40; const h = 40;
+                ctx.rotate(rotOffset);
+                ctx.drawImage(weaponImg, offX, -h/2 + offY, w, h);
+            } else {
+                // Fallback: simple rectangle if no image
+                ctx.fillStyle = itemDef.color || '#555';
+                ctx.fillRect(offX, -5 + offY, 30, 10);
+            }
+            ctx.restore();
+        }
+
+        // 2. Laser Sight Visual
         if (selectedItem && selectedItem.attachments?.underbarrel?.id === 'laser_sight' && !this.game.inventory.isOpen) {
-            const input = this.game.input;
-            const targetX = input.mouse.x / this.game.zoom + camera.x;
-            const targetY = input.mouse.y / this.game.zoom + camera.y;
-
-            const dx = targetX - this.x;
-            const dy = targetY - this.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const angle = Math.atan2(dy, dx);
-
-            const laserLen = 1500; // Long enough to go off screen
-
+            const laserLen = 1500; 
             ctx.save();
             ctx.beginPath();
             ctx.moveTo(screenX, screenY);
             ctx.lineTo(screenX + Math.cos(angle) * laserLen, screenY + Math.sin(angle) * laserLen);
-
-            // Laser Style
             ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
             ctx.lineWidth = 1.5;
-            ctx.shadowColor = 'red';
-            ctx.shadowBlur = 8;
+            ctx.shadowColor = 'red'; ctx.shadowBlur = 8;
             ctx.stroke();
-
-            // Bright center
-            ctx.strokeStyle = 'rgba(255, 200, 200, 0.8)';
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-
             ctx.closePath();
             ctx.restore();
         }
 
-        // Punch Visual (Arc)
+        // 3. Punch Visual (Melee Swing Arc)
         if (this.punchVisualTimer > 0) {
             const alpha = this.punchVisualTimer / 0.15;
             const punchRange = 100;
-            const punchArc = Math.PI * 0.5;
+            const punchArc = Math.PI * 0.6;
 
             ctx.save();
             ctx.beginPath();
-            // Create a gradient for the "swipe" look
             const grad = ctx.createRadialGradient(screenX, screenY, this.radius, screenX, screenY, punchRange);
             grad.addColorStop(0, `rgba(255, 255, 255, 0)`);
             grad.addColorStop(0.5, `rgba(255, 255, 255, ${alpha * 0.4})`);
             grad.addColorStop(1, `rgba(255, 255, 255, 0)`);
-            
             ctx.fillStyle = grad;
             ctx.moveTo(screenX, screenY);
             ctx.arc(screenX, screenY, punchRange, this.punchAngle - punchArc / 2, this.punchAngle + punchArc / 2);
             ctx.fill();
-
-            // Also draw a sharp edge for the swing
-            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(screenX, screenY, punchRange - 5, this.punchAngle - punchArc / 2, this.punchAngle + punchArc / 2);
-            ctx.stroke();
-
             ctx.restore();
         }
 
-        // Simple circle for player
+        // 4. Character Body
         ctx.beginPath();
         ctx.arc(screenX, screenY, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
-        ctx.closePath();
+        
+        // Face/Eye to show direction
+        ctx.save();
+        ctx.translate(screenX, screenY);
+        ctx.rotate(angle);
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(this.radius * 0.5, -this.radius * 0.3, 5, 0, Math.PI * 2);
+        ctx.arc(this.radius * 0.5, this.radius * 0.3, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
 
+        // UI Indicators (Health, Reload, Stamina etc.)
+        this.renderStatusEffects(ctx, screenX, screenY);
+    }
+
+    renderStatusEffects(ctx, screenX, screenY) {
         // Exhausted State Text
         if (this.isExhausted) {
             ctx.fillStyle = '#e74c3c';
@@ -392,18 +464,14 @@ export default class Player {
             ctx.textAlign = 'left';
         }
 
-        // Reload Visual (Progress ring around player)
+        // Reload Visual
         if (this.game.inventory.isReloading) {
             const progress = 1 - (this.game.inventory.reloadTimer / (this.game.inventory.getSelectedItem()?.reloadTime || 1));
-
             ctx.beginPath();
             ctx.arc(screenX, screenY, this.radius + 10, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * progress));
             ctx.strokeStyle = '#f1c40f';
             ctx.lineWidth = 4;
             ctx.stroke();
-            ctx.closePath();
-
-            // Text
             ctx.fillStyle = '#f1c40f';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'center';
@@ -413,18 +481,14 @@ export default class Player {
 
         // Grenade Charge Gauge
         if (this.throwCharge > 0) {
-            const barW = 60;
-            const barH = 6;
+            const barW = 60; const barH = 6;
             const bx = screenX - barW / 2;
             const by = screenY - this.radius - 15;
-
             ctx.fillStyle = 'rgba(0,0,0,0.5)';
             ctx.fillRect(bx, by, barW, barH);
-
             const progress = this.throwCharge / this.maxThrowCharge;
             ctx.fillStyle = `rgb(${255 * progress}, ${255 * (1 - progress)}, 0)`;
             ctx.fillRect(bx, by, barW * progress, barH);
-
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 1;
             ctx.strokeRect(bx, by, barW, barH);

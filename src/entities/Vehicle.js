@@ -54,9 +54,9 @@ export default class Vehicle {
     toggleStorage() {
         this.isStorageOpen = !this.isStorageOpen;
         if (this.isStorageOpen) {
-            this.game.inventory.openVehicleStorage(this);
+            this.game.inventory.openExternalStorage(this, 'vehicle');
         } else {
-            this.game.inventory.closeVehicleStorage();
+            this.game.inventory.closeExternalStorage();
         }
     }
 

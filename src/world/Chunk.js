@@ -5,21 +5,28 @@ export default class Chunk {
     constructor(cx, cy) {
         this.cx = cx;
         this.cy = cy;
-        // Two layers of tiles
+        // Three layers of tiles
         this.floors = Array(CHUNK_SIZE).fill().map(() => Array(CHUNK_SIZE).fill(null));
         this.blocks = Array(CHUNK_SIZE).fill().map(() => Array(CHUNK_SIZE).fill(null));
+        this.metadata = Array(CHUNK_SIZE).fill().map(() => Array(CHUNK_SIZE).fill(null));
         this.isGenerated = false; // Flag to check if generator processed this chunk
     }
 
-    setTile(x, y, tileId, layer = 'floor') {
+    setTile(x, y, tileId, layer = 'floor', metadata = null) {
         if (layer === 'block') {
             this.blocks[y][x] = tileId;
-        } else {
+        } else if (layer === 'floor') {
             this.floors[y][x] = tileId;
+        }
+        
+        if (metadata) {
+            this.metadata[y][x] = JSON.parse(JSON.stringify(metadata));
         }
     }
 
     getTile(x, y, layer = 'floor') {
-        return layer === 'block' ? this.blocks[y][x] : this.floors[y][x];
+        if (layer === 'block') return this.blocks[y][x];
+        if (layer === 'metadata') return this.metadata[y][x];
+        return this.floors[y][x];
     }
 }

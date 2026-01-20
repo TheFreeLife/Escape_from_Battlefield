@@ -366,25 +366,58 @@ export default class Game {
     }
 
     handleInteraction() {
-        // 1. If vehicle storage is open, close it
-        if (this.inventory && this.inventory.isVehicleStorageOpen) {
-            this.inventory.closeVehicleStorage();
+        // 1. If any external storage is open, close it
+        if (this.inventory && this.inventory.isExternalStorageOpen) {
+            this.inventory.closeExternalStorage();
             this.inventory.isOpen = false;
             return;
         }
 
         if (this.player.isInVehicle) {
-            // Exit logic handled in Vehicle.handleInput/exit
             this.player.currentVehicle.exit();
             return;
         }
 
-        // 1. Search for nearby vehicle to interact
+        // 2. Search for nearby Loot Box (Block)
+        const range = 1.5; // Interaction range in tiles
+        const px = Math.floor(this.player.x / 64);
+        const py = Math.floor(this.player.y / 64);
+
+        for (let y = py - 1; y <= py + 1; y++) {
+            for (let x = px - 1; x <= px + 1; x++) {
+                const blockId = this.tileMap.getTile(x, y, 'block');
+                if (blockId === 'loot_box') {
+                    let metadata = this.tileMap.getMetadata(x, y);
+                    if (!metadata) {
+                        metadata = { items: new Array(16).fill(null) };
+                        this.tileMap.setTile(x, y, blockId, 'block', metadata);
+                    }
+                    if (!metadata.items || metadata.items.length !== 16) {
+                        const oldItems = metadata.items || [];
+                        metadata.items = new Array(16).fill(null);
+                        // Migration: copy old items to new 16-slot array if needed
+                        oldItems.forEach((item, i) => { if(i < 16) metadata.items[i] = item; });
+                    }
+                    
+                    this.inventory.openExternalStorage(metadata, 'chest');
+                    return;
+                }
+            }
+        }
+
+        // 3. Search for nearby vehicle to interact
         for (const v of this.vehicles) {
             const dist = Math.sqrt((this.player.x - v.x) ** 2 + (this.player.y - v.y) ** 2);
             if (dist < v.interactionRadius) {
                 const result = v.handleInteraction(this.player.x, this.player.y);
-                if (result) return;
+                if (result) {
+                    // Update: Vehicle interaction now uses openExternalStorage internally or we handle it here
+                    // Assuming vehicle handles its own storage opening for now, but letting inventory know
+                    if (v.isStorageOpen) {
+                        this.inventory.openExternalStorage(v, 'vehicle');
+                    }
+                    return;
+                }
             }
         }
 
@@ -501,6 +534,42 @@ export default class Game {
         ctx.restore();
     }
 
+    renderTileInteractionHints(ctx) {
+        if (!this.player || this.player.isInVehicle || this.inventory.isOpen) return;
+
+        const range = 1.5; // Interaction range in tiles
+        const px = Math.floor(this.player.x / 64);
+        const py = Math.floor(this.player.y / 64);
+
+        for (let y = py - 1; y <= py + 1; y++) {
+            for (let x = px - 1; x <= px + 1; x++) {
+                const blockId = this.tileMap.getTile(x, y, 'block');
+                if (blockId === 'loot_box') {
+                    const worldX = x * 64 + 32;
+                    const worldY = y * 64 + 32;
+                    const dist = Math.sqrt((this.player.x - worldX) ** 2 + (this.player.y - worldY) ** 2);
+
+                    if (dist < 100) {
+                        const screenX = worldX - this.camera.x;
+                        const screenY = worldY - this.camera.y;
+
+                        ctx.fillStyle = '#fff';
+                        ctx.font = 'bold 16px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText("[F] 열기", screenX, screenY - 45);
+                        
+                        // Draw a small square prompt
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(screenX - 10, screenY - 30, 20, 20);
+                        
+                        ctx.textAlign = 'left';
+                    }
+                }
+            }
+        }
+    }
+
     render() {
         if (this.gameState === 'MENU') {
             // Clear screen for menu background
@@ -555,6 +624,9 @@ export default class Game {
         for (const v of this.vehicles) {
             v.render(this.ctx, this.camera);
         }
+
+        // Render Tile Interaction Hints (e.g. Loot Boxes)
+        this.renderTileInteractionHints(this.ctx);
 
         this.ctx.restore();
 

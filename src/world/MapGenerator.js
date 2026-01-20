@@ -168,9 +168,26 @@ export default class MapGenerator {
         prefab.layout.forEach((row, y) => {
             row.forEach((cell, x) => {
                 if (Array.isArray(cell)) {
-                    const [floorId, blockId, unitData, itemId] = cell;
+                    const [floorId, blockId, unitData, itemId, metadata] = cell;
+                    
+                    // Handle Loot Box Initialization
+                    let finalMetadata = metadata ? JSON.parse(JSON.stringify(metadata)) : null;
+                    if (blockId === 'loot_box' && finalMetadata?.lootTable) {
+                        // Generate actual items from loot table into a fixed 16-slot array
+                        const items = new Array(16).fill(null);
+                        let slotIdx = 0;
+                        finalMetadata.lootTable.forEach(entry => {
+                            if (slotIdx < 16 && Math.random() * 100 < entry.chance) {
+                                items[slotIdx] = { id: entry.id, count: 1 };
+                                slotIdx++;
+                            }
+                        });
+                        finalMetadata.items = items;
+                        delete finalMetadata.lootTable; 
+                    }
+
                     if (floorId !== null && floorId !== undefined) tileMap.setTile(startX + x, startY + y, floorId, 'floor');
-                    if (blockId !== null && blockId !== undefined) tileMap.setTile(startX + x, startY + y, blockId, 'block');
+                    if (blockId !== null && blockId !== undefined) tileMap.setTile(startX + x, startY + y, blockId, 'block', finalMetadata);
                     
                     if (unitData && unitData.id) {
                         const ex = (startX + x) * TILE_SIZE + TILE_SIZE / 2;

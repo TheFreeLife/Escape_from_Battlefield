@@ -27,7 +27,7 @@ export default class TileMap {
         return chunk;
     }
 
-    setTile(x, y, tileId, layer = 'floor') {
+    setTile(x, y, tileId, layer = 'floor', metadata = null) {
         const cx = Math.floor(x / CHUNK_SIZE);
         const cy = Math.floor(y / CHUNK_SIZE);
         const lx = x - cx * CHUNK_SIZE;
@@ -37,7 +37,20 @@ export default class TileMap {
         if (!chunk) {
             chunk = this.createChunk(cx, cy);
         }
-        chunk.setTile(lx, ly, tileId, layer);
+        chunk.setTile(lx, ly, tileId, layer, metadata);
+    }
+
+    getMetadata(x, y) {
+        const cx = Math.floor(x / CHUNK_SIZE);
+        const cy = Math.floor(y / CHUNK_SIZE);
+        const lx = x - cx * CHUNK_SIZE;
+        const ly = y - cy * CHUNK_SIZE;
+
+        const chunk = this.getChunk(cx, cy);
+        if (chunk) {
+            return chunk.getTile(lx, ly, 'metadata');
+        }
+        return null;
     }
 
     getTile(x, y, layer = 'floor') {
@@ -73,11 +86,16 @@ export default class TileMap {
     }
 
     isInteractable(worldX, worldY) {
-        const tileId = this.getTileAtWorldPos(worldX, worldY);
-        if (!tileId) return false;
+        const floorId = this.getTileAtWorldPos(worldX, worldY, 'floor');
+        const blockId = this.getTileAtWorldPos(worldX, worldY, 'block');
 
-        const tileDef = this.game.assetManager.getData('tiles')?.find(t => t.id === tileId);
-        return tileDef ? !!tileDef.interactable : false;
+        const checkInt = (id) => {
+            if (!id) return false;
+            const def = this.game.assetManager.getData('tiles')?.find(t => t.id === id);
+            return def ? !!def.interactable : false;
+        };
+
+        return checkInt(floorId) || checkInt(blockId);
     }
 
     render(ctx, camera) {

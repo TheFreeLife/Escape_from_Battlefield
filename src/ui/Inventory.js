@@ -27,9 +27,10 @@ export default class Inventory {
         this.lastMouseDown = false;
         this.hoveredSlotInfo = null; // { item, x, y, size }
 
-        // Vehicle Storage Integration
-        this.currentVehicleStorage = null;
-        this.isVehicleStorageOpen = false;
+        // External Storage Integration (Chests, Vehicles, etc.)
+        this.currentExternalStorage = null;
+        this.externalStorageType = null; // 'vehicle' or 'chest'
+        this.isExternalStorageOpen = false;
 
         // Reload system
         this.isReloading = false;
@@ -77,24 +78,26 @@ export default class Inventory {
         this.addItem({ id: 'tank_shell_ap', count: 10 });
     }
 
-    openVehicleStorage(vehicle) {
-        this.currentVehicleStorage = vehicle;
-        this.isVehicleStorageOpen = true;
-        this.isOpen = true; // Ensure inventory is open
+    openExternalStorage(storageObj, type = 'chest') {
+        this.currentExternalStorage = storageObj;
+        this.externalStorageType = type;
+        this.isExternalStorageOpen = true;
+        this.isOpen = true;
     }
 
-    closeVehicleStorage() {
-        if (this.currentVehicleStorage) {
-            this.currentVehicleStorage.isStorageOpen = false;
+    closeExternalStorage() {
+        if (this.currentExternalStorage && this.externalStorageType === 'vehicle') {
+            this.currentExternalStorage.isStorageOpen = false;
         }
-        this.currentVehicleStorage = null;
-        this.isVehicleStorageOpen = false;
+        this.currentExternalStorage = null;
+        this.externalStorageType = null;
+        this.isExternalStorageOpen = false;
     }
 
     toggle() {
         this.isOpen = !this.isOpen;
         if (!this.isOpen) {
-            this.closeVehicleStorage();
+            this.closeExternalStorage();
             if (this.heldItem) {
                 if (!this.addItem(this.heldItem)) {
                     // Drop ground TBD
@@ -134,10 +137,10 @@ export default class Inventory {
         // 2. Find empty slot if still has count
         for (let i = 0; i < this.slots; i++) {
             if (!this.items[i]) {
-                // Initialize weapon ammo only if it's a new pickup (no existing state)
+                // Initialize weapon state for ANY weapon entering inventory
                 if (itemDef && itemDef.type === 'weapon') {
-                    if (item.ammo === undefined) item.ammo = itemDef.magSize;
-                    if (item.totalAmmo === undefined) item.totalAmmo = itemDef.magSize * 4;
+                    if (item.ammo === undefined) item.ammo = itemDef.magSize || 0;
+                    if (item.totalAmmo === undefined) item.totalAmmo = (itemDef.magSize || 0) * 2;
                     if (!item.attachments) item.attachments = { optic: null, barrel: null, underbarrel: null };
                 }
                 this.items[i] = item;
@@ -177,9 +180,9 @@ export default class Inventory {
             this.lastEState = false;
         }
 
-        // Allow closing vehicle storage with 'T' key
+        // Allow closing external storage with 'T' key
         if (input.isKeyPressed('KeyT')) {
-            if (!this.lastTState && this.isVehicleStorageOpen) {
+            if (!this.lastTState && this.isExternalStorageOpen) {
                 this.toggle();
             }
             this.lastTState = true;
@@ -493,11 +496,12 @@ export default class Inventory {
         this.hoveredSlotInfo = null;
         const layout = this.getLayout();
 
-        // Check vehicle storage
-        if (this.isVehicleStorageOpen) {
-            layout.vehicleStorage.forEach((rect, i) => {
-                if (this.pointInRect(mx, my, rect) && this.currentVehicleStorage.storage[i]) {
-                    this.hoveredSlotInfo = { item: this.currentVehicleStorage.storage[i], x: rect.x, y: rect.y, size: rect.size };
+        // Check external storage
+        if (this.isExternalStorageOpen) {
+            const storageItems = this.currentExternalStorage.storage || this.currentExternalStorage.items;
+            layout.externalStorage.forEach((rect, i) => {
+                if (this.pointInRect(mx, my, rect) && storageItems[i]) {
+                    this.hoveredSlotInfo = { item: storageItems[i], x: rect.x, y: rect.y, size: rect.size };
                 }
             });
             if (this.hoveredSlotInfo) return;
@@ -543,30 +547,32 @@ export default class Inventory {
             return def && (def.type === 'consumable' || def.type === 'magazine' || def.type === 'tank_shell' || def.type === 'apc_ammo');
         };
 
-        // 0. Vehicle Storage
-        if (this.isVehicleStorageOpen) {
-            const vSlots = this.currentVehicleStorage.storageSlots;
-            for (let i = 0; i < vSlots; i++) {
-                const rect = layout.vehicleStorage[i];
+        // 0. External Storage
+        if (this.isExternalStorageOpen) {
+            const extSlots = this.currentExternalStorage.storageSlots || this.currentExternalStorage.items.length;
+            const storageItems = this.currentExternalStorage.storage || this.currentExternalStorage.items;
+
+            for (let i = 0; i < extSlots; i++) {
+                const rect = layout.externalStorage[i];
                 if (this.pointInRect(mx, my, rect)) {
-                    // Check item type restriction
-                    if (this.heldItem) {
+                    // Check item type restriction (only for vehicles)
+                    if (this.heldItem && this.externalStorageType === 'vehicle') {
                         const itemDef = this.getItemDef(this.heldItem.id);
-                        const accepted = this.currentVehicleStorage.acceptedItemTypes;
+                        const accepted = this.currentExternalStorage.acceptedItemTypes;
                         if (accepted && !accepted.includes(itemDef.type)) {
                             console.log(`This vehicle only accepts: ${accepted.join(', ')}`);
-                            return; // Block placement
+                            return; 
                         }
                     }
                     
-                    if (isShift && this.currentVehicleStorage.storage[i]) {
-                        this.handleQuickMove('vehicle', i);
+                    if (isShift && storageItems[i]) {
+                        this.handleQuickMove('external', i);
                         return;
                     }
 
-                    // Merging logic for vehicle storage
-                    if (this.heldItem && canMerge(this.heldItem, this.currentVehicleStorage.storage[i])) {
-                        const target = this.currentVehicleStorage.storage[i];
+                    // Merging logic
+                    if (this.heldItem && canMerge(this.heldItem, storageItems[i])) {
+                        const target = storageItems[i];
                         const total = target.count + this.heldItem.count;
                         if (total <= 99) {
                             target.count = total;
@@ -578,8 +584,20 @@ export default class Inventory {
                         return;
                     }
 
-                    const temp = this.currentVehicleStorage.storage[i];
-                    this.currentVehicleStorage.storage[i] = this.heldItem;
+                    const temp = storageItems[i];
+                    if (this.currentExternalStorage.storage) this.currentExternalStorage.storage[i] = this.heldItem;
+                    else this.currentExternalStorage.items[i] = this.heldItem;
+                    
+                    // If moving from chest to player (heldItem was temp)
+                    if (temp) {
+                        const tDef = this.getItemDef(temp.id);
+                        if (tDef && tDef.type === 'weapon') {
+                            if (temp.ammo === undefined) temp.ammo = tDef.magSize || 0;
+                            if (temp.totalAmmo === undefined) temp.totalAmmo = (tDef.magSize || 0) * 2;
+                            if (!temp.attachments) temp.attachments = { optic: null, barrel: null, underbarrel: null };
+                        }
+                    }
+                    
                     this.heldItem = temp;
                     return;
                 }
@@ -675,32 +693,36 @@ export default class Inventory {
         if (fromType === 'storage') item = this.items[fromKey];
         else if (fromType === 'hotbar') item = this.hotbar[fromKey];
         else if (fromType === 'equipment') item = this.equipment[fromKey];
-        else if (fromType === 'vehicle') item = this.currentVehicleStorage.storage[fromKey];
+        else if (fromType === 'external') {
+            const storageItems = this.currentExternalStorage.storage || this.currentExternalStorage.items;
+            item = storageItems[fromKey];
+        }
 
         if (!item) return;
         const itemDef = this.getItemDef(item.id);
         if (!itemDef) return;
 
-        // Move from vehicle to player storage/hotbar
-        if (fromType === 'vehicle') {
+        // Move from external to player storage/hotbar
+        if (fromType === 'external') {
             if (this.addItem(item)) {
                 this.clearSlot(fromType, fromKey);
             }
             return;
         }
 
-        // Move from player to vehicle if vehicle storage is open
-        if (this.isVehicleStorageOpen && fromType !== 'vehicle') {
-            // Check item type restriction
-            const accepted = this.currentVehicleStorage.acceptedItemTypes;
-            if (accepted && !accepted.includes(itemDef.type)) {
-                return; // Cannot move this item type to this vehicle
+        // Move from player to external if open
+        if (this.isExternalStorageOpen && fromType !== 'external') {
+            // Check item type restriction (vehicles only)
+            if (this.externalStorageType === 'vehicle') {
+                const accepted = this.currentExternalStorage.acceptedItemTypes;
+                if (accepted && !accepted.includes(itemDef.type)) return;
             }
 
-            const vSlots = this.currentVehicleStorage.storageSlots;
-            for (let i = 0; i < vSlots; i++) {
-                if (!this.currentVehicleStorage.storage[i]) {
-                    this.currentVehicleStorage.storage[i] = item;
+            const extSlots = this.currentExternalStorage.storageSlots || this.currentExternalStorage.items.length;
+            const storageItems = this.currentExternalStorage.storage || this.currentExternalStorage.items;
+            for (let i = 0; i < extSlots; i++) {
+                if (!storageItems[i]) {
+                    storageItems[i] = item;
                     this.clearSlot(fromType, fromKey);
                     return;
                 }
@@ -771,7 +793,10 @@ export default class Inventory {
         if (type === 'storage') this.items[key] = null;
         else if (type === 'hotbar') this.hotbar[key] = null;
         else if (type === 'equipment') this.equipment[key] = null;
-        else if (type === 'vehicle') this.currentVehicleStorage.storage[key] = null;
+        else if (type === 'external') {
+            if (this.currentExternalStorage.storage) this.currentExternalStorage.storage[key] = null;
+            else this.currentExternalStorage.items[key] = null;
+        }
     }
 
     getItemDef(itemId) {
@@ -788,8 +813,7 @@ export default class Inventory {
         const padding = 8;
         const winW = (slotSize + padding) * cols + padding + 40;
         
-        // Increased height slightly to fit everything: 10 storage slots + 32 inv slots + hotbar
-        let winH = this.isVehicleStorageOpen ? 520 : 580; 
+        let winH = this.isExternalStorageOpen ? 520 : 580; 
 
         const winX = (this.game.canvas.width - winW) / 2;
         const winY = (this.game.canvas.height - winH) / 2;
@@ -800,17 +824,17 @@ export default class Inventory {
             equipment: {},
             storage: [],
             hotbar: [],
-            vehicleStorage: []
+            externalStorage: []
         };
 
-        // Vehicle Storage Slots
-        if (this.isVehicleStorageOpen) {
-            const vSlots = this.currentVehicleStorage.storageSlots;
-            const vCols = 5;
-            for (let i = 0; i < vSlots; i++) {
-                const col = i % vCols;
-                const row = Math.floor(i / vCols);
-                layout.vehicleStorage.push({
+        // External Storage Slots (Loot boxes, Vehicles)
+        if (this.isExternalStorageOpen) {
+            const extSlots = this.currentExternalStorage.storageSlots || this.currentExternalStorage.items.length;
+            const extCols = 8; // Change from 5 to 8 to match inventory width
+            for (let i = 0; i < extSlots; i++) {
+                const col = i % extCols;
+                const row = Math.floor(i / extCols);
+                layout.externalStorage.push({
                     x: winX + 25 + col * (slotSize + padding),
                     y: winY + 60 + row * (slotSize + padding),
                     size: slotSize
@@ -819,7 +843,7 @@ export default class Inventory {
         }
 
         // Equipment Slots
-        if (!this.isVehicleStorageOpen) {
+        if (!this.isExternalStorageOpen) {
             const eqStartX = layout.preview.x + layout.preview.w + 20;
             const eqStartY = layout.preview.y;
             const eqRows = ['head', 'chest', 'top', 'bottom', 'acc1', 'acc2'];
@@ -836,8 +860,7 @@ export default class Inventory {
         }
 
         // Player Inventory Storage position
-        // When vehicle is open, start lower to make room for 2 rows of vehicle storage
-        const storageStartY = this.isVehicleStorageOpen ? winY + 200 : layout.preview.y + layout.preview.h + 30;
+        const storageStartY = this.isExternalStorageOpen ? winY + 200 : layout.preview.y + layout.preview.h + 30;
         for (let i = 0; i < this.slots; i++) {
             const col = i % cols;
             const row = Math.floor(i / cols);
@@ -880,12 +903,14 @@ export default class Inventory {
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 20px Arial';
         
-        if (this.isVehicleStorageOpen) {
-            // Vehicle Storage Mode
+        if (this.isExternalStorageOpen) {
+            // External Storage Mode
             ctx.fillStyle = '#f1c40f';
-            ctx.fillText("Vehicle Trunk", win.x + 25, win.y + 40);
-            layout.vehicleStorage.forEach((rect, i) => {
-                this.drawSlot(ctx, rect, this.currentVehicleStorage.storage[i], false, 'Trunk');
+            ctx.fillText(this.externalStorageType === 'vehicle' ? "Vehicle Trunk" : "Loot Box", win.x + 25, win.y + 40);
+            
+            const storageItems = this.currentExternalStorage.storage || this.currentExternalStorage.items;
+            layout.externalStorage.forEach((rect, i) => {
+                this.drawSlot(ctx, rect, storageItems[i], false, 'Storage');
             });
             ctx.fillStyle = '#fff';
             ctx.fillText("Inventory", win.x + 25, storage[0].y - 15);
