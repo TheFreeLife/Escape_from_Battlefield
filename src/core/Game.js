@@ -46,6 +46,13 @@ export default class Game {
 
         this.gameState = 'MENU'; // MENU, PLAYING, EDITOR
         this.testStructure = null; // For editor testing
+
+        // Day/Night Cycle
+        this.gameTime = 12 * 60; // Start at Noon (minutes)
+        this.dayLength = 24 * 60; // 24 hours in minutes
+        this.timeScale = 1.0; // 1 real second = 1 game minute
+        this.ambientLight = 1.0; // 0.0 (Night) to 1.0 (Day)
+
         this.init();
         this.setupMenu();
     }
@@ -313,6 +320,10 @@ export default class Game {
             return; // Pause game when inventory is open
         }
 
+        // --- Day/Night Cycle Progression ---
+        this.gameTime = (this.gameTime + dt * this.timeScale) % this.dayLength;
+        this.updateDaylight();
+
         if (this.inventory) this.inventory.update(dt);
 
         if (this.player) {
@@ -475,6 +486,26 @@ export default class Game {
         return diff;
     }
 
+    updateDaylight() {
+        const hour = this.gameTime / 60;
+        
+        // Simple light curve: 
+        // 06:00 ~ 10:00 (Dawn/Sunrise) -> Increases
+        // 10:00 ~ 18:00 (Daylight) -> Max
+        // 18:00 ~ 22:00 (Sunset/Dusk) -> Decreases
+        // 22:00 ~ 06:00 (Night) -> Min (0.1 ~ 0.2 for visibility)
+
+        if (hour >= 6 && hour < 10) {
+            this.ambientLight = 0.2 + (hour - 6) / 4 * 0.8;
+        } else if (hour >= 10 && hour < 18) {
+            this.ambientLight = 1.0;
+        } else if (hour >= 18 && hour < 22) {
+            this.ambientLight = 1.0 - (hour - 18) / 4 * 0.8;
+        } else {
+            this.ambientLight = 0.2;
+        }
+    }
+
     updateMinimapCache() {
         const ctx = this.minimapCache.getContext('2d');
         const size = this.minimapCache.width;
@@ -608,6 +639,19 @@ export default class Game {
         }
     }
 
+    renderDaylightOverlay(ctx) {
+        if (this.ambientLight >= 1.0) return;
+
+        // Darkness opacity is inverse of ambient light
+        const darkness = 1.0 - this.ambientLight;
+        
+        ctx.save();
+        // Use multiply or overlay-like effect using semi-transparent black/blue
+        ctx.fillStyle = `rgba(0, 5, 20, ${darkness * 0.75})`;
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.restore();
+    }
+
     render() {
         if (this.gameState === 'MENU') {
             // Clear screen for menu background
@@ -675,12 +719,22 @@ export default class Game {
         }
 
         this.renderMinimap();
+        this.renderDaylightOverlay(this.ctx);
         if (this.debugMenu) this.debugMenu.render(this.ctx);
 
         // UI Layout
         this.ctx.fillStyle = '#fff';
         this.ctx.font = 'bold 20px Arial';
         this.ctx.fillText("Escape from Battlefield", 20, 35);
+
+        // Time HUD
+        const hours = Math.floor(this.gameTime / 60);
+        const mins = Math.floor(this.gameTime % 60);
+        const timeStr = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        
+        this.ctx.fillStyle = '#f1c40f';
+        this.ctx.font = 'bold 18px Arial';
+        this.ctx.fillText(`🕒 ${timeStr}`, 20, 65);
 
         if (this.player && this.mapGenerator) {
             const tx = Math.floor(this.player.x / 64);
@@ -690,15 +744,15 @@ export default class Game {
             if (biome) {
                 this.ctx.fillStyle = biome.color || '#fff';
                 this.ctx.font = 'bold 18px Arial';
-                this.ctx.fillText(`현재 바이옴: ${biome.name}`, 20, 65);
+                this.ctx.fillText(`📍 ${biome.name}`, 20, 95);
 
                 this.ctx.fillStyle = '#aaa';
                 this.ctx.font = '14px Arial';
-                this.ctx.fillText(`좌표: ${tx}, ${ty}`, 20, 85);
+                this.ctx.fillText(`좌표: ${tx}, ${ty}`, 20, 115);
 
                 this.ctx.fillStyle = '#00ff00';
                 this.ctx.font = 'bold 14px Arial';
-                this.ctx.fillText(`이동 속도: ${Math.round(this.player.currentSpeed || 0)} px/s`, 20, 105);
+                this.ctx.fillText(`이동 속도: ${Math.round(this.player.currentSpeed || 0)} px/s`, 20, 135);
             }
         }
     }

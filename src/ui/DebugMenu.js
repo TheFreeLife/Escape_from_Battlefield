@@ -107,6 +107,13 @@ export default class DebugMenu {
         } else if (this.activeCategory === 'world') {
             if (this.checkBtn(mx, my, 10, actionYStart, btnW, btnH)) this.game.enemies = [];
             if (this.checkBtn(mx, my, 10, actionYStart + 35, btnW, btnH)) this.game.projectiles = [];
+            
+            // Time Controls
+            const timeY = actionYStart + 80;
+            if (this.checkBtn(mx, my, 10, timeY, btnW, btnH)) this.game.gameTime = 8 * 60; // Morning
+            if (this.checkBtn(mx, my, 10, timeY + 35, btnW, btnH)) this.game.gameTime = 12 * 60; // Noon
+            if (this.checkBtn(mx, my, 10, timeY + 70, btnW, btnH)) this.game.gameTime = 18 * 60; // Evening
+            if (this.checkBtn(mx, my, 10, timeY + 105, btnW, btnH)) this.game.gameTime = 0; // Midnight
         }
     }
 
@@ -217,6 +224,12 @@ export default class DebugMenu {
         } else if (this.activeCategory === 'world') {
             this.drawBtn(ctx, 10, actionYStart, btnW, btnH, "모든 적 제거");
             this.drawBtn(ctx, 10, actionYStart + 35, btnW, btnH, "모든 투사체 제거");
+            
+            const timeY = actionYStart + 80;
+            this.drawBtn(ctx, 10, timeY, btnW, btnH, "시간: 아침 (08:00)");
+            this.drawBtn(ctx, 10, timeY + 35, btnW, btnH, "시간: 낮 (12:00)");
+            this.drawBtn(ctx, 10, timeY + 70, btnW, btnH, "시간: 저녁 (18:00)");
+            this.drawBtn(ctx, 10, timeY + 105, btnW, btnH, "시간: 밤 (00:00)");
         }
 
         ctx.restore();
