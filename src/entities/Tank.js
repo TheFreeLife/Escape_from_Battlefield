@@ -74,9 +74,14 @@ export default class Tank extends Vehicle {
         const dx = Math.cos(this.turretAngle);
         const dy = Math.sin(this.turretAngle);
         
-        const prj = new Projectile(this.game, this.x + dx * 60, this.y + dy * 60, dx, dy, shellDef.damage, 1500, 2.0, {
+        const prj = new Projectile(this.game, this.x + dx * 100, this.y + dy * 100, dx, dy, {
+            damage: shellDef.damage,
+            speed: 1500,
+            life: 3.0,
+            owner: this,
             isExplosive: true,
-            explodeRadius: shellDef.explodeRadius
+            explodeRadius: shellDef.explodeRadius || 150,
+            color: '#f1c40f'
         });
         this.game.projectiles.push(prj);
 

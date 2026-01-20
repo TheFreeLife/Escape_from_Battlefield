@@ -43,7 +43,39 @@ export default class Projectile {
         this.x += this.dx * this.speed * dt;
         this.y += this.dy * this.speed * dt;
 
-        // 1. Collision with Player (if owner is not player)
+        // 1. Precise Wall collision (Raycasting between frames)
+        if (this.game.tileMap) {
+            const dist = this.speed * dt;
+            const steps = Math.ceil(dist / 20); // Check every 20px
+            let hitWall = false;
+            let hitX = this.x;
+            let hitY = this.y;
+
+            for (let i = 1; i <= steps; i++) {
+                const checkX = oldX + (this.dx * dist * (i / steps));
+                const checkY = oldY + (this.dy * dist * (i / steps));
+                if (this.game.tileMap.isCollidable(checkX, checkY)) {
+                    hitWall = true;
+                    hitX = checkX;
+                    hitY = checkY;
+                    break;
+                }
+            }
+
+            if (hitWall) {
+                this.x = hitX;
+                this.y = hitY;
+                if (this.isExplosive) {
+                    this.explode();
+                } else {
+                    this.game.tileMap.damageTile(this.x, this.y, this.damage);
+                }
+                this.markedForDeletion = true;
+                return;
+            }
+        }
+
+        // 2. Collision with Player (if owner is not player)
         const player = this.game.player;
         if (player && this.owner !== player) {
             const dx = player.x - this.x;
@@ -89,7 +121,7 @@ export default class Projectile {
             }
         }
 
-        // 3. Collision with vehicles
+        // 4. Collision with vehicles
         if (this.game.vehicles) {
             for (const vehicle of this.game.vehicles) {
                 if (vehicle === this.owner) continue;
@@ -110,17 +142,6 @@ export default class Projectile {
                     return;
                 }
             }
-        }
-
-        // 4. Wall collision
-        if (this.game.tileMap && this.game.tileMap.isCollidable(this.x, this.y)) {
-            if (this.isExplosive) {
-                this.explode();
-            } else {
-                // Apply damage to the tile itself
-                this.game.tileMap.damageTile(this.x, this.y, this.damage);
-            }
-            this.markedForDeletion = true;
         }
     }
 

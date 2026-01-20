@@ -506,8 +506,8 @@ export default class Game {
         const dy = targetY - this.player.y;
         const distSq = dx * dx + dy * dy;
 
-        // 1. Proximity vision
-        if (distSq < 150 * 150) return true;
+        // 1. Proximity vision (Always see very close objects)
+        if (distSq < 80 * 80) return true;
 
         // 2. Max vision distance
         if (distSq > 1600 * 1500) return false;
@@ -516,52 +516,206 @@ export default class Game {
         const targetAngle = Math.atan2(dy, dx);
         const angleDiff = Math.abs(this.getAngleDiff(this.player.facingAngle, targetAngle));
         
-        // FOV (Normal: ~100 deg, Aiming: ~60 deg)
         const fov = this.inventory.isAiming ? Math.PI * 0.17 : Math.PI * 0.28; 
-        return angleDiff < fov;
+        if (angleDiff >= fov) return false;
+
+        // 4. Wall Check (Raycasting)
+        return this.isLineOfSightClear(this.player.x, this.player.y, targetX, targetY);
     }
 
-    renderVisionOverlay(ctx) {
-        if (!this.player || this.gameState !== 'PLAYING') return;
-
-        const screenX = (this.player.x - this.camera.x) * this.zoom;
-        const screenY = (this.player.y - this.camera.y) * this.zoom;
-        const angle = this.player.facingAngle;
-
-        ctx.save();
+    isLineOfSightClear(x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dist = Math.sqrt(dx * dx + dy * dy);
         
-        const fogCanvas = document.createElement('canvas');
-        fogCanvas.width = this.canvas.width;
-        fogCanvas.height = this.canvas.height;
-        const fCtx = fogCanvas.getContext('2d');
-
-        // Much lighter fog (0.25 opacity)
-        fCtx.fillStyle = 'rgba(0, 2, 8, 0.25)'; 
-        fCtx.fillRect(0, 0, fogCanvas.width, fogCanvas.height);
-
-        fCtx.globalCompositeOperation = 'destination-out';
+        // Step size for raycasting (half a tile size for accuracy)
+        const step = 20; 
+        const steps = dist / step;
         
-        // 1. Sharp radial center
-        fCtx.fillStyle = 'white';
-        fCtx.beginPath();
-        fCtx.arc(screenX, screenY, 120, 0, Math.PI * 2);
-        fCtx.fill();
-
-        // 2. Focused Vision Cone (Front)
-        const visionDist = 2200 * this.zoom; 
-        const fov = this.inventory.isAiming ? Math.PI * 0.17 : Math.PI * 0.28;
-        
-        fCtx.beginPath();
-        fCtx.moveTo(screenX, screenY);
-        fCtx.arc(screenX, screenY, visionDist, angle - fov, angle + fov);
-        fCtx.closePath();
-        fCtx.fill();
-
-        ctx.drawImage(fogCanvas, 0, 0);
-        ctx.restore();
+        for (let i = 1; i < steps; i++) {
+            const checkX = x1 + (dx / steps) * i;
+            const checkY = y1 + (dy / steps) * i;
+            
+            if (this.tileMap.isCollidable(checkX, checkY)) {
+                return false; // Vision blocked by wall
+            }
+        }
+        return true;
     }
 
-    updateMinimapCache() {
+                renderVisionOverlay(ctx) {
+
+                    if (!this.player || this.gameState !== 'PLAYING') return;
+
+            
+
+                    if (!this.visionCanvas) this.visionCanvas = document.createElement('canvas');
+
+                    if (this.visionCanvas.width !== this.canvas.width || this.visionCanvas.height !== this.canvas.height) {
+
+                        this.visionCanvas.width = this.canvas.width;
+
+                        this.visionCanvas.height = this.canvas.height;
+
+                    }
+
+            
+
+                            const vCtx = this.visionCanvas.getContext('2d');
+
+            
+
+                            const screenX = (this.player.x - this.camera.x) * this.zoom;
+
+            
+
+                            const screenY = (this.player.y - this.camera.y) * this.zoom;
+
+            
+
+                            const pAngle = this.player.facingAngle;
+
+            
+
+                    
+
+            
+
+                            vCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+            
+
+                            // Even lighter fog (0.15 opacity)
+
+            
+
+                            vCtx.fillStyle = 'rgba(0, 2, 8, 0.15)'; 
+
+            
+
+                            vCtx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            
+
+                    
+
+            
+
+                            vCtx.globalCompositeOperation = 'destination-out';
+
+                    vCtx.fillStyle = 'white';
+
+                    vCtx.shadowBlur = 30 * this.zoom;
+
+                    vCtx.shadowColor = 'white';
+
+            
+
+                    const fov = this.inventory.isAiming ? Math.PI * 0.17 : Math.PI * 0.28;
+
+                    const visionDist = 1500;
+
+                    
+
+                    // --- Stable World-Fixed Raycasting ---
+
+                    const rayStep = 0.015; // Fixed angular step in radians (~0.85 degrees)
+
+                    const startAngle = pAngle - fov;
+
+                    const endAngle = pAngle + fov;
+
+            
+
+                    vCtx.beginPath();
+
+                    vCtx.moveTo(screenX, screenY);
+
+            
+
+                    // Align starting angle to the fixed global grid of angles to prevent rotation jitter
+
+                    const alignedStart = Math.floor(startAngle / rayStep) * rayStep;
+
+            
+
+                    for (let angle = alignedStart; angle <= endAngle + rayStep; angle += rayStep) {
+
+                        const actualAngle = Math.max(startAngle, Math.min(endAngle, angle));
+
+                        const cos = Math.cos(actualAngle);
+
+                        const sin = Math.sin(actualAngle);
+
+            
+
+                        let finalDist = visionDist;
+
+                        const coarseStep = 50; 
+
+            
+
+                        // 1. Coarse Search
+
+                        for (let d = coarseStep; d < visionDist; d += coarseStep) {
+
+                            if (this.tileMap.isCollidable(this.player.x + cos * d, this.player.y + sin * d)) {
+
+                                // 2. Binary Search Refinement (Extremely stable)
+
+                                let low = d - coarseStep;
+
+                                let high = d;
+
+                                for (let n = 0; n < 5; n++) { // 5 iterations = ~1.5px precision
+
+                                    let mid = (low + high) / 2;
+
+                                    if (this.tileMap.isCollidable(this.player.x + cos * mid, this.player.y + sin * mid)) high = mid;
+
+                                    else low = mid;
+
+                                }
+
+                                finalDist = high;
+
+                                break;
+
+                            }
+
+                        }
+
+            
+
+                        vCtx.lineTo(screenX + cos * finalDist * this.zoom, screenY + sin * finalDist * this.zoom);
+
+                    }
+
+            
+
+                    vCtx.lineTo(screenX, screenY);
+
+                    vCtx.closePath();
+
+                    vCtx.fill();
+
+            
+
+                    vCtx.beginPath();
+
+                    vCtx.arc(screenX, screenY, 80 * this.zoom, 0, Math.PI * 2);
+
+                    vCtx.fill();
+
+            
+
+                    vCtx.shadowBlur = 0;
+
+                    vCtx.globalCompositeOperation = 'source-over';
+
+                    ctx.drawImage(this.visionCanvas, 0, 0);
+
+                }    updateMinimapCache() {
         const ctx = this.minimapCache.getContext('2d');
         const size = this.minimapCache.width;
         const scale = 0.05; // Zoom level

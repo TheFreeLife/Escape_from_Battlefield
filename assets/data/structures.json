@@ -1,49 +1,42 @@
 [
     {
         "id": "military_outpost",
-        "name": "군사 전초기지",
+        "name": "군사 거점",
         "layout": [
-            [["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, {"id": "soldier", "command": "GUARD"}, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, "ak47"], ["concrete", null, null, "mag_ak47"], ["concrete", null, null, "shovel"], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, "knife"], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, {"id": "soldier", "command": "PATROL", "patrolRadius": 100}, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, "medkit"], ["concrete", null, null, "grenade"], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null]]
+            [["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null], ["concrete", "door", null, null, null], ["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null]],
+            [["concrete", "wall_concrete", null, null, null], ["concrete", null, {"id": "soldier", "command": "GUARD"}, null, null], ["concrete", null, null, null, null], ["concrete", null, null, null, null], ["concrete", null, null, "m4a1", null], ["concrete", "wall_concrete", null, null, null]],
+            [["concrete", "wall_concrete", null, null, null], ["concrete", null, null, null, null], ["concrete", "loot_box", null, null, {"lootTable": [{"id": "ammo_556", "chance": 100}, {"id": "ammo_556", "chance": 50}]}], ["concrete", null, null, null, null], ["concrete", null, null, "ammo_556", null], ["concrete", "wall_concrete", null, null, null]],
+            [["concrete", "wall_concrete", null, null, null], ["concrete", null, {"id": "soldier", "command": "PATROL"}, null, null], ["concrete", null, null, null, null], ["concrete", null, null, null, null], ["concrete", null, null, "medkit", null], ["concrete", "wall_concrete", null, null, null]],
+            [["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null]]
         ]
     },
     {
-        "id": "abandoned_clinic",
-        "name": "버려진 진료소",
+        "id": "abandoned_shack",
+        "name": "버려진 오두막",
         "layout": [
-            [["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, {"id": "zombie", "command": "GUARD"}, null], ["concrete", "wall_concrete", null, null], ["concrete", null, null, "medkit"], ["concrete", null, null, "medkit"], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, {"id": "zombie", "command": "PATROL"}, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, "pistol"], ["concrete", null, null, "mag_pistol"], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null]]
+            [["grass", "wooden_box", null, null, null], ["grass", "wooden_box", null, null, null], ["grass", "wooden_box", null, null, null]],
+            [["grass", "wooden_box", null, null, null], ["dirt", null, null, "knife", null], ["grass", "wooden_box", null, null, null]],
+            [["grass", "wooden_box", null, null, null], ["grass", null, null, "ammo_9mm", null], ["grass", "wooden_box", null, null, null]]
         ]
     },
     {
-        "id": "supply_warehouse",
-        "name": "보급 창고",
+        "id": "medical_camp",
+        "name": "임시 의료 캠프",
         "layout": [
-            [["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, "m4a1"], ["concrete", null, null, "mag_ak47"], ["concrete", null, null, "mag_ak47"], ["concrete", null, null, null], ["concrete", null, {"id": "soldier", "command": "GUARD"}, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, null, "grenade"], ["concrete", null, null, "grenade"], ["concrete", null, null, "medkit"], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", null, {"id": "soldier", "command": "PATROL"}, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null]],
-            [["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", null, null, null], ["concrete", null, null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null], ["concrete", "wall_concrete", null, null]]
+            [["concrete", "sandbag", null, null, null], ["concrete", "sandbag", null, null, null], ["concrete", "sandbag", null, null, null], ["concrete", "sandbag", null, null, null]],
+            [["concrete", "sandbag", null, null, null], ["concrete", null, null, "medkit", null], ["concrete", null, null, "medkit", null], ["concrete", "sandbag", null, null, null]],
+            [["concrete", null, null, null, null], ["concrete", null, {"id": "zombie", "command": "GUARD"}, null, null], ["concrete", "loot_box", null, null, {"lootTable": [{"id": "medkit", "chance": 80}]}], ["concrete", null, null, null, null]]
         ]
     },
     {
-        "id": "defensive_line",
-        "name": "방어선",
+        "id": "vehicle_depot",
+        "name": "차량 정비소",
         "layout": [
-            [["dirt", "sandbag", null, null], ["dirt", "sandbag", {"id": "soldier", "command": "GUARD"}, null], ["dirt", "sandbag", null, null], ["dirt", "sandbag", null, null], ["dirt", "sandbag", {"id": "soldier", "command": "GUARD"}, null], ["dirt", "sandbag", null, null]],
-            [["dirt", null, null, "ak47"], ["dirt", null, null, "mag_ak47"], ["dirt", null, null, null], ["dirt", null, null, "medkit"], ["dirt", null, null, null], ["dirt", null, null, null]],
-            [["grass", "fence", null, null], ["grass", "fence", null, null], ["grass", "fence", null, null], ["grass", "fence", null, null], ["grass", "fence", null, null], ["grass", "fence", null, null]]
+            [["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null]],
+            [["concrete", "wall_concrete", null, null, null], ["concrete", null, {"id": "v_apc"}, null, null], ["concrete", null, null, null, null], ["concrete", null, null, "shovel", null], ["concrete", "wall_concrete", null, null, null]],
+            [["concrete", "wall_concrete", null, null, null], ["concrete", null, null, null, null], ["concrete", null, null, null, null], ["concrete", null, null, "ammo_762", null], ["concrete", "wall_concrete", null, null, null]],
+            [["concrete", "wall_concrete", null, null, null], ["concrete", null, null, null, null], ["concrete", "loot_box", null, null, {"lootTable": [{"id": "ammo_762", "chance": 100}]}], ["concrete", null, null, null, null], ["concrete", "wall_concrete", null, null, null]],
+            [["concrete", "wall_concrete", null, null, null], ["concrete", "door", null, null, null], ["concrete", "door", null, null, null], ["concrete", "wall_concrete", null, null, null], ["concrete", "wall_concrete", null, null, null]]
         ]
     }
 ]

@@ -42,8 +42,18 @@ export default class Player {
     }
 
     update(dt) {
+        // Calculate and store facing angle (towards mouse) - Always update this first
+        const camera = this.game.camera;
+        const targetX = this.game.input.mouse.x / this.game.zoom + camera.x;
+        const targetY = this.game.input.mouse.y / this.game.zoom + camera.y;
+        this.facingAngle = Math.atan2(targetY - this.y, targetX - this.x);
+
         if (this.isInVehicle) {
             this.isCollidable = false;
+            if (this.currentVehicle) {
+                this.x = this.currentVehicle.x;
+                this.y = this.currentVehicle.y;
+            }
             return;
         }
         this.isCollidable = true;
@@ -71,34 +81,29 @@ export default class Player {
         } else {
             this.isSprinting = false;
             this.stamina = Math.min(this.maxStamina, this.stamina + this.staminaRegenRate * dt);
-            
-            // Recover from exhausted state when stamina reaches 20%
             if (this.isExhausted && this.stamina > (this.maxStamina * 0.2)) {
                 this.isExhausted = false;
             }
         }
 
-        // Apply weight penalty to speed
-        let speedMultiplier = 1.0;
+        // Define items for use
         const selectedItem = this.game.inventory.getSelectedItem();
         const itemDef = selectedItem ? this.game.inventory.getItemDef(selectedItem.id) : null;
-        
+
+        // Apply weight penalty to speed
+        let speedMultiplier = 1.0;
         if (itemDef && itemDef.weight) {
-            // Each 1kg reduces speed by 5%. Max penalty 60%.
             speedMultiplier = Math.max(0.4, 1.0 - (itemDef.weight * 0.05));
         }
-
-        // Apply aiming penalty (0.6x speed when aiming with scope)
         if (this.game.inventory.isAiming) {
             speedMultiplier *= 0.6;
         }
 
         let currentSpeed = this.isSprinting ? this.speed * this.sprintSpeedMultiplier : this.speed;
         currentSpeed *= speedMultiplier;
-        this.currentSpeed = currentSpeed; // Store for UI display
+        this.currentSpeed = currentSpeed;
 
-        // Normalize diagonal movement
-        if (dx !== 0 || dy !== 0) {
+        if (isMoving) {
             const length = Math.sqrt(dx * dx + dy * dy);
             dx /= length;
             dy /= length;
@@ -107,7 +112,6 @@ export default class Player {
         const nextX = this.x + dx * currentSpeed * dt;
         const nextY = this.y + dy * currentSpeed * dt;
 
-        // Use unified collision check
         if (!this.game.checkCollision(nextX, this.y, this.radius, this)) {
             this.x = nextX;
         }
@@ -115,65 +119,46 @@ export default class Player {
             this.y = nextY;
         }
 
-        // Calculate and store facing angle (towards mouse)
-        const camera = this.game.camera;
-        const targetX = this.game.input.mouse.x / this.game.zoom + camera.x;
-        const targetY = this.game.input.mouse.y / this.game.zoom + camera.y;
-        this.facingAngle = Math.atan2(targetY - this.y, targetX - this.x);
+        // Combat Timers
+        if (this.fireTimer > 0) this.fireTimer -= dt;
+        if (this.punchVisualTimer > 0) this.punchVisualTimer -= dt;
 
-        // Map Boundary Constrain removed for infinite map
-
-        // Shooting & Item Usage logic
-        if (this.fireTimer > 0) {
-            this.fireTimer -= dt;
-        }
-        if (this.punchVisualTimer > 0) {
-            this.punchVisualTimer -= dt;
-        }
-
+        // Input Actions
         if (input.mouse.leftDown) {
             if (itemDef && itemDef.type === 'grenade') {
-                // Charging grenade
                 this.throwCharge = Math.min(this.maxThrowCharge, this.throwCharge + dt);
             } else if (this.fireTimer <= 0) {
                 if (itemDef && itemDef.type === 'weapon') {
                     this.shoot(selectedItem);
-                } else if (itemDef && (itemDef.type === 'consumable' || itemDef.type === 'magazine')) {
+                } else if (itemDef && (itemDef.type === 'consumable' || itemDef.type === 'ammo')) {
                     if (this.game.inventory.useItem(this.game.inventory.selectedSlot)) {
-                        this.fireTimer = 0.5; // Prevent spamming
+                        this.fireTimer = 0.5;
                     }
                 } else {
-                    // Default: Punch
                     this.punch();
                 }
             }
         } else {
-            // Mouse released
             if (this.throwCharge > 0) {
                 this.throwGrenade(selectedItem);
                 this.throwCharge = 0;
             }
         }
 
-        // --- Unit-to-Unit Collision (Separation) ---
+        // --- Separation Logic ---
         for (const enemy of this.game.enemies) {
             if (enemy.isDead) continue;
-
-            const dx = this.x - enemy.x;
-            const dy = this.y - enemy.y;
-            const distSq = dx * dx + dy * dy;
+            const edx = this.x - enemy.x;
+            const edy = this.y - enemy.y;
+            const distSq = edx * edx + edy * edy;
             const minDist = this.radius + enemy.radius;
-
             if (distSq < minDist * minDist) {
                 const dist = Math.sqrt(distSq) || 0.001;
                 const overlap = minDist - dist;
-                const nx = dx / dist;
-                const ny = dy / dist;
-
+                const nx = edx / dist;
+                const ny = edy / dist;
                 const pushX = nx * overlap;
                 const pushY = ny * overlap;
-
-                // Push player away from enemy if not hitting a wall
                 if (!this.game.checkCollision(this.x + pushX, this.y + pushY, this.radius, this)) {
                     this.x += pushX;
                     this.y += pushY;

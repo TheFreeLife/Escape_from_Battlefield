@@ -153,20 +153,24 @@ export default class MapGenerator {
                     if (blockId !== null && blockId !== undefined) tileMap.setTile(startX + x, startY + y, blockId, 'block', finalMetadata);
                     
                     if (unitData && unitData.id) {
-                        const ex = (startX + x) * TILE_SIZE + TILE_SIZE / 2;
-                        const ey = (startY + y) * TILE_SIZE + TILE_SIZE / 2;
-                        
                         const uid = unitData.id;
                         if (uid.startsWith('v_')) {
-                            // Spawn Vehicle
+                            // Calculate center based on unit size (default 2x2 if not specified)
+                            const uw = unitData.w || 2;
+                            const uh = unitData.h || 2;
+                            const centerX = (startX + x + uw / 2) * TILE_SIZE;
+                            const centerY = (startY + y + uh / 2) * TILE_SIZE;
+                            
                             let v;
-                            if (uid === 'v_tank') v = new Tank(this.game, ex, ey);
-                            else if (uid === 'v_apc') v = new APC(this.game, ex, ey);
-                            else v = new Vehicle(this.game, ex, ey); // Default to truck
+                            if (uid === 'v_tank') v = new Tank(this.game, centerX, centerY);
+                            else if (uid === 'v_apc') v = new APC(this.game, centerX, centerY);
+                            else v = new Vehicle(this.game, centerX, centerY); 
                             this.game.vehicles.push(v);
-                            console.log(`Spawned ${uid} at ${ex}, ${ey}`);
+                            console.log(`Spawned ${uid} at center: ${centerX}, ${centerY}`);
                         } else {
-                            // Spawn Enemy
+                            // Spawn Enemy (1x1 center)
+                            const ex = (startX + x) * TILE_SIZE + TILE_SIZE / 2;
+                            const ey = (startY + y) * TILE_SIZE + TILE_SIZE / 2;
                             this.game.enemies.push(new Enemy(this.game, ex, ey, uid, unitData));
                         }
                     }
