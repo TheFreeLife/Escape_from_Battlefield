@@ -51,34 +51,99 @@ export default class MapEditor {
 
     
 
-            ['rect', 'circle', 'triangle'].forEach(tool => {
-
-                const btn = document.getElementById(`tool-${tool}`);
-
-                if (btn) btn.addEventListener('click', () => {
-
-                    this.selectTool(tool);
-
-                    // Update main button icon to match selected shape
-
-                    shapeMainBtn.innerText = btn.innerText;
-
-                    shapeSubPalette.classList.add('hidden');
-
-                });
-
-            });
+                    ['rect', 'circle', 'triangle'].forEach(tool => {
 
     
 
-            document.getElementsByName('active-layer').forEach(input => {
-            input.addEventListener('change', (e) => {
-                this.activeLayer = e.target.value;
-                this.updatePaletteFilter();
-            });
-        });
+                        const btn = document.getElementById(`tool-${tool}`);
 
-        // Unit Settings Modal Events
+    
+
+                        if (btn) btn.addEventListener('click', () => {
+
+    
+
+                            this.selectTool(tool);
+
+    
+
+                            // Update main button icon to match selected shape
+
+    
+
+                            shapeMainBtn.innerText = btn.innerText;
+
+    
+
+                            shapeSubPalette.classList.add('hidden');
+
+    
+
+                        });
+
+    
+
+                    });
+
+    
+
+            
+
+    
+
+                    // Layer Selection via Button Group
+
+    
+
+                    document.querySelectorAll('.layer-btn').forEach(btn => {
+
+    
+
+                        btn.addEventListener('click', () => {
+
+    
+
+                            // UI update
+
+    
+
+                            document.querySelectorAll('.layer-btn').forEach(el => el.classList.remove('active'));
+
+    
+
+                            btn.classList.add('active');
+
+    
+
+                            
+
+    
+
+                            // Logic update
+
+    
+
+                            this.activeLayer = btn.dataset.layer;
+
+    
+
+                            this.updatePaletteFilter();
+
+    
+
+                        });
+
+    
+
+                    });
+
+    
+
+            
+
+    
+
+                    // Unit Settings Modal Events
         document.getElementById('unit-settings-save').addEventListener('click', () => this.saveUnitSettings());
         document.getElementById('unit-settings-cancel').addEventListener('click', () => this.closeUnitSettings());
         document.getElementById('unit-settings-delete').addEventListener('click', () => this.deleteUnit());

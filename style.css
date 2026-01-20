@@ -81,7 +81,7 @@ body, html {
     transform: scale(1.05);
 }
 
-/* Map Editor UI */
+/* Map Editor UI Container */
 #editor-ui {
     position: absolute;
     top: 0;
@@ -94,6 +94,39 @@ body, html {
     z-index: 200;
     pointer-events: auto;
 }
+
+/* Layer Selection Group */
+#layer-selection-group {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.layer-btn {
+    padding: 10px 5px;
+    background: #333;
+    border: 1px solid #555;
+    color: #aaa;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.layer-btn:hover {
+    background: #444;
+    color: #eee;
+}
+
+.layer-btn.active {
+    background: #f1c40f;
+    border-color: #f1c40f;
+    color: #000;
+    box-shadow: 0 0 10px rgba(241, 196, 15, 0.3);
+}
+
 
 #editor-sidebar {
     padding: 20px;
