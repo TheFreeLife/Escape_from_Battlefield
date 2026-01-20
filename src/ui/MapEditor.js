@@ -112,6 +112,7 @@ export default class MapEditor {
         if (!palette) return;
         palette.innerHTML = '';
         
+        // 1. Units Layer: Fetch from enemies.json via AssetManager
         if (this.activeLayer === 'units') {
             const enemies = this.game.assetManager.getData('enemies') || [];
             enemies.forEach(enemy => {
@@ -123,6 +124,7 @@ export default class MapEditor {
                 previewCanvas.width = 50; previewCanvas.height = 50;
                 const pCtx = previewCanvas.getContext('2d');
                 
+                // Use enemy color for preview
                 pCtx.fillStyle = enemy.color || '#e74c3c';
                 pCtx.beginPath();
                 pCtx.arc(25, 25, 15, 0, Math.PI * 2);
@@ -131,40 +133,70 @@ export default class MapEditor {
                 div.appendChild(previewCanvas);
                 div.title = enemy.name;
                 div.addEventListener('click', () => {
-                    document.querySelectorAll('.palette-tile').forEach(el => el.classList.remove('selected'));
-                    div.classList.add('selected');
-                    this.selectedTileId = enemy.id;
-                    if (this.selectedTool === 'eraser') {
-                        this.selectTool('pen');
-                    }
+                    this.selectTile(enemy.id, div);
                 });
                 palette.appendChild(div);
             });
-        } else {
+        } 
+        // 2. Items Layer: Fetch from allItems (AssetManager.data.items)
+        else if (this.activeLayer === 'items') {
+            const items = this.game.assetManager.getData('items') || [];
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'palette-tile';
+                if (item.id === this.selectedTileId) div.classList.add('selected');
+                
+                const previewCanvas = document.createElement('canvas');
+                previewCanvas.width = 50; previewCanvas.height = 50;
+                const pCtx = previewCanvas.getContext('2d');
+                
+                // Render item sprite from AssetManager cache
+                const itemImg = this.game.assetManager.get(item.id);
+                if (itemImg) {
+                    pCtx.drawImage(itemImg, 5, 5, 40, 40);
+                } else {
+                    pCtx.fillStyle = item.color || '#f1c40f';
+                    pCtx.fillRect(10, 10, 30, 30);
+                }
+                
+                div.appendChild(previewCanvas);
+                div.title = item.name;
+                div.addEventListener('click', () => {
+                    this.selectTile(item.id, div);
+                });
+                palette.appendChild(div);
+            });
+        } 
+        // 3. Tile Layers (Floor/Block): Fetch from tiles.json
+        else {
             const tiles = this.game.assetManager.getData('tiles') || [];
             const filtered = tiles.filter(t => t.layer === this.activeLayer);
             filtered.forEach(tile => {
                 const div = document.createElement('div');
                 div.className = 'palette-tile';
                 if (tile.id === this.selectedTileId) div.classList.add('selected');
+                
                 const previewCanvas = document.createElement('canvas');
                 previewCanvas.width = 50; previewCanvas.height = 50;
                 const pCtx = previewCanvas.getContext('2d');
+                
                 const tileImg = this.game.assetManager.get(tile.id);
-                if (tileImg) pCtx.drawImage(tileImg, 0, 0, 50, 50);
-                else { pCtx.fillStyle = tile.color || '#333'; pCtx.fillRect(0, 0, 50, 50); }
+                if (tileImg) {
+                    pCtx.drawImage(tileImg, 0, 0, 50, 50);
+                } else {
+                    pCtx.fillStyle = tile.color || '#333';
+                    pCtx.fillRect(0, 0, 50, 50);
+                }
+                
                 div.appendChild(previewCanvas);
                 div.title = tile.name;
                 div.addEventListener('click', () => {
-                    document.querySelectorAll('.palette-tile').forEach(el => el.classList.remove('selected'));
-                    div.classList.add('selected');
-                    this.selectedTileId = tile.id;
-                    if (this.selectedTool === 'eraser') {
-                        this.selectTool('pen');
-                    }
+                    this.selectTile(tile.id, div);
                 });
                 palette.appendChild(div);
             });
+            
+            // Auto-select first tile if current selection is invalid for this layer
             if (!filtered.find(t => t.id === this.selectedTileId) && filtered.length > 0) {
                 this.selectedTileId = filtered[0].id;
                 this.updatePaletteFilter();
@@ -172,13 +204,22 @@ export default class MapEditor {
         }
     }
 
+    selectTile(id, element) {
+        document.querySelectorAll('.palette-tile').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+        this.selectedTileId = id;
+        if (this.selectedTool === 'eraser') {
+            this.selectTool('pen');
+        }
+    }
+
     getTileAt(x, y) {
-        return this.tiles.get(`${x},${y}`) || { floor: null, block: null, unit: null };
+        return this.tiles.get(`${x},${y}`) || { floor: null, block: null, unit: null, item: null };
     }
 
     setTileAt(x, y, tileId, layer) {
         const key = `${x},${y}`;
-        const cell = this.tiles.get(key) || { floor: null, block: null, unit: null };
+        const cell = this.tiles.get(key) || { floor: null, block: null, unit: null, item: null };
         
         if (layer === 'units') {
             if (tileId === null) {
@@ -194,11 +235,13 @@ export default class MapEditor {
                     speedMult: 1.0
                 };
             }
+        } else if (layer === 'items') {
+            cell.item = tileId;
         } else {
             cell[layer] = tileId;
         }
 
-        if (cell.floor === null && cell.block === null && cell.unit === null) this.tiles.delete(key);
+        if (cell.floor === null && cell.block === null && cell.unit === null && cell.item === null) this.tiles.delete(key);
         else this.tiles.set(key, cell);
     }
 
@@ -397,7 +440,7 @@ export default class MapEditor {
             const row = [];
             for(let x = minX; x <= maxX; x++) {
                 const cell = this.getTileAt(x, y);
-                row.push([cell.floor, cell.block, cell.unit]);
+                row.push([cell.floor, cell.block, cell.unit, cell.item]);
             }
             cropped.push(row);
         }
@@ -422,9 +465,9 @@ export default class MapEditor {
                 data.forEach((row, y) => {
                     row.forEach((cell, x) => {
                         if (Array.isArray(cell)) {
-                            const [floor, block, unit] = cell;
-                            if (floor !== null || block !== null || unit !== null) {
-                                this.tiles.set(`${x},${y}`, { floor, block, unit: unit || null });
+                            const [floor, block, unit, item] = cell;
+                            if (floor !== null || block !== null || unit !== null || item !== null) {
+                                this.tiles.set(`${x},${y}`, { floor, block, unit: unit || null, item: item || null });
                             }
                         }
                     });
@@ -455,7 +498,7 @@ export default class MapEditor {
             const row = [];
             for(let x = minX; x <= maxX; x++) {
                 const cell = this.getTileAt(x, y);
-                row.push([cell.floor, cell.block, cell.unit]);
+                row.push([cell.floor, cell.block, cell.unit, cell.item]);
             }
             layout.push(row);
         }
@@ -469,6 +512,7 @@ export default class MapEditor {
         const ts = this.baseTileSize * this.zoom;
         const tilesData = this.game.assetManager.getData('tiles') || [];
         const enemiesData = this.game.assetManager.getData('enemies') || [];
+        const itemsData = this.game.assetManager.getData('items') || [];
 
         ctx.fillStyle = '#111';
         ctx.fillRect(0, 0, this.game.canvas.width, this.game.canvas.height);
@@ -486,16 +530,30 @@ export default class MapEditor {
             const [gx, gy] = key.split(',').map(Number);
             if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
             const tx = this.offsetX + gx * ts; const ty = this.offsetY + gy * ts;
+            
+            // 1. Floor
             if (cell.floor) {
                 const img = this.game.assetManager.get(cell.floor);
                 if (img) ctx.drawImage(img, tx, ty, ts, ts);
                 else { const def = tilesData.find(t => t.id === cell.floor); ctx.fillStyle = def ? def.color : '#333'; ctx.fillRect(tx, ty, ts, ts); }
             }
+            // 2. Block
             if (cell.block) {
                 const img = this.game.assetManager.get(cell.block);
                 if (img) ctx.drawImage(img, tx, ty, ts, ts);
                 else { const def = tilesData.find(t => t.id === cell.block); ctx.fillStyle = def ? def.color : '#555'; ctx.fillRect(tx, ty, ts, ts); }
             }
+            // 3. Item
+            if (cell.item) {
+                const img = this.game.assetManager.get(cell.item);
+                if (img) ctx.drawImage(img, tx + ts*0.2, ty + ts*0.2, ts*0.6, ts*0.6);
+                else {
+                    const def = itemsData.find(i => i.id === cell.item);
+                    ctx.fillStyle = def ? def.color : '#f1c40f';
+                    ctx.fillRect(tx + ts*0.25, ty + ts*0.25, ts*0.5, ts*0.5);
+                }
+            }
+            // 4. Unit
             if (cell.unit) {
                 const def = enemiesData.find(e => e.id === cell.unit.id);
                 ctx.fillStyle = def ? def.color : '#e74c3c';
@@ -506,7 +564,6 @@ export default class MapEditor {
                 ctx.lineWidth = 2;
                 ctx.stroke();
                 
-                // Show command label
                 ctx.fillStyle = '#fff';
                 ctx.font = `bold ${Math.max(8, ts * 0.2)}px Arial`;
                 ctx.textAlign = 'center';

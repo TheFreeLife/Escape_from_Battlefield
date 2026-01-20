@@ -231,16 +231,6 @@ export default class Game {
         this.vehicles.push(new Tank(this, 700, 300));
         this.vehicles.push(new APC(this, 900, 500));
 
-        // Generate bitmaps for items
-        const items = this.assetManager.getData('items');
-        if (items) {
-            for (const item of items) {
-                if (item.svg) {
-                    await this.assetManager.renderSVG(item.id, item.svg, item.color);
-                }
-            }
-        }
-
         this.isReady = true;
         this.start();
     }

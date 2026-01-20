@@ -17,11 +17,16 @@ export default class AssetManager {
 
     // Generate Bitmaps from SVG definitions found in loaded data
     async generateBitmaps() {
-        // Example: Process tiles
-        if (this.data.tiles) {
-            for (const tile of this.data.tiles) {
-                if (tile.svg) {
-                    await this.renderSVG(tile.id, tile.svg, tile.color || '#fff');
+        // Process all categories that might have SVG visuals
+        const categories = ['tiles', 'items', 'enemies'];
+        
+        for (const category of categories) {
+            const list = this.data[category];
+            if (list && Array.isArray(list)) {
+                for (const item of list) {
+                    if (item.svg) {
+                        await this.renderSVG(item.id, item.svg, item.color || '#fff');
+                    }
                 }
             }
         }

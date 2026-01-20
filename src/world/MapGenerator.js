@@ -143,7 +143,7 @@ export default class MapGenerator {
         prefab.layout.forEach((row, y) => {
             row.forEach((cell, x) => {
                 if (Array.isArray(cell)) {
-                    const [floorId, blockId, unitData] = cell;
+                    const [floorId, blockId, unitData, itemId] = cell;
                     if (floorId !== null && floorId !== undefined) tileMap.setTile(startX + x, startY + y, floorId, 'floor');
                     if (blockId !== null && blockId !== undefined) tileMap.setTile(startX + x, startY + y, blockId, 'block');
                     
@@ -151,6 +151,12 @@ export default class MapGenerator {
                         const ex = (startX + x) * TILE_SIZE + TILE_SIZE / 2;
                         const ey = (startY + y) * TILE_SIZE + TILE_SIZE / 2;
                         this.game.enemies.push(new Enemy(this.game, ex, ey, unitData.id, unitData));
+                    }
+
+                    if (itemId) {
+                        const ix = (startX + x) * TILE_SIZE + TILE_SIZE / 2;
+                        const iy = (startY + y) * TILE_SIZE + TILE_SIZE / 2;
+                        this.game.loots.push(new Loot(this.game, ix, iy, itemId));
                     }
                 } else if (cell !== null && cell !== undefined) {
                     tileMap.setTile(startX + x, startY + y, cell, 'block');
