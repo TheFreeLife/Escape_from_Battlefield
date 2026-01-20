@@ -115,6 +115,12 @@ export default class Player {
             this.y = nextY;
         }
 
+        // Calculate and store facing angle (towards mouse)
+        const camera = this.game.camera;
+        const targetX = this.game.input.mouse.x / this.game.zoom + camera.x;
+        const targetY = this.game.input.mouse.y / this.game.zoom + camera.y;
+        this.facingAngle = Math.atan2(targetY - this.y, targetX - this.x);
+
         // Map Boundary Constrain removed for infinite map
 
         // Shooting & Item Usage logic

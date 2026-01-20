@@ -378,65 +378,101 @@ export default class Game {
             return;
         }
 
-        // 2. Search for nearby Loot Box (Block)
-        const range = 1.5; // Interaction range in tiles
-        const px = Math.floor(this.player.x / 64);
-        const py = Math.floor(this.player.y / 64);
+        const candidates = [];
+        const p = this.player;
+        const pAngle = p.facingAngle;
 
+        // 2. Collect candidates: Loot Boxes and Doors (Tiles)
+        const px = Math.floor(p.x / 64);
+        const py = Math.floor(p.y / 64);
         for (let y = py - 1; y <= py + 1; y++) {
             for (let x = px - 1; x <= px + 1; x++) {
                 const blockId = this.tileMap.getTile(x, y, 'block');
-                if (blockId === 'loot_box') {
-                    let metadata = this.tileMap.getMetadata(x, y);
-                    if (!metadata) {
-                        metadata = { items: new Array(16).fill(null) };
-                        this.tileMap.setTile(x, y, blockId, 'block', metadata);
-                    }
-                    if (!metadata.items || metadata.items.length !== 16) {
-                        const oldItems = metadata.items || [];
-                        metadata.items = new Array(16).fill(null);
-                        // Migration: copy old items to new 16-slot array if needed
-                        oldItems.forEach((item, i) => { if(i < 16) metadata.items[i] = item; });
-                    }
+                if (blockId === 'loot_box' || blockId === 'door' || blockId === 'door_open') {
+                    const worldX = x * 64 + 32;
+                    const worldY = y * 64 + 32;
+                    const dx = worldX - p.x;
+                    const dy = worldY - p.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
                     
-                    this.inventory.openExternalStorage(metadata, 'chest');
-                    return;
-                }
-            }
-        }
-
-        // 3. Search for nearby vehicle to interact
-        for (const v of this.vehicles) {
-            const dist = Math.sqrt((this.player.x - v.x) ** 2 + (this.player.y - v.y) ** 2);
-            if (dist < v.interactionRadius) {
-                const result = v.handleInteraction(this.player.x, this.player.y);
-                if (result) {
-                    // Update: Vehicle interaction now uses openExternalStorage internally or we handle it here
-                    // Assuming vehicle handles its own storage opening for now, but letting inventory know
-                    if (v.isStorageOpen) {
-                        this.inventory.openExternalStorage(v, 'vehicle');
+                    if (dist < 100) {
+                        const targetAngle = Math.atan2(dy, dx);
+                        let angleDiff = Math.abs(this.getAngleDiff(pAngle, targetAngle));
+                        candidates.push({ type: 'tile', x, y, id: blockId, dist, angleDiff });
                     }
-                    return;
                 }
             }
         }
 
-        // 2. Search for nearby loot to pick up
+        // 3. Collect candidates: Vehicles (Entities)
+        for (const v of this.vehicles) {
+            const dx = v.x - p.x;
+            const dy = v.y - p.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < v.interactionRadius) {
+                const targetAngle = Math.atan2(dy, dx);
+                let angleDiff = Math.abs(this.getAngleDiff(pAngle, targetAngle));
+                candidates.push({ type: 'vehicle', entity: v, dist, angleDiff });
+            }
+        }
+
+        // 4. Collect candidates: Loot Items (Entities)
         for (let i = this.loots.length - 1; i >= 0; i--) {
             const l = this.loots[i];
-            const dx = this.player.x - l.x;
-            const dy = this.player.y - l.y;
-            const distSq = dx * dx + dy * dy;
-            const interactDist = 60;
-
-            if (distSq < interactDist * interactDist) {
-                if (this.inventory.addItem({ id: l.itemId, count: l.count })) {
-                    l.markedForDeletion = true;
-                    console.log(`Picked up ${l.itemId} x${l.count} via T key`);
-                    return; // Pick one at a time
-                }
+            const dx = l.x - p.x;
+            const dy = l.y - p.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 80) {
+                const targetAngle = Math.atan2(dy, dx);
+                let angleDiff = Math.abs(this.getAngleDiff(pAngle, targetAngle));
+                candidates.push({ type: 'loot', entity: l, index: i, dist, angleDiff });
             }
         }
+
+        if (candidates.length === 0) return;
+
+        // 5. Prioritize by Angle (Smallest angle difference first)
+        // If angle difference is within 45 degrees, prioritize the one most centered.
+        // Otherwise, distance could be a factor, but here we'll stick to direction.
+        candidates.sort((a, b) => a.angleDiff - b.angleDiff);
+
+        const best = candidates[0];
+
+        // 6. Execute Interaction
+        if (best.type === 'tile') {
+            if (best.id === 'loot_box') {
+                let metadata = this.tileMap.getMetadata(best.x, best.y);
+                if (!metadata) {
+                    metadata = { items: new Array(16).fill(null) };
+                    this.tileMap.setTile(best.x, best.y, best.id, 'block', metadata);
+                }
+                if (!metadata.items || metadata.items.length !== 16) {
+                    const oldItems = metadata.items || [];
+                    metadata.items = new Array(16).fill(null);
+                    oldItems.forEach((item, i) => { if(i < 16) metadata.items[i] = item; });
+                }
+                this.inventory.openExternalStorage(metadata, 'chest');
+            } else if (best.id === 'door' || best.id === 'door_open') {
+                const nextId = (best.id === 'door') ? 'door_open' : 'door';
+                this.tileMap.setTile(best.x, best.y, nextId, 'block', this.tileMap.getMetadata(best.x, best.y));
+            }
+        } else if (best.type === 'vehicle') {
+            const result = best.entity.handleInteraction(p.x, p.y);
+            if (result && best.entity.isStorageOpen) {
+                this.inventory.openExternalStorage(best.entity, 'vehicle');
+            }
+        } else if (best.type === 'loot') {
+            if (this.inventory.addItem({ id: best.entity.itemId, count: best.entity.count })) {
+                best.entity.markedForDeletion = true;
+            }
+        }
+    }
+
+    getAngleDiff(a, b) {
+        let diff = b - a;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        return diff;
     }
 
     updateMinimapCache() {
@@ -544,7 +580,7 @@ export default class Game {
         for (let y = py - 1; y <= py + 1; y++) {
             for (let x = px - 1; x <= px + 1; x++) {
                 const blockId = this.tileMap.getTile(x, y, 'block');
-                if (blockId === 'loot_box') {
+                if (blockId === 'loot_box' || blockId === 'door' || blockId === 'door_open') {
                     const worldX = x * 64 + 32;
                     const worldY = y * 64 + 32;
                     const dist = Math.sqrt((this.player.x - worldX) ** 2 + (this.player.y - worldY) ** 2);
@@ -553,12 +589,14 @@ export default class Game {
                         const screenX = worldX - this.camera.x;
                         const screenY = worldY - this.camera.y;
 
+                        let label = "[F] 열기";
+                        if (blockId === 'door_open') label = "[F] 닫기";
+
                         ctx.fillStyle = '#fff';
                         ctx.font = 'bold 16px Arial';
                         ctx.textAlign = 'center';
-                        ctx.fillText("[F] 열기", screenX, screenY - 45);
+                        ctx.fillText(label, screenX, screenY - 45);
                         
-                        // Draw a small square prompt
                         ctx.strokeStyle = '#fff';
                         ctx.lineWidth = 2;
                         ctx.strokeRect(screenX - 10, screenY - 30, 20, 20);
