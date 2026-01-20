@@ -488,13 +488,6 @@ export default class Game {
 
     updateDaylight() {
         const hour = this.gameTime / 60;
-        
-        // Simple light curve: 
-        // 06:00 ~ 10:00 (Dawn/Sunrise) -> Increases
-        // 10:00 ~ 18:00 (Daylight) -> Max
-        // 18:00 ~ 22:00 (Sunset/Dusk) -> Decreases
-        // 22:00 ~ 06:00 (Night) -> Min (0.1 ~ 0.2 for visibility)
-
         if (hour >= 6 && hour < 10) {
             this.ambientLight = 0.2 + (hour - 6) / 4 * 0.8;
         } else if (hour >= 10 && hour < 18) {
@@ -504,6 +497,68 @@ export default class Game {
         } else {
             this.ambientLight = 0.2;
         }
+    }
+
+    isVisibleToPlayer(targetX, targetY) {
+        if (!this.player) return true;
+        
+        const dx = targetX - this.player.x;
+        const dy = targetY - this.player.y;
+        const distSq = dx * dx + dy * dy;
+
+        // 1. Proximity vision
+        if (distSq < 150 * 150) return true;
+
+        // 2. Max vision distance
+        if (distSq > 1600 * 1500) return false;
+
+        // 3. 100-degree FOV Angle check
+        const targetAngle = Math.atan2(dy, dx);
+        const angleDiff = Math.abs(this.getAngleDiff(this.player.facingAngle, targetAngle));
+        
+        // FOV (Normal: ~100 deg, Aiming: ~60 deg)
+        const fov = this.inventory.isAiming ? Math.PI * 0.17 : Math.PI * 0.28; 
+        return angleDiff < fov;
+    }
+
+    renderVisionOverlay(ctx) {
+        if (!this.player || this.gameState !== 'PLAYING') return;
+
+        const screenX = (this.player.x - this.camera.x) * this.zoom;
+        const screenY = (this.player.y - this.camera.y) * this.zoom;
+        const angle = this.player.facingAngle;
+
+        ctx.save();
+        
+        const fogCanvas = document.createElement('canvas');
+        fogCanvas.width = this.canvas.width;
+        fogCanvas.height = this.canvas.height;
+        const fCtx = fogCanvas.getContext('2d');
+
+        // Much lighter fog (0.25 opacity)
+        fCtx.fillStyle = 'rgba(0, 2, 8, 0.25)'; 
+        fCtx.fillRect(0, 0, fogCanvas.width, fogCanvas.height);
+
+        fCtx.globalCompositeOperation = 'destination-out';
+        
+        // 1. Sharp radial center
+        fCtx.fillStyle = 'white';
+        fCtx.beginPath();
+        fCtx.arc(screenX, screenY, 120, 0, Math.PI * 2);
+        fCtx.fill();
+
+        // 2. Focused Vision Cone (Front)
+        const visionDist = 2200 * this.zoom; 
+        const fov = this.inventory.isAiming ? Math.PI * 0.17 : Math.PI * 0.28;
+        
+        fCtx.beginPath();
+        fCtx.moveTo(screenX, screenY);
+        fCtx.arc(screenX, screenY, visionDist, angle - fov, angle + fov);
+        fCtx.closePath();
+        fCtx.fill();
+
+        ctx.drawImage(fogCanvas, 0, 0);
+        ctx.restore();
     }
 
     updateMinimapCache() {
@@ -684,17 +739,23 @@ export default class Game {
 
         // Render Enemies
         for (const e of this.enemies) {
-            e.render(this.ctx, this.camera);
+            if (this.isVisibleToPlayer(e.x, e.y)) {
+                e.render(this.ctx, this.camera);
+            }
         }
 
         // Render Projectiles
         for (const p of this.projectiles) {
-            p.render(this.ctx, this.camera);
+            if (this.isVisibleToPlayer(p.x, p.y)) {
+                p.render(this.ctx, this.camera);
+            }
         }
 
         // Render Loots
         for (const l of this.loots) {
-            l.render(this.ctx, this.camera);
+            if (this.isVisibleToPlayer(l.x, l.y)) {
+                l.render(this.ctx, this.camera);
+            }
         }
 
         // Render Grenades
@@ -704,13 +765,18 @@ export default class Game {
 
         // Render Vehicles
         for (const v of this.vehicles) {
-            v.render(this.ctx, this.camera);
+            if (this.isVisibleToPlayer(v.x, v.y)) {
+                v.render(this.ctx, this.camera);
+            }
         }
 
         // Render Tile Interaction Hints (e.g. Loot Boxes)
         this.renderTileInteractionHints(this.ctx);
 
         this.ctx.restore();
+
+        // Render Vision Fog (Over the world, under the UI)
+        this.renderVisionOverlay(this.ctx);
 
         // Render UI (Not affected by zoom)
         if (this.inventory) {

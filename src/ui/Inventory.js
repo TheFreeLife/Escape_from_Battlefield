@@ -1073,10 +1073,6 @@ export default class Inventory {
     renderHotbar(ctx) {
         if (this.isOpen) return;
 
-        if (this.aimProgress > 0) {
-            this.renderAimOverlay(ctx);
-        }
-
         const slotSize = 60;
         const padding = 10;
         const totalW = (slotSize + padding) * this.hotbarSlots - padding;
