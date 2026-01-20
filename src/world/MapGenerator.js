@@ -2,6 +2,8 @@ import { CHUNK_SIZE, TILE_SIZE } from './Chunk.js';
 import Enemy from '../entities/Enemy.js';
 import Loot from '../entities/Loot.js';
 import Vehicle from '../entities/Vehicle.js';
+import Tank from '../entities/Tank.js';
+import APC from '../entities/APC.js';
 import Noise from '../core/Noise.js';
 
 export default class MapGenerator {
@@ -93,48 +95,9 @@ export default class MapGenerator {
                 }
             }
 
-            // Entity Spawning (Enemies, Loot, Vehicles)
+            // Entity Spawning (Vehicles only)
             const spawnBiome = this.getBiomeAt(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
             if (spawnBiome) {
-                // Enemies
-                if (spawnBiome.enemies && spawnBiome.enemies.length > 0) {
-                    const enemyAttempts = 6;
-                    for (let i = 0; i < enemyAttempts; i++) {
-                        if (Math.random() < spawnBiome.spawnRate.enemies) {
-                            const ex = (cx * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * TILE_SIZE;
-                            const ey = (cy * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * TILE_SIZE;
-
-                            const player = this.game.player;
-                            let farEnough = true;
-                            if (player) {
-                                const dist = Math.sqrt((ex - player.x) ** 2 + (ey - player.y) ** 2);
-                                if (dist < 600) farEnough = false;
-                            }
-
-                            if (farEnough && !tileMap.isCollidable(ex, ey)) {
-                                const enemyId = spawnBiome.enemies[Math.floor(Math.random() * spawnBiome.enemies.length)];
-                                this.game.enemies.push(new Enemy(this.game, ex, ey, enemyId));
-                            }
-                        }
-                    }
-                }
-
-                // Ground Loot
-                if (spawnBiome.items && spawnBiome.items.length > 0) {
-                    const itemAttempts = 2;
-                    for (let i = 0; i < itemAttempts; i++) {
-                        if (Math.random() < spawnBiome.spawnRate.items) {
-                            const ix = (cx * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * TILE_SIZE;
-                            const iy = (cy * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * TILE_SIZE;
-
-                            if (!tileMap.isCollidable(ix, iy)) {
-                                const itemId = spawnBiome.items[Math.floor(Math.random() * spawnBiome.items.length)];
-                                this.game.loots.push(new Loot(this.game, ix, iy, itemId));
-                            }
-                        }
-                    }
-                }
-
                 // Vehicles
                 if (Math.random() < 0.05) {
                     const vx = (cx * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * TILE_SIZE;
@@ -192,7 +155,20 @@ export default class MapGenerator {
                     if (unitData && unitData.id) {
                         const ex = (startX + x) * TILE_SIZE + TILE_SIZE / 2;
                         const ey = (startY + y) * TILE_SIZE + TILE_SIZE / 2;
-                        this.game.enemies.push(new Enemy(this.game, ex, ey, unitData.id, unitData));
+                        
+                        const uid = unitData.id;
+                        if (uid.startsWith('v_')) {
+                            // Spawn Vehicle
+                            let v;
+                            if (uid === 'v_tank') v = new Tank(this.game, ex, ey);
+                            else if (uid === 'v_apc') v = new APC(this.game, ex, ey);
+                            else v = new Vehicle(this.game, ex, ey); // Default to truck
+                            this.game.vehicles.push(v);
+                            console.log(`Spawned ${uid} at ${ex}, ${ey}`);
+                        } else {
+                            // Spawn Enemy
+                            this.game.enemies.push(new Enemy(this.game, ex, ey, uid, unitData));
+                        }
                     }
 
                     if (itemId) {

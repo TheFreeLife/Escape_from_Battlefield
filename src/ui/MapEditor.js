@@ -182,9 +182,11 @@ export default class MapEditor {
         if (!palette) return;
         palette.innerHTML = '';
         
-        // 1. Units Layer: Fetch from enemies.json via AssetManager
+        // 1. Units Layer: Fetch enemies AND vehicles
         if (this.activeLayer === 'units') {
             const enemies = this.game.assetManager.getData('enemies') || [];
+            
+            // Render Enemies
             enemies.forEach(enemy => {
                 const div = document.createElement('div');
                 div.className = 'palette-tile';
@@ -194,7 +196,6 @@ export default class MapEditor {
                 previewCanvas.width = 50; previewCanvas.height = 50;
                 const pCtx = previewCanvas.getContext('2d');
                 
-                // Use enemy color for preview
                 pCtx.fillStyle = enemy.color || '#e74c3c';
                 pCtx.beginPath();
                 pCtx.arc(25, 25, 15, 0, Math.PI * 2);
@@ -204,6 +205,33 @@ export default class MapEditor {
                 div.title = enemy.name;
                 div.addEventListener('click', () => {
                     this.selectTile(enemy.id, div);
+                });
+                palette.appendChild(div);
+            });
+
+            // Render Vehicles
+            const vehicleTypes = [
+                { id: 'v_truck', name: '군용 트럭', color: '#4b5320' },
+                { id: 'v_tank', name: '전차 (Tank)', color: '#34495e' },
+                { id: 'v_apc', name: '장갑차 (APC)', color: '#1e8449' }
+            ];
+
+            vehicleTypes.forEach(v => {
+                const div = document.createElement('div');
+                div.className = 'palette-tile';
+                if (v.id === this.selectedTileId) div.classList.add('selected');
+                
+                const previewCanvas = document.createElement('canvas');
+                previewCanvas.width = 50; previewCanvas.height = 50;
+                const pCtx = previewCanvas.getContext('2d');
+                
+                pCtx.fillStyle = v.color;
+                pCtx.fillRect(10, 15, 30, 20);
+                
+                div.appendChild(previewCanvas);
+                div.title = v.name;
+                div.addEventListener('click', () => {
+                    this.selectTile(v.id, div);
                 });
                 palette.appendChild(div);
             });
@@ -295,15 +323,20 @@ export default class MapEditor {
             if (tileId === null) {
                 cell.unit = null;
             } else {
-                // Just set the unit, settings are now handled by right-click
-                cell.unit = {
-                    id: tileId,
-                    command: 'GUARD',
-                    patrolRadius: 250,
-                    healthMult: 1.0,
-                    damageMult: 1.0,
-                    speedMult: 1.0
-                };
+                // If it's a vehicle (starts with v_), just place it
+                if (tileId.startsWith('v_')) {
+                    cell.unit = { id: tileId };
+                } else {
+                    // Just set the unit, settings are now handled by right-click
+                    cell.unit = {
+                        id: tileId,
+                        command: 'GUARD',
+                        patrolRadius: 250,
+                        healthMult: 1.0,
+                        damageMult: 1.0,
+                        speedMult: 1.0
+                    };
+                }
             }
         } else if (layer === 'items') {
             cell.item = tileId;
@@ -459,7 +492,8 @@ export default class MapEditor {
             if (this.lastRightDown && !input.mouse.rightDown && !isOverUI && !isModalOpen) {
                 if ((this.rightClickMoveDist || 0) < 5) {
                     const cell = this.getTileAt(gx, gy);
-                    if (cell.unit) {
+                    // Only open settings for actual enemies, not vehicles (v_*)
+                    if (cell.unit && !cell.unit.id.startsWith('v_')) {
                         this.openUnitSettings(gx, gy);
                     } else if (cell.block === 'loot_box') {
                         this.openLootSettings(gx, gy);
@@ -696,21 +730,34 @@ export default class MapEditor {
                     ctx.fillRect(tx + ts*0.25, ty + ts*0.25, ts*0.5, ts*0.5);
                 }
             }
-            // 4. Unit
+            // 4. Unit / Vehicle
             if (cell.unit) {
-                const def = enemiesData.find(e => e.id === cell.unit.id);
-                ctx.fillStyle = def ? def.color : '#e74c3c';
-                ctx.beginPath();
-                ctx.arc(tx + ts/2, ty + ts/2, ts * 0.35, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
-                ctx.fillStyle = '#fff';
-                ctx.font = `bold ${Math.max(8, ts * 0.2)}px Arial`;
-                ctx.textAlign = 'center';
-                ctx.fillText(cell.unit.command, tx + ts/2, ty + ts * 0.85);
+                if (cell.unit.id.startsWith('v_')) {
+                    // Render Vehicle Placeholder
+                    let vColor = '#4b5320';
+                    if (cell.unit.id === 'v_tank') vColor = '#34495e';
+                    if (cell.unit.id === 'v_apc') vColor = '#1e8449';
+                    
+                    ctx.fillStyle = vColor;
+                    ctx.fillRect(tx + ts*0.1, ty + ts*0.2, ts*0.8, ts*0.6);
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(tx + ts*0.1, ty + ts*0.2, ts*0.8, ts*0.6);
+                } else {
+                    const def = enemiesData.find(e => e.id === cell.unit.id);
+                    ctx.fillStyle = def ? def.color : '#e74c3c';
+                    ctx.beginPath();
+                    ctx.arc(tx + ts/2, ty + ts/2, ts * 0.35, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#fff';
+                    ctx.font = `bold ${Math.max(8, ts * 0.2)}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(cell.unit.command, tx + ts/2, ty + ts * 0.85);
+                }
             }
         });
 
