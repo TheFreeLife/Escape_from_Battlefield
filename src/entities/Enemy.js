@@ -1,5 +1,5 @@
 export default class Enemy {
-    constructor(game, x, y, enemyId = 'soldier') {
+    constructor(game, x, y, enemyId = 'soldier', config = null) {
         this.game = game;
         this.x = x;
         this.y = y;
@@ -13,12 +13,12 @@ export default class Enemy {
             radius: 32
         };
 
-        this.speed = data.speed;
+        this.speed = data.speed * (config?.speedMult || 1.0);
         this.radius = data.radius;
         this.color = data.color;
-        this.maxHealth = data.health;
-        this.health = data.health;
-        this.attackDamage = data.damage;
+        this.maxHealth = data.health * (config?.healthMult || 1.0);
+        this.health = this.maxHealth;
+        this.attackDamage = data.damage * (config?.damageMult || 1.0);
 
         this.isDead = false;
         this.attackCooldown = 1.0;
@@ -28,28 +28,32 @@ export default class Enemy {
         this.spawnX = x;
         this.spawnY = y;
 
-        // Randomly assign initial command
-        const commands = ['PATROL', 'GUARD', 'SURRENDER'];
-        const weights = [0.45, 0.45, 0.1]; // 45% Patrol, 45% Guard, 10% Surrender
-        const rand = Math.random();
-        let cumulative = 0;
-        for (let i = 0; i < commands.length; i++) {
-            cumulative += weights[i];
-            if (rand < cumulative) {
-                this.command = commands[i];
-                break;
+        if (config && config.command) {
+            this.command = config.command;
+        } else {
+            // Randomly assign initial command if no config
+            const commands = ['PATROL', 'GUARD', 'SURRENDER'];
+            const weights = [0.45, 0.45, 0.1]; // 45% Patrol, 45% Guard, 10% Surrender
+            const rand = Math.random();
+            let cumulative = 0;
+            for (let i = 0; i < commands.length; i++) {
+                cumulative += weights[i];
+                if (rand < cumulative) {
+                    this.command = commands[i];
+                    break;
+                }
             }
         }
 
         this.aiState = this.command === 'SURRENDER' ? 'SURRENDER' : 'IDLE';
         this.detectRadius = 400; // Radius to spot player
-        this.patrolRadius = 250; // Radius to wander around spawn
+        this.patrolRadius = config?.patrolRadius || 250; // Radius to wander around spawn
         this.patrolTarget = null;
         this.patrolPauseTimer = 0;
 
         this.isCollidable = true;
         this.weight = 100;
-        console.log(`Enemy spawned with command: ${this.command}`);
+        console.log(`Enemy ${enemyId} spawned with command: ${this.command} at ${x}, ${y}`);
     }
 
     update(dt) {

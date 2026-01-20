@@ -83,6 +83,11 @@ export default class Game {
 
         // Reset Game World
         this.resetGame();
+
+        // Place test structure globally once
+        if (this.mapGenerator && layout) {
+            this.mapGenerator.placeStructure(this.tileMap, { layout: layout }, 10, 10);
+        }
     }
 
     resetGame() {

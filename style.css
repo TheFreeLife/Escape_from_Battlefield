@@ -228,3 +228,64 @@ body, html {
 .hidden {
     display: none !important;
 }
+
+#unit-settings-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(20, 20, 20, 0.95);
+    border: 2px solid #f1c40f;
+    padding: 20px;
+    z-index: 1000;
+    color: white;
+    border-radius: 10px;
+    box-shadow: 0 0 50px rgba(0,0,0,0.8);
+    min-width: 250px;
+}
+
+.modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.modal-content h4 {
+    margin: 0 0 10px 0;
+    color: #f1c40f;
+    text-align: center;
+}
+
+.modal-content label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+}
+
+.modal-content input, .modal-content select {
+    background: #333;
+    border: 1px solid #555;
+    color: white;
+    padding: 5px;
+    border-radius: 3px;
+    width: 100px;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    gap: 10px;
+}
+
+.modal-buttons button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#unit-settings-save { background: #27ae60; color: white; }
+#unit-settings-cancel { background: #7f8c8d; color: white; }

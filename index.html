@@ -22,6 +22,29 @@
         </div>
 
         <div id="editor-ui" class="hidden">
+            <!-- Unit Settings Modal -->
+            <div id="unit-settings-modal" class="hidden">
+                <div class="modal-content">
+                    <h4>유닛 설정</h4>
+                    <label>상태: 
+                        <select id="unit-command">
+                            <option value="GUARD">경계 (Guard)</option>
+                            <option value="PATROL">순찰 (Patrol)</option>
+                            <option value="SURRENDER">항복 (Surrender)</option>
+                        </select>
+                    </label>
+                    <label>순찰 반경: <input type="number" id="unit-patrol-radius" value="250" step="10"></label>
+                    <label>체력 배율: <input type="number" id="unit-health-mult" value="1.0" step="0.1"></label>
+                    <label>공격력 배율: <input type="number" id="unit-damage-mult" value="1.0" step="0.1"></label>
+                    <label>속도 배율: <input type="number" id="unit-speed-mult" value="1.0" step="0.1"></label>
+                    <div class="modal-buttons">
+                        <button id="unit-settings-save">저장</button>
+                        <button id="unit-settings-cancel">취소</button>
+                        <button id="unit-settings-delete" style="background-color: #e74c3c;">삭제</button>
+                    </div>
+                </div>
+            </div>
+
             <div id="editor-sidebar">
                 <h3>Tools</h3>
                 <div id="tool-palette">
@@ -41,6 +64,7 @@
                 <div id="layer-selection">
                     <label><input type="radio" name="active-layer" value="floor" checked> 바닥 (Floor)</label>
                     <label><input type="radio" name="active-layer" value="block"> 블럭 (Block)</label>
+                    <label><input type="radio" name="active-layer" value="units"> 유닛 (Units)</label>
                 </div>
                 <h3>Tile Palette</h3>
                 <div id="tile-palette"></div>
