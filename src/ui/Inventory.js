@@ -38,6 +38,9 @@ export default class Inventory {
         this.craftingSlots = new Array(6).fill(null);
         this.craftingResult = null;
         this.isCraftingOpen = false;
+        this.craftingTab = 'CRAFT'; // 'CRAFT' or 'MOD'
+        this.modWeaponSlot = null; // Weapon being modified
+        this.modAttachmentSlots = { optic: null, barrel: null, underbarrel: null };
 
         // Reload system
         this.isReloading = false;
@@ -146,13 +149,21 @@ export default class Inventory {
         if (!this.isOpen) {
             this.closeExternalStorage();
             this.isCraftingOpen = false;
-            // Return crafting items to inventory
+            
+            // Return crafting items
             for (let i = 0; i < 6; i++) {
                 if (this.craftingSlots[i]) {
-                    if (!this.addItem(this.craftingSlots[i])) { /* Drop TBD */ }
+                    if (!this.addItem(this.craftingSlots[i])) { }
                     this.craftingSlots[i] = null;
                 }
             }
+            // Return Mod items
+            if (this.modWeaponSlot) {
+                this.addItem(this.modWeaponSlot);
+                this.modWeaponSlot = null;
+                this.modAttachmentSlots = { optic: null, barrel: null, underbarrel: null };
+            }
+
             this.craftingResult = null;
             if (this.heldItem) {
                 if (!this.addItem(this.heldItem)) { }
@@ -588,7 +599,7 @@ export default class Inventory {
         this.hoveredSlotInfo = null;
         const layout = this.getLayout();
 
-        // Check external storage
+        // 1. Check External Storage
         if (this.isExternalStorageOpen) {
             const storageItems = this.currentExternalStorage.storage || this.currentExternalStorage.items;
             layout.externalStorage.forEach((rect, i) => {
@@ -599,20 +610,33 @@ export default class Inventory {
             if (this.hoveredSlotInfo) return;
         }
 
-        // Check crafting slots
+        // 2. Check Crafting/Mod Slots
         if (this.isCraftingOpen) {
-            layout.craftingInput.forEach((rect, i) => {
-                if (this.pointInRect(mx, my, rect) && this.craftingSlots[i]) {
-                    this.hoveredSlotInfo = { item: this.craftingSlots[i], x: rect.x, y: rect.y, size: rect.size };
+            if (this.craftingTab === 'CRAFT') {
+                layout.craftingInput.forEach((rect, i) => {
+                    if (this.pointInRect(mx, my, rect) && this.craftingSlots[i]) {
+                        this.hoveredSlotInfo = { item: this.craftingSlots[i], x: rect.x, y: rect.y, size: rect.size };
+                    }
+                });
+                if (layout.craftingResult && this.pointInRect(mx, my, layout.craftingResult) && this.craftingResult) {
+                    this.hoveredSlotInfo = { item: this.craftingResult, x: layout.craftingResult.x, y: layout.craftingResult.y, size: layout.craftingResult.size };
                 }
-            });
-            if (layout.craftingResult && this.pointInRect(mx, my, layout.craftingResult) && this.craftingResult) {
-                this.hoveredSlotInfo = { item: this.craftingResult, x: layout.craftingResult.x, y: layout.craftingResult.y, size: layout.craftingResult.size };
+            } else {
+                // MOD Tab
+                if (layout.modWeaponSlot && this.pointInRect(mx, my, layout.modWeaponSlot) && this.modWeaponSlot) {
+                    this.hoveredSlotInfo = { item: this.modWeaponSlot, x: layout.modWeaponSlot.x, y: layout.modWeaponSlot.y, size: layout.modWeaponSlot.size };
+                }
+                for (const key in layout.modAttachmentSlots) {
+                    const rect = layout.modAttachmentSlots[key];
+                    if (this.pointInRect(mx, my, rect) && this.modAttachmentSlots[key]) {
+                        this.hoveredSlotInfo = { item: this.modAttachmentSlots[key], x: rect.x, y: rect.y, size: rect.size };
+                    }
+                }
             }
             if (this.hoveredSlotInfo) return;
         }
 
-        // Check storage
+        // 3. Check Inventory storage
         for (let i = 0; i < this.slots; i++) {
             const rect = layout.storage[i];
             if (this.pointInRect(mx, my, rect) && this.items[i]) {
@@ -654,8 +678,19 @@ export default class Inventory {
 
         const maxStack = 999;
 
-        // 0. Crafting Logic
+        // 0. Crafting & Mod Tab Switch
         if (this.isCraftingOpen) {
+            for (const key in layout.craftingTabs) {
+                const tab = layout.craftingTabs[key];
+                if (mx >= tab.x && mx <= tab.x + tab.w && my >= tab.y && my <= tab.y + tab.h) {
+                    this.craftingTab = key.toUpperCase();
+                    return;
+                }
+            }
+        }
+
+        // 0. Crafting Logic
+        if (this.isCraftingOpen && this.craftingTab === 'CRAFT') {
             // Input Slots
             for (let i = 0; i < 6; i++) {
                 const rect = layout.craftingInput[i];
@@ -694,6 +729,66 @@ export default class Inventory {
                     this.heldItem.count++;
                     this.onCraftingTake();
                     return;
+                }
+            }
+        }
+
+        // 0. MOD Logic
+        if (this.isCraftingOpen && this.craftingTab === 'MOD') {
+            // Main Weapon Slot
+            const wRect = layout.modWeaponSlot;
+            if (this.pointInRect(mx, my, wRect)) {
+                if (this.heldItem) {
+                    const hDef = this.getItemDef(this.heldItem.id);
+                    if (hDef?.type !== 'weapon' || hDef?.subType === 'melee') return;
+                }
+                
+                if (this.modWeaponSlot) {
+                    // BEFORE taking or swapping, make sure ALL current attachments are saved into the weapon object
+                    if (!this.modWeaponSlot.attachments) this.modWeaponSlot.attachments = { optic: null, barrel: null, underbarrel: null };
+                    this.modWeaponSlot.attachments.optic = this.modAttachmentSlots.optic;
+                    this.modWeaponSlot.attachments.barrel = this.modAttachmentSlots.barrel;
+                    this.modWeaponSlot.attachments.underbarrel = this.modAttachmentSlots.underbarrel;
+                }
+
+                // Now handle the swap/pickup
+                const temp = this.modWeaponSlot;
+                this.modWeaponSlot = this.heldItem;
+                this.heldItem = temp;
+
+                // If we just put a NEW weapon in, load its attachments into UI slots
+                if (this.modWeaponSlot) {
+                    if (!this.modWeaponSlot.attachments) this.modWeaponSlot.attachments = { optic: null, barrel: null, underbarrel: null };
+                    this.modAttachmentSlots.optic = this.modWeaponSlot.attachments.optic || null;
+                    this.modAttachmentSlots.barrel = this.modWeaponSlot.attachments.barrel || null;
+                    this.modAttachmentSlots.underbarrel = this.modWeaponSlot.attachments.underbarrel || null;
+                } else {
+                    // Emptying the slot
+                    this.modAttachmentSlots = { optic: null, barrel: null, underbarrel: null };
+                }
+                return;
+            }
+
+            // Attachment Slots
+            if (this.modWeaponSlot) {
+                for (const slotKey in layout.modAttachmentSlots) {
+                    const rect = layout.modAttachmentSlots[slotKey];
+                    if (this.pointInRect(mx, my, rect)) {
+                        const hDef = this.heldItem ? this.getItemDef(this.heldItem.id) : null;
+                        
+                        // Check if held item is an attachment for this slot
+                        if (this.heldItem && (hDef?.type !== 'attachment' || hDef?.slot !== slotKey)) return;
+
+                        // Swap & Sync with weapon data
+                        const temp = this.modAttachmentSlots[slotKey];
+                        this.modAttachmentSlots[slotKey] = this.heldItem;
+                        this.heldItem = temp;
+                        
+                        // Apply to weapon object
+                        if (!this.modWeaponSlot.attachments) this.modWeaponSlot.attachments = {};
+                        this.modWeaponSlot.attachments[slotKey] = this.modAttachmentSlots[slotKey];
+                        return;
+                    }
                 }
             }
         }
@@ -981,24 +1076,46 @@ export default class Inventory {
             craftingResult: null
         };
 
-        // Crafting Layout (3x2 Grid)
+        // Crafting Layout
         if (this.isCraftingOpen) {
-            const startX = winX + 80;
-            const startY = winY + 80;
-            for (let i = 0; i < 6; i++) {
-                layout.craftingInput.push({
-                    x: startX + (i % 3) * (slotSize + padding),
-                    y: startY + Math.floor(i / 3) * (slotSize + padding),
-                    size: slotSize
-                });
-            }
-            layout.craftingResult = {
-                x: startX + 4 * (slotSize + padding) + 10,
-                y: startY + (slotSize + padding) * 0.5,
-                size: slotSize
+            // Tab Buttons
+            layout.craftingTabs = {
+                craft: { x: winX + 25, y: winY + 50, w: 80, h: 25, label: 'CRAFT' },
+                mod: { x: winX + 110, y: winY + 50, w: 80, h: 25, label: 'MOD' }
             };
-            layout.craftingArrowX = startX + 3.5 * (slotSize + padding);
-            layout.craftingArrowY = startY + (slotSize + padding) - 5;
+
+            if (this.craftingTab === 'CRAFT') {
+                const startX = winX + 80;
+                const startY = winY + 90;
+                for (let i = 0; i < 6; i++) {
+                    layout.craftingInput.push({
+                        x: startX + (i % 3) * (slotSize + padding),
+                        y: startY + Math.floor(i / 3) * (slotSize + padding),
+                        size: slotSize
+                    });
+                }
+                layout.craftingResult = {
+                    x: startX + 4 * (slotSize + padding) + 10,
+                    y: startY + (slotSize + padding) * 0.5,
+                    size: slotSize
+                };
+                layout.craftingArrowX = startX + 3.5 * (slotSize + padding);
+                layout.craftingArrowY = startY + (slotSize + padding) - 5;
+            } else {
+                // MOD Tab Layout
+                const startX = winX + 150;
+                const startY = winY + 100;
+                
+                // Main Weapon Slot
+                layout.modWeaponSlot = { x: startX, y: startY, size: slotSize * 1.5 };
+                
+                // Attachment Slots around weapon
+                layout.modAttachmentSlots = {
+                    optic: { x: startX + 100, y: startY - 20, size: slotSize, label: 'Optic' },
+                    barrel: { x: startX + 100, y: startY + 40, size: slotSize, label: 'Barrel' },
+                    underbarrel: { x: startX - 80, y: startY + 40, size: slotSize, label: 'Under' }
+                };
+            }
         }
 
         // External Storage Slots
@@ -1092,22 +1209,44 @@ export default class Inventory {
             ctx.fillText("Inventory", win.x + 25, storage[0].y - 15);
         } else if (this.isCraftingOpen) {
             ctx.fillStyle = '#f1c40f';
-            ctx.fillText("Gun Workbench", win.x + 25, win.y + 40);
+            ctx.fillText("Gun Workbench", win.x + 25, win.y + 35);
             
-            // Draw Input Slots
-            layout.craftingInput.forEach((rect, i) => {
-                this.drawSlot(ctx, rect, this.craftingSlots[i], false);
-            });
+            // Draw Tabs
+            for (const key in layout.craftingTabs) {
+                const tab = layout.craftingTabs[key];
+                const isActive = (key.toUpperCase() === this.craftingTab);
+                ctx.fillStyle = isActive ? '#f1c40f' : '#333';
+                ctx.fillRect(tab.x, tab.y, tab.w, tab.h);
+                ctx.fillStyle = isActive ? '#000' : '#aaa';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(tab.label, tab.x + tab.w / 2, tab.y + 17);
+                ctx.textAlign = 'left';
+            }
 
-            // Draw Arrow
-            ctx.fillStyle = '#fff';
-            ctx.font = '30px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText("→", layout.craftingArrowX, layout.craftingArrowY);
-            ctx.textAlign = 'left';
+            if (this.craftingTab === 'CRAFT') {
+                // Draw Input Slots
+                layout.craftingInput.forEach((rect, i) => {
+                    this.drawSlot(ctx, rect, this.craftingSlots[i], false);
+                });
 
-            // Draw Result
-            this.drawSlot(ctx, layout.craftingResult, this.craftingResult, false, 'Result');
+                // Draw Arrow
+                ctx.fillStyle = '#fff';
+                ctx.font = '30px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText("→", layout.craftingArrowX, layout.craftingArrowY);
+                ctx.textAlign = 'left';
+
+                // Draw Result
+                this.drawSlot(ctx, layout.craftingResult, this.craftingResult, false, 'Result');
+            } else {
+                // Draw MOD Tab
+                this.drawSlot(ctx, layout.modWeaponSlot, this.modWeaponSlot, false, 'Weapon');
+                for (const slot in layout.modAttachmentSlots) {
+                    const rect = layout.modAttachmentSlots[slot];
+                    this.drawSlot(ctx, rect, this.modAttachmentSlots[slot], false, rect.label);
+                }
+            }
             
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 20px Arial';
@@ -1172,54 +1311,88 @@ export default class Inventory {
         if (!itemDef) return;
 
         const padding = 12;
-        const titleHeight = 25;
-        const typeHeight = 20;
-        const w = 180;
-        const h = titleHeight + typeHeight + padding * 2;
+        const w = 200;
+        
+        // --- 1. Calculate Total Height First ---
+        let totalH = padding;
+        
+        // Name & Type
+        totalH += 20; // Title
+        totalH += 15; // Type
+        totalH += 10; // Spacer
+
+        // Description height calculation
+        if (itemDef.description) {
+            const words = itemDef.description.split(' ');
+            let line = '';
+            for (const word of words) {
+                if (ctx.measureText(line + word).width > w - padding * 2) {
+                    totalH += 15;
+                    line = word + ' ';
+                } else {
+                    line += word + ' ';
+                }
+            }
+            totalH += 15; // Last line
+            totalH += 10; // Spacer
+        }
+
+        // Stats height
+        if (itemDef.type === 'weapon') {
+            totalH += 35; // Damage & Fire Rate
+            if (info.item.attachments) {
+                totalH += 25; // Header
+                totalH += Object.keys(info.item.attachments).length * 15; // Slots
+            }
+        }
+        totalH += padding;
 
         // Position near slot, but keep inside canvas
         let tx = info.x + info.size + 10;
         let ty = info.y;
         if (tx + w > this.game.canvas.width) tx = info.x - w - 10;
-        if (ty + h > this.game.canvas.height) ty = this.game.canvas.height - h - 10;
+        if (ty + totalH > this.game.canvas.height) ty = this.game.canvas.height - totalH - 10;
 
-        // Shadow/BG
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-        ctx.fillRect(tx, ty, w, h);
+        // --- 2. Draw Background ---
+        ctx.save();
+        ctx.fillStyle = 'rgba(5, 5, 5, 0.95)';
+        ctx.fillRect(tx, ty, w, totalH);
         ctx.strokeStyle = itemDef.color || '#fff';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(tx, ty, w, h);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(tx, ty, w, totalH);
+
+        // --- 3. Draw Content ---
+        let currentY = ty + padding;
 
         // Name
         ctx.fillStyle = itemDef.color || '#fff';
-        ctx.font = 'bold 15px Arial';
-        ctx.fillText(itemDef.name, tx + padding, ty + padding + 15);
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(itemDef.name, tx + padding, currentY + 15);
+        currentY += 22;
 
         // Type
         ctx.fillStyle = '#aaa';
         ctx.font = 'italic 11px Arial';
-        ctx.fillText(itemDef.type.toUpperCase(), tx + padding, ty + padding + 35);
-
-        let currentY = ty + padding + 55;
+        ctx.fillText(itemDef.type.toUpperCase(), tx + padding, currentY + 10);
+        currentY += 20;
 
         // Description
         if (itemDef.description) {
             ctx.fillStyle = '#eee';
             ctx.font = '12px Arial';
-            // Simple word wrap
             const words = itemDef.description.split(' ');
             let line = '';
             for (const word of words) {
                 if (ctx.measureText(line + word).width > w - padding * 2) {
-                    ctx.fillText(line, tx + padding, currentY);
+                    ctx.fillText(line, tx + padding, currentY + 10);
                     line = word + ' ';
                     currentY += 15;
                 } else {
                     line += word + ' ';
                 }
             }
-            ctx.fillText(line, tx + padding, currentY);
-            currentY += 20;
+            ctx.fillText(line, tx + padding, currentY + 10);
+            currentY += 25;
         }
 
         // Stats
@@ -1229,49 +1402,31 @@ export default class Inventory {
             ctx.fillText(`Damage: ${itemDef.damage || 1}`, tx + padding, currentY);
             currentY += 15;
             ctx.fillText(`Fire Rate: ${itemDef.fireRate || 0.2}s`, tx + padding, currentY);
-            currentY += 15;
-        }
+            currentY += 20;
 
-        // Adjust background height (Redraw)
-        const finalH = currentY - ty + padding;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-        ctx.fillRect(tx, ty, w, finalH);
-        ctx.strokeStyle = itemDef.color || '#fff';
-        ctx.strokeRect(tx, ty, w, finalH);
-
-        // Redraw text over background
-        ctx.fillStyle = itemDef.color || '#fff';
-        ctx.font = 'bold 15px Arial';
-        ctx.fillText(itemDef.name, tx + padding, ty + padding + 15);
-        ctx.fillStyle = '#aaa';
-        ctx.font = 'italic 11px Arial';
-        ctx.fillText(itemDef.type.toUpperCase(), tx + padding, ty + padding + 35);
-
-        currentY = ty + padding + 55;
-        if (itemDef.description) {
-            ctx.fillStyle = '#eee';
-            ctx.font = '12px Arial';
-            const words = itemDef.description.split(' ');
-            let line = '';
-            for (const word of words) {
-                if (ctx.measureText(line + word).width > w - padding * 2) {
-                    ctx.fillText(line, tx + padding, currentY);
-                    line = word + ' ';
+            // Attachments List
+            if (info.item.attachments) {
+                ctx.fillStyle = '#5dade2';
+                ctx.font = 'bold 12px Arial';
+                ctx.fillText("MODIFICATIONS:", tx + padding, currentY);
+                currentY += 18;
+                ctx.font = 'bold 11px Arial';
+                
+                for (const slotKey in info.item.attachments) {
+                    const attach = info.item.attachments[slotKey];
+                    const aDef = attach ? this.getItemDef(attach.id) : null;
+                    if (attach) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillText(`• ${slotKey.toUpperCase()}: ${aDef ? aDef.name : 'Unknown'}`, tx + padding + 5, currentY);
+                    } else {
+                        ctx.fillStyle = '#777777';
+                        ctx.fillText(`• ${slotKey.toUpperCase()}: NONE`, tx + padding + 5, currentY);
+                    }
                     currentY += 15;
-                } else {
-                    line += word + ' ';
                 }
             }
-            ctx.fillText(line, tx + padding, currentY);
-            currentY += 20;
         }
-        if (itemDef.type === 'weapon') {
-            ctx.fillStyle = '#f1c40f';
-            ctx.font = 'bold 12px Arial';
-            ctx.fillText(`Damage: ${itemDef.damage || 1}`, tx + padding, currentY);
-            currentY += 15;
-            ctx.fillText(`Fire Rate: ${itemDef.fireRate || 0.2}s`, tx + padding, currentY);
-        }
+        ctx.restore();
     }
 
     drawSlot(ctx, rect, item, isSelected, label) {
