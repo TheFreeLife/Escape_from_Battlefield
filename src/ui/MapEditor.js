@@ -69,6 +69,12 @@ export default class MapEditor {
         return { w: 1, h: 1 };
     }
 
+    getTileSize(id) {
+        const tiles = this.game.assetManager.getData('tiles') || [];
+        const tile = tiles.find(t => t.id === id);
+        return { w: tile?.width || 1, h: tile?.height || 1 };
+    }
+
     selectTool(tool) {
         document.querySelectorAll('.tool-btn, .sub-tool-btn').forEach(el => el.classList.remove('selected'));
         const btn = document.getElementById(`tool-${tool}`);
@@ -172,65 +178,86 @@ export default class MapEditor {
         const key = `${x},${y}`;
         const cell = this.tiles.get(key) || { floor: null, block: null, unit: null, item: null, metadata: null };
         
-        if (layer === 'units') {
-            if (tileId === null) {
-                if (cell.unit && (cell.unit.id.startsWith('v_') || cell.unit.id === 'occupied_space')) {
-                    const masterKey = cell.unit.id === 'occupied_space' ? cell.unit.master : key;
-                    const [mx, my] = masterKey.split(',').map(Number);
-                    const masterCell = this.tiles.get(masterKey);
-                    if (masterCell && masterCell.unit) {
-                        const { w, h } = this.getUnitSize(masterCell.unit.id);
-                        for (let oy = 0; oy < h; oy++) {
-                            for (let ox = 0; ox < w; ox++) {
-                                const tKey = `${mx + ox},${my + oy}`;
-                                const tCell = this.tiles.get(tKey);
-                                if (tCell) {
-                                    tCell.unit = null;
-                                    if (tCell.floor === null && tCell.block === null && tCell.unit === null && tCell.item === null) this.tiles.delete(tKey);
-                                }
-                            }
-                        }
+        // 1. Get size definition
+        const size = (layer === 'units') ? this.getUnitSize(tileId) : this.getTileSize(tileId);
+        
+        // 2. Erasing Logic
+        if (tileId === null) {
+            const currentItem = cell[layer];
+            if (!currentItem) return;
+
+            // Handle erasing of occupied space or master
+            const isOccupied = (layer === 'units' && (currentItem.id === 'occupied_space' || currentItem.id === 'v_reserved')) ||
+                             ((layer === 'floor' || layer === 'block') && currentItem === 'occupied_space');
+            
+            const masterKey = isOccupied ? (cell.metadata?.[layer + 'Master'] || (cell.unit?.master)) : key;
+            if (!masterKey) return;
+
+            const [mx, my] = masterKey.split(',').map(Number);
+            const masterCell = this.tiles.get(masterKey);
+            if (!masterCell) return;
+
+            const mItem = masterCell[layer];
+            const mSize = (layer === 'units') ? this.getUnitSize(mItem.id) : this.getTileSize(mItem);
+
+            for (let oy = 0; oy < mSize.h; oy++) {
+                for (let ox = 0; ox < mSize.w; ox++) {
+                    const tKey = `${mx + ox},${my + oy}`;
+                    const tCell = this.tiles.get(tKey);
+                    if (tCell) {
+                        tCell[layer] = null;
+                        if (tCell.metadata) delete tCell.metadata[layer + 'Master'];
+                        if (tCell.floor === null && tCell.block === null && tCell.unit === null && tCell.item === null) this.tiles.delete(tKey);
                     }
-                    return;
-                }
-                cell.unit = null;
-            } else {
-                const { w, h } = this.getUnitSize(tileId);
-                if (w > 1 || h > 1) {
-                    if (phase !== 'start') return;
-                    let occupied = false;
-                    for (let oy = 0; oy < h; oy++) {
-                        for (let ox = 0; ox < w; ox++) {
-                            const tCell = this.getTileAt(x + ox, y + oy);
-                            if (tCell.unit && tCell.unit.id !== null) {
-                                if (tCell.unit.id !== 'occupied_space' || tCell.unit.master !== key) occupied = true;
-                            }
-                        }
-                    }
-                    if (occupied) { if (!confirm("겹치는 유닛이 있습니다. 덮어씌우시겠습니까?")) return; }
-                    for (let oy = 0; oy < h; oy++) {
-                        for (let ox = 0; ox < w; ox++) {
-                            const tKey = `${x + ox},${y + oy}`;
-                            const tCell = this.tiles.get(tKey) || { floor: null, block: null, unit: null, item: null, metadata: null };
-                            if (ox === 0 && oy === 0) tCell.unit = { id: tileId, w, h };
-                            else tCell.unit = { id: 'occupied_space', master: key };
-                            this.tiles.set(tKey, tCell);
-                        }
-                    }
-                    return;
-                } else {
-                    if (cell.unit && cell.unit.id === 'occupied_space') return; 
-                    cell.unit = { id: tileId, command: 'GUARD', patrolRadius: 250, healthMult: 1.0, damageMult: 1.0, speedMult: 1.0 };
                 }
             }
+            return;
+        }
+
+        // 3. Multi-tile Placement Logic
+        if (size.w > 1 || size.h > 1) {
+            if (phase !== 'start') return;
+
+            // Collision check with existing units/blocks if needed (Optional)
+            
+            for (let oy = 0; oy < size.h; oy++) {
+                for (let ox = 0; ox < size.w; ox++) {
+                    const tKey = `${x + ox},${y + oy}`;
+                    const tCell = this.tiles.get(tKey) || { floor: null, block: null, unit: null, item: null, metadata: null };
+                    
+                    if (ox === 0 && oy === 0) {
+                        if (layer === 'units') {
+                            tCell.unit = { id: tileId, w: size.w, h: size.h, command: 'GUARD', patrolRadius: 250, healthMult: 1.0, damageMult: 1.0, speedMult: 1.0 };
+                        } else {
+                            tCell[layer] = tileId;
+                            if (layer === 'block' && tileId === 'loot_box' && !tCell.metadata) tCell.metadata = { lootTable: [] };
+                        }
+                    } else {
+                        if (layer === 'units') {
+                            tCell.unit = { id: 'occupied_space', master: key };
+                        } else {
+                            tCell[layer] = 'occupied_space';
+                            if (!tCell.metadata) tCell.metadata = {};
+                            tCell.metadata[layer + 'Master'] = key;
+                        }
+                    }
+                    this.tiles.set(tKey, tCell);
+                }
+            }
+            return;
+        }
+
+        // 4. Single-tile Placement Logic
+        if (layer === 'units') {
+            cell.unit = { id: tileId, command: 'GUARD', patrolRadius: 250, healthMult: 1.0, damageMult: 1.0, speedMult: 1.0 };
         } else if (layer === 'items') {
             cell.item = tileId;
         } else {
             cell[layer] = tileId;
             if (layer === 'block' && tileId === 'loot_box' && !cell.metadata) cell.metadata = { lootTable: [] };
         }
-        if (cell.floor === null && cell.block === null && cell.unit === null && cell.item === null) this.tiles.delete(key);
-        else this.tiles.set(key, cell);
+        
+        this.tiles.set(key, cell);
     }
 
     openLootSettings(gx, gy) {
@@ -474,15 +501,16 @@ export default class MapEditor {
             const [gx, gy] = key.split(',').map(Number);
             if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
             const tx = this.offsetX + gx * ts, ty = this.offsetY + gy * ts;
-            if (cell.floor) {
+            if (cell.floor && cell.floor !== 'occupied_space') {
                 const img = this.game.assetManager.get(cell.floor);
                 if (img) ctx.drawImage(img, tx, ty, ts, ts);
                 else { ctx.fillStyle = '#333'; ctx.fillRect(tx, ty, ts, ts); }
             }
-            if (cell.block) {
+            if (cell.block && cell.block !== 'occupied_space') {
                 const img = this.game.assetManager.get(cell.block);
-                if (img) ctx.drawImage(img, tx, ty, ts, ts);
-                else { ctx.fillStyle = '#555'; ctx.fillRect(tx, ty, ts, ts); }
+                const bSize = this.getTileSize(cell.block);
+                if (img) ctx.drawImage(img, tx, ty, ts * bSize.w, ts * bSize.h);
+                else { ctx.fillStyle = '#555'; ctx.fillRect(tx, ty, ts * bSize.w, ts * bSize.h); }
             }
             if (cell.item) {
                 const img = this.game.assetManager.get(cell.item);
@@ -505,8 +533,57 @@ export default class MapEditor {
                     ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
                     ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(8, ts * 0.2)}px Arial`; ctx.textAlign = 'center';
                     ctx.fillText(cell.unit.command, tx + ts/2, ty + ts * 0.85);
+                                }
+                            }
+                        });
+                
+                        // Preview Cursor
+                        const input = this.game.input;
+                        const mx = input.mouse.x;
+                        const my = input.mouse.y;
+                        if (mx < this.game.canvas.width - 300) {
+                            const gx = Math.floor((mx - this.offsetX) / ts);
+                            const gy = Math.floor((my - this.offsetY) / ts);
+                            const tx = this.offsetX + gx * ts;
+                            const ty = this.offsetY + gy * ts;
+                
+                            ctx.save();
+                            ctx.globalAlpha = 0.5;
+                            
+                            if (this.selectedTool === 'eraser') {
+                                ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+                                ctx.fillRect(tx, ty, ts, ts);
+                                ctx.strokeStyle = '#e74c3c';
+                                ctx.lineWidth = 2;
+                                ctx.strokeRect(tx, ty, ts, ts);
+                            } else if (this.selectedTileId) {
+                                const size = (this.activeLayer === 'units') ? this.getUnitSize(this.selectedTileId) : this.getTileSize(this.selectedTileId);
+                                const w = size.w * ts;
+                                const h = size.h * ts;
+                
+                                if (this.activeLayer === 'units') {
+                                    if (this.selectedTileId.startsWith('v_')) {
+                                        ctx.fillStyle = '#fff';
+                                        ctx.fillRect(tx, ty, w, h);
+                                    } else {
+                                        ctx.fillStyle = '#e74c3c';
+                                        ctx.beginPath(); ctx.arc(tx + ts/2, ty + ts/2, ts * 0.35, 0, Math.PI * 2); ctx.fill();
+                                    }
+                                } else {
+                                    const img = this.game.assetManager.get(this.selectedTileId);
+                                    if (img) {
+                                        ctx.drawImage(img, tx, ty, w, h);
+                                    } else {
+                                        ctx.fillStyle = '#fff';
+                                        ctx.fillRect(tx, ty, w, h);
+                                    }
+                                }
+                                ctx.strokeStyle = '#2ecc71';
+                                ctx.lineWidth = 2;
+                                ctx.strokeRect(tx, ty, w, h);
+                            }
+                            ctx.restore();
+                        }
+                    }
                 }
-            }
-        });
-    }
-}
+                

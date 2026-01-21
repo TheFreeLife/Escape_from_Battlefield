@@ -37,6 +37,53 @@ export default class TileMap {
         if (!chunk) {
             chunk = this.createChunk(cx, cy);
         }
+
+        // Handle multi-tile block placement/removal
+        if (layer === 'block') {
+            const oldBlock = this.getBlockAt(x, y);
+            
+            // 1. If we are removing or replacing, clear the old multi-tile area first
+            // CRITICAL: Don't clear if we are just setting an 'occupied_space' 
+            // because that's usually part of the master block we just placed.
+            if (oldBlock && tileId !== 'occupied_space') {
+                const { w, h } = { w: oldBlock.def?.width || 1, h: oldBlock.def?.height || 1 };
+                for (let oy = 0; oy < h; oy++) {
+                    for (let ox = 0; ox < w; ox++) {
+                        this._setSingleTile(oldBlock.anchorX + ox, oldBlock.anchorY + oy, null, 'block');
+                    }
+                }
+            }
+
+            // 2. If placing a new multi-tile block
+            const newDef = this.game.assetManager.getData('tiles')?.find(t => t.id === tileId);
+            if (newDef && (newDef.width > 1 || newDef.height > 1)) {
+                const w = newDef.width || 1;
+                const h = newDef.height || 1;
+                for (let oy = 0; oy < h; oy++) {
+                    for (let ox = 0; ox < w; ox++) {
+                        if (ox === 0 && oy === 0) {
+                            this._setSingleTile(x, y, tileId, 'block', metadata);
+                        } else {
+                            // Correctly store master coordinates in metadata for occupied space
+                            this._setSingleTile(x + ox, y + oy, 'occupied_space', 'block', { blockMaster: `${x},${y}` });
+                        }
+                    }
+                }
+                return;
+            }
+        }
+
+        this._setSingleTile(x, y, tileId, layer, metadata);
+    }
+
+    _setSingleTile(x, y, tileId, layer, metadata) {
+        const cx = Math.floor(x / CHUNK_SIZE);
+        const cy = Math.floor(y / CHUNK_SIZE);
+        const lx = x - cx * CHUNK_SIZE;
+        const ly = y - cy * CHUNK_SIZE;
+
+        let chunk = this.getChunk(cx, cy);
+        if (!chunk) chunk = this.createChunk(cx, cy);
         chunk.setTile(lx, ly, tileId, layer, metadata);
     }
 
@@ -72,69 +119,118 @@ export default class TileMap {
         return this.getTile(tx, ty, layer);
     }
 
+    /**
+     * 특정 좌표에 실질적으로 존재하는 블록 정보를 가져옵니다. (완전 일반화)
+     */
+    getBlockAt(tx, ty) {
+        const directBlockId = this.getTile(tx, ty, 'block');
+        if (!directBlockId) return null;
+
+        if (directBlockId === 'occupied_space') {
+            const metadata = this.getMetadata(tx, ty);
+            if (metadata && metadata.blockMaster) {
+                const coords = metadata.blockMaster.split(',');
+                if (coords.length === 2) {
+                    const mx = parseInt(coords[0]);
+                    const my = parseInt(coords[1]);
+                    const masterId = this.getTile(mx, my, 'block');
+                    if (masterId && masterId !== 'occupied_space') {
+                        const def = this.game.assetManager.getData('tiles')?.find(t => t.id === masterId);
+                        return { id: masterId, def, anchorX: mx, anchorY: my };
+                    }
+                }
+            }
+            return null;
+        }
+
+        const def = this.game.assetManager.getData('tiles')?.find(t => t.id === directBlockId);
+        return { id: directBlockId, def, anchorX: tx, anchorY: ty };
+    }
+
     isCollidable(worldX, worldY) {
-        const floorId = this.getTileAtWorldPos(worldX, worldY, 'floor');
-        const blockId = this.getTileAtWorldPos(worldX, worldY, 'block');
+        const tx = Math.floor(worldX / TILE_SIZE);
+        const ty = Math.floor(worldY / TILE_SIZE);
 
-        const checkCol = (id) => {
-            if (!id) return false;
-            const def = this.game.assetManager.getData('tiles')?.find(t => t.id === id);
-            return def ? !!def.collidable : false;
-        };
+        // 1. Floor Tile Check
+        const floorId = this.getTile(tx, ty, 'floor');
+        const fDef = this.game.assetManager.getData('tiles')?.find(t => t.id === floorId);
+        if (fDef?.collidable) return true;
 
-        return checkCol(floorId) || checkCol(blockId);
+        // 2. Block Tile Check (Generalized for any size)
+        // We check current tile and its surroundings based on potential max block size
+        // For efficiency, we just use getBlockAt which now handles the occupied_space mapping
+        const block = this.getBlockAt(tx, ty);
+        if (block && block.def && block.def.collidable) {
+            // Precise Box Check (Optional, but good for large blocks)
+            const bx1 = block.anchorX * TILE_SIZE;
+            const by1 = block.anchorY * TILE_SIZE;
+            const bx2 = bx1 + (block.def.width || 1) * TILE_SIZE;
+            const by2 = by1 + (block.def.height || 1) * TILE_SIZE;
+
+            if (worldX >= bx1 && worldX < bx2 && worldY >= by1 && worldY < by2) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     isInteractable(worldX, worldY) {
-        const floorId = this.getTileAtWorldPos(worldX, worldY, 'floor');
-        const blockId = this.getTileAtWorldPos(worldX, worldY, 'block');
+        const tx = Math.floor(worldX / TILE_SIZE);
+        const ty = Math.floor(worldY / TILE_SIZE);
 
-        const checkInt = (id) => {
-            if (!id) return false;
-            const def = this.game.assetManager.getData('tiles')?.find(t => t.id === id);
-            return def ? !!def.interactable : false;
-        };
+        const block = this.getBlockAt(tx, ty);
+        return block?.def?.interactable || false;
+    }
 
-        return checkInt(floorId) || checkInt(blockId);
+    blocksVision(worldX, worldY) {
+        const tx = Math.floor(worldX / TILE_SIZE);
+        const ty = Math.floor(worldY / TILE_SIZE);
+
+        const block = this.getBlockAt(tx, ty);
+        if (block && block.def) {
+            // Check based on data definition
+            if (block.def.blocksVision !== undefined) return block.def.blocksVision;
+            // Fallback: If not defined, blocks with collision usually block vision except fences
+            return block.def.collidable && block.id !== 'fence';
+        }
+        return false;
     }
 
     damageTile(worldX, worldY, amount) {
         const tx = Math.floor(worldX / TILE_SIZE);
         const ty = Math.floor(worldY / TILE_SIZE);
-        const blockId = this.getTile(tx, ty, 'block');
         
-        if (!blockId) return;
+        const block = this.getBlockAt(tx, ty);
+        if (!block || !block.def.destructible) return;
 
-        const tileDef = this.game.assetManager.getData('tiles')?.find(t => t.id === blockId);
-        if (tileDef && tileDef.destructible) {
-            let metadata = this.getMetadata(tx, ty);
-            if (!metadata) {
-                metadata = { health: tileDef.health || 10 };
+        let metadata = this.getMetadata(block.anchorX, block.anchorY);
+        if (!metadata) {
+            metadata = { health: block.def.health || 10 };
+        }
+        
+        metadata.health -= amount;
+        
+        if (metadata.health <= 0) {
+            // Remove master and all occupied spaces
+            const { w, h } = { w: block.def.width || 1, h: block.def.height || 1 };
+            for (let oy = 0; oy < h; oy++) {
+                for (let ox = 0; ox < w; ox++) {
+                    this.setTile(block.anchorX + ox, block.anchorY + oy, null, 'block');
+                }
             }
-            
-            metadata.health -= amount;
-            
-            if (metadata.health <= 0) {
-                this.setTile(tx, ty, null, 'block'); // Remove the tile
-                console.log(`Tile destroyed at ${tx}, ${ty}`);
-            } else {
-                this.setTile(tx, ty, blockId, 'block', metadata);
-            }
+        } else {
+            this.setTile(block.anchorX, block.anchorY, block.id, 'block', metadata);
         }
     }
 
     render(ctx, camera) {
-        // Calculate visible chunks based on camera
+        // ... (이전 render 메서드 유지하되 renderChunk 호출)
         const startCol = Math.floor(camera.x / TILE_SIZE);
         const endCol = startCol + (camera.width / TILE_SIZE) + 1;
         const startRow = Math.floor(camera.y / TILE_SIZE);
         const endRow = startRow + (camera.height / TILE_SIZE) + 1;
 
-        const offsetX = -camera.x + camera.width / 2; // Center camera? No, usually camera.x is top-left or center.
-        // Let's assume camera.x/y is the top-left corner of the viewport for now
-        // Adjusted: standard 2D camera usually top-left.
-
-        // We need to iterate through visible chunks
         const startCx = Math.floor(startCol / CHUNK_SIZE);
         const endCx = Math.floor(endCol / CHUNK_SIZE);
         const startCy = Math.floor(startRow / CHUNK_SIZE);
@@ -143,13 +239,10 @@ export default class TileMap {
         for (let cy = startCy; cy <= endCy; cy++) {
             for (let cx = startCx; cx <= endCx; cx++) {
                 let chunk = this.getChunk(cx, cy);
-                
-                // If chunk doesn't exist OR hasn't been generated by MapGenerator yet
                 if ((!chunk || !chunk.isGenerated) && this.generator) {
                     this.generator.generateChunk(this, cx, cy);
                     chunk = this.getChunk(cx, cy);
                 }
-
                 if (chunk) {
                     this.renderChunk(ctx, chunk, camera);
                 }
@@ -158,29 +251,85 @@ export default class TileMap {
     }
 
     renderChunk(ctx, chunk, camera) {
+        // 1. Floor Pass
         for (let y = 0; y < CHUNK_SIZE; y++) {
             for (let x = 0; x < CHUNK_SIZE; x++) {
                 const worldX = (chunk.cx * CHUNK_SIZE + x) * TILE_SIZE;
                 const worldY = (chunk.cy * CHUNK_SIZE + y) * TILE_SIZE;
-
                 if (worldX + TILE_SIZE > camera.x && worldX < camera.x + camera.width &&
                     worldY + TILE_SIZE > camera.y && worldY < camera.y + camera.height) {
+                    const floorId = chunk.floors[y][x];
+                    if (floorId && floorId !== 'occupied_space') {
+                        const img = this.game.assetManager.get(floorId);
+                        if (img) ctx.drawImage(img, Math.floor(worldX - camera.x), Math.floor(worldY - camera.y));
+                    }
+                }
+            }
+        }
+
+        // 2. Block Pass
+        const allTiles = this.game.assetManager.getData('tiles');
+        
+        for (let y = 0; y < CHUNK_SIZE; y++) {
+            for (let x = 0; x < CHUNK_SIZE; x++) {
+                const blockId = chunk.blocks[y][x];
+                if (!blockId || blockId === 'occupied_space') continue;
+
+                const worldX = (chunk.cx * CHUNK_SIZE + x) * TILE_SIZE;
+                const worldY = (chunk.cy * CHUNK_SIZE + y) * TILE_SIZE;
+                
+                const def = allTiles?.find(t => t.id === blockId);
+                const w = (def?.width || 1) * TILE_SIZE;
+                const h = (def?.height || 1) * TILE_SIZE;
+
+                if (worldX + w > camera.x && worldX < camera.x + camera.width &&
+                    worldY + h > camera.y && worldY < camera.y + camera.height) {
                     
                     const screenX = Math.floor(worldX - camera.x);
                     const screenY = Math.floor(worldY - camera.y);
-
-                    // 1. Draw Floor
-                    const floorId = chunk.floors[y][x];
-                    if (floorId) {
-                        const img = this.game.assetManager.get(floorId);
-                        if (img) ctx.drawImage(img, screenX, screenY);
+                    const img = this.game.assetManager.get(blockId);
+                    
+                    if (img) {
+                        ctx.drawImage(img, screenX, screenY, w, h);
+                    } else if (def) {
+                        ctx.fillStyle = def.color || '#555';
+                        ctx.fillRect(screenX, screenY, w, h);
                     }
+                }
+            }
+        }
+    }
 
-                    // 2. Draw Block
-                    const blockId = chunk.blocks[y][x];
-                    if (blockId) {
-                        const img = this.game.assetManager.get(blockId);
-                        if (img) ctx.drawImage(img, screenX, screenY);
+    renderOverlays(ctx, camera) {
+        const startCol = Math.floor(camera.x / TILE_SIZE);
+        const endCol = startCol + (camera.width / TILE_SIZE) + 1;
+        const startRow = Math.floor(camera.y / TILE_SIZE);
+        const endRow = startRow + (camera.height / TILE_SIZE) + 1;
+
+        const startCx = Math.floor(startCol / CHUNK_SIZE);
+        const endCx = Math.floor(endCol / CHUNK_SIZE);
+        const startCy = Math.floor(startRow / CHUNK_SIZE);
+        const endCy = Math.floor(endRow / CHUNK_SIZE);
+
+        for (let cy = startCy; cy <= endCy; cy++) {
+            for (let cx = startCx; cx <= endCx; cx++) {
+                const chunk = this.getChunk(cx, cy);
+                if (chunk) {
+                    for (let y = 0; y < CHUNK_SIZE; y++) {
+                        for (let x = 0; x < CHUNK_SIZE; x++) {
+                            const blockId = chunk.blocks[y][x];
+                            if (!blockId || blockId === 'occupied_space') continue;
+
+                            const def = this.game.assetManager.getData('tiles')?.find(t => t.id === blockId);
+                            if (def && def.isOverlay) {
+                                const worldX = (chunk.cx * CHUNK_SIZE + x) * TILE_SIZE;
+                                const worldY = (chunk.cy * CHUNK_SIZE + y) * TILE_SIZE;
+                                const screenX = Math.floor(worldX - camera.x);
+                                const screenY = Math.floor(worldY - camera.y);
+                                const img = this.game.assetManager.get(blockId);
+                                if (img) ctx.drawImage(img, screenX, screenY, (def.width || 1) * TILE_SIZE, (def.height || 1) * TILE_SIZE);
+                            }
+                        }
                     }
                 }
             }

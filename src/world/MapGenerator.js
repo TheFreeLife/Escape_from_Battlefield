@@ -150,7 +150,11 @@ export default class MapGenerator {
                     }
 
                     if (floorId !== null && floorId !== undefined) tileMap.setTile(startX + x, startY + y, floorId, 'floor');
-                    if (blockId !== null && blockId !== undefined) tileMap.setTile(startX + x, startY + y, blockId, 'block', finalMetadata);
+                    
+                    // Skip 'occupied_space' as TileMap.setTile handles it when the master tile is placed
+                    if (blockId !== null && blockId !== undefined && blockId !== 'occupied_space') {
+                        tileMap.setTile(startX + x, startY + y, blockId, 'block', finalMetadata);
+                    }
                     
                     if (unitData && unitData.id) {
                         const uid = unitData.id;

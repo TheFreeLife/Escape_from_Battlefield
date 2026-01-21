@@ -393,23 +393,30 @@ export default class Game {
         const p = this.player;
         const pAngle = p.facingAngle;
 
-        // 2. Collect candidates: Loot Boxes and Doors (Tiles)
+        // 2. Collect candidates: Loot Boxes, Doors, and Multi-tile blocks
         const px = Math.floor(p.x / 64);
         const py = Math.floor(p.y / 64);
         for (let y = py - 1; y <= py + 1; y++) {
             for (let x = px - 1; x <= px + 1; x++) {
-                const blockId = this.tileMap.getTile(x, y, 'block');
-                if (blockId === 'loot_box' || blockId === 'door' || blockId === 'door_open') {
-                    const worldX = x * 64 + 32;
-                    const worldY = y * 64 + 32;
-                    const dx = worldX - p.x;
-                    const dy = worldY - p.y;
+                const block = this.tileMap.getBlockAt(x, y);
+                if (block && block.def && (block.id === 'loot_box' || block.id === 'door' || block.id === 'door_open' || block.id === 'gun_workbench')) {
+                    const centerX = block.anchorX * 64 + (block.def.width || 1) * 32;
+                    const centerY = block.anchorY * 64 + (block.def.height || 1) * 32;
+                    const dx = centerX - p.x;
+                    const dy = centerY - p.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     
                     if (dist < 100) {
                         const targetAngle = Math.atan2(dy, dx);
                         let angleDiff = Math.abs(this.getAngleDiff(pAngle, targetAngle));
-                        candidates.push({ type: 'tile', x, y, id: blockId, dist, angleDiff });
+                        candidates.push({ 
+                            type: 'tile', 
+                            x: block.anchorX, 
+                            y: block.anchorY, 
+                            id: block.id, 
+                            dist, 
+                            angleDiff 
+                        });
                     }
                 }
             }
@@ -536,7 +543,7 @@ export default class Game {
             const checkX = x1 + (dx / steps) * i;
             const checkY = y1 + (dy / steps) * i;
             
-            if (this.tileMap.isCollidable(checkX, checkY)) {
+            if (this.tileMap.blocksVision(checkX, checkY)) {
                 return false; // Vision blocked by wall
             }
         }
@@ -639,57 +646,111 @@ export default class Game {
 
             
 
-                    for (let angle = alignedStart; angle <= endAngle + rayStep; angle += rayStep) {
-
-                        const actualAngle = Math.max(startAngle, Math.min(endAngle, angle));
-
-                        const cos = Math.cos(actualAngle);
-
-                        const sin = Math.sin(actualAngle);
+                                        for (let angle = alignedStart; angle <= endAngle + rayStep; angle += rayStep) {
 
             
 
-                        let finalDist = visionDist;
-
-                        const coarseStep = 50; 
+                                            const actualAngle = Math.max(startAngle, Math.min(endAngle, angle));
 
             
 
-                        // 1. Coarse Search
-
-                        for (let d = coarseStep; d < visionDist; d += coarseStep) {
-
-                            if (this.tileMap.isCollidable(this.player.x + cos * d, this.player.y + sin * d)) {
-
-                                // 2. Binary Search Refinement (Extremely stable)
-
-                                let low = d - coarseStep;
-
-                                let high = d;
-
-                                for (let n = 0; n < 5; n++) { // 5 iterations = ~1.5px precision
-
-                                    let mid = (low + high) / 2;
-
-                                    if (this.tileMap.isCollidable(this.player.x + cos * mid, this.player.y + sin * mid)) high = mid;
-
-                                    else low = mid;
-
-                                }
-
-                                finalDist = high;
-
-                                break;
-
-                            }
-
-                        }
+                                            const cos = Math.cos(actualAngle);
 
             
 
-                        vCtx.lineTo(screenX + cos * finalDist * this.zoom, screenY + sin * finalDist * this.zoom);
+                                            const sin = Math.sin(actualAngle);
 
-                    }
+            
+
+                                
+
+            
+
+                                            let finalDist = visionDist;
+
+            
+
+                                            const coarseStep = 50; 
+
+            
+
+                                
+
+            
+
+                                            // 1. Coarse Search
+
+            
+
+                                            for (let d = coarseStep; d < visionDist; d += coarseStep) {
+
+            
+
+                                                if (this.tileMap.blocksVision(this.player.x + cos * d, this.player.y + sin * d)) {
+
+            
+
+                                                    // 2. Binary Search Refinement (Extremely stable)
+
+            
+
+                                                    let low = d - coarseStep;
+
+            
+
+                                                    let high = d;
+
+            
+
+                                                    for (let n = 0; n < 5; n++) { // 5 iterations = ~1.5px precision
+
+            
+
+                                                        let mid = (low + high) / 2;
+
+            
+
+                                                        if (this.tileMap.blocksVision(this.player.x + cos * mid, this.player.y + sin * mid)) high = mid;
+
+            
+
+                                                        else low = mid;
+
+            
+
+                                                    }
+
+            
+
+                                                    finalDist = high;
+
+            
+
+                                                    break;
+
+            
+
+                                                }
+
+            
+
+                                            }
+
+            
+
+                                
+
+            
+
+                                            vCtx.lineTo(screenX + cos * finalDist * this.zoom, screenY + sin * finalDist * this.zoom);
+
+            
+
+                                        }
+
+            
+
+                    
 
             
 
@@ -813,24 +874,28 @@ export default class Game {
     renderTileInteractionHints(ctx) {
         if (!this.player || this.player.isInVehicle || this.inventory.isOpen) return;
 
-        const range = 1.5; // Interaction range in tiles
+        const range = 1.5;
         const px = Math.floor(this.player.x / 64);
         const py = Math.floor(this.player.y / 64);
 
         for (let y = py - 1; y <= py + 1; y++) {
             for (let x = px - 1; x <= px + 1; x++) {
-                const blockId = this.tileMap.getTile(x, y, 'block');
-                if (blockId === 'loot_box' || blockId === 'door' || blockId === 'door_open') {
-                    const worldX = x * 64 + 32;
-                    const worldY = y * 64 + 32;
-                    const dist = Math.sqrt((this.player.x - worldX) ** 2 + (this.player.y - worldY) ** 2);
+                const block = this.tileMap.getBlockAt(x, y);
+                if (block && block.def && (block.def.interactable || block.id === 'gun_workbench')) {
+                    const centerX = block.anchorX * 64 + (block.def.width || 1) * 32;
+                    const centerY = block.anchorY * 64 + (block.def.height || 1) * 32;
+                    
+                    const dx = this.player.x - centerX;
+                    const dy = this.player.y - centerY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
 
                     if (dist < 100) {
-                        const screenX = worldX - this.camera.x;
-                        const screenY = worldY - this.camera.y;
+                        const screenX = centerX - this.camera.x;
+                        const screenY = centerY - this.camera.y;
 
-                        let label = "[F] 열기";
-                        if (blockId === 'door_open') label = "[F] 닫기";
+                        let label = `[F] ${block.def.name}`;
+                        if (block.id === 'door_open') label = "[F] 닫기";
+                        else if (block.id === 'door') label = "[F] 열기";
 
                         ctx.fillStyle = '#fff';
                         ctx.font = 'bold 16px Arial';
@@ -842,6 +907,7 @@ export default class Game {
                         ctx.strokeRect(screenX - 10, screenY - 30, 20, 20);
                         
                         ctx.textAlign = 'left';
+                        return; // 한 블록에 대해 하나의 힌트만 표시
                     }
                 }
             }
@@ -889,6 +955,11 @@ export default class Game {
 
         if (this.player) {
             this.player.render(this.ctx, this.camera);
+        }
+
+        // Render Tile Overlays (Bushes on top of player)
+        if (this.tileMap) {
+            this.tileMap.renderOverlays(this.ctx, this.camera);
         }
 
         // Render Enemies

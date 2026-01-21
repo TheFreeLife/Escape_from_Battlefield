@@ -37,16 +37,20 @@ export default class Player {
         this.isInVehicle = false;
         this.currentVehicle = null;
 
+        this.isStealth = false; // Stealth state
         this.isCollidable = true;
         this.weight = 100;
     }
 
     update(dt) {
-        // Calculate and store facing angle (towards mouse) - Always update this first
+        // ... (facingAngle calculation)
         const camera = this.game.camera;
         const targetX = this.game.input.mouse.x / this.game.zoom + camera.x;
         const targetY = this.game.input.mouse.y / this.game.zoom + camera.y;
         this.facingAngle = Math.atan2(targetY - this.y, targetX - this.x);
+
+        // Stealth Check (e.g. In Bush)
+        this.checkStealth();
 
         if (this.isInVehicle) {
             this.isCollidable = false;
@@ -346,11 +350,31 @@ export default class Player {
         console.log("Threw Grenade!");
     }
 
+    checkStealth() {
+        if (this.isInVehicle) {
+            this.isStealth = false;
+            return;
+        }
+
+        const tx = Math.floor(this.x / 64);
+        const ty = Math.floor(this.y / 64);
+        const block = this.game.tileMap.getBlockAt(tx, ty);
+        
+        // Stealth if inside a bush or specifically marked overlay block
+        this.isStealth = block && (block.id === 'bush' || block.def?.isOverlay);
+    }
+
     render(ctx, camera) {
         if (this.isInVehicle) return;
 
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
+
+        // Apply Stealth Alpha
+        ctx.save();
+        if (this.isStealth) {
+            ctx.globalAlpha = 0.5; // Half transparent when hidden
+        }
 
         // Calculate angle towards mouse
         const input = this.game.input;
@@ -454,6 +478,8 @@ export default class Player {
 
         // UI Indicators (Health, Reload, Stamina etc.)
         this.renderStatusEffects(ctx, screenX, screenY);
+
+        ctx.restore(); // Restore stealth alpha
     }
 
     renderStatusEffects(ctx, screenX, screenY) {

@@ -22,10 +22,14 @@ export default class AssetManager {
         
         for (const category of categories) {
             const list = this.data[category];
-            if (list && Array.isArray(list)) {
-                for (const item of list) {
-                    if (item.svg) {
-                        await this.renderSVG(item.id, item.svg, item.color || '#fff');
+            if (list) {
+                // Handle both array and object formats if necessary
+                const items = Array.isArray(list) ? list : Object.values(list);
+                for (const item of items) {
+                    if (item && item.id && item.svg) {
+                        const w = (item.width || 1) * 64;
+                        const h = (item.height || 1) * 64;
+                        await this.renderSVG(item.id, item.svg, item.color || '#fff', w, h);
                     }
                 }
             }
@@ -33,13 +37,12 @@ export default class AssetManager {
     }
 
     // Rasterize SVG string to ImageBitmap or Canvas
-    async renderSVG(key, svgContent, color) {
+    async renderSVG(key, svgContent, color, width = 64, height = 64) {
         return new Promise((resolve, reject) => {
             const img = new Image();
             // Wrap SVG path in full SVG tag
-            // Adding specific styling/color if needed
             const finalSVG = `
-                <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
                     <g fill="${color}" stroke="black" stroke-width="1">
                         ${svgContent}
                     </g>

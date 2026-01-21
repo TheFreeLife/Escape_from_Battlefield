@@ -73,10 +73,21 @@ export default class Enemy {
             const dy = player.y - this.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            // 1. Detection Logic
-            if (this.aiState !== 'CHASE' && dist < this.detectRadius) {
+            // 1. Detection Logic (Check for Stealth)
+            let currentDetectRadius = this.detectRadius;
+            if (player.isStealth) {
+                currentDetectRadius = 80; // Only see very close stealth players
+            }
+
+            if (this.aiState !== 'CHASE' && dist < currentDetectRadius) {
                 this.aiState = 'CHASE';
                 console.log("Enemy spotted player! Chasing...");
+            }
+            
+            // Lose track if player enters stealth and is far enough
+            if (this.aiState === 'CHASE' && player.isStealth && dist > 150) {
+                this.aiState = 'IDLE';
+                console.log("Enemy lost track of player due to stealth.");
             }
 
             // 2. Behavior based on State
