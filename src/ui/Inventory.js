@@ -66,6 +66,7 @@ export default class Inventory {
         this.addItem({ id: 'db_shotgun', count: 1 });
         this.addItem({ id: 'magnum', count: 1 });
         this.addItem({ id: 'medkit', count: 5 });
+        this.addItem({ id: 'grenade', count: 10 }); // 지급: 수류탄 10개
         this.addItem({ id: 'helmet', count: 1 });
         this.addItem({ id: 'vest', count: 1 });
         this.addItem({ id: 'boots', count: 1 });

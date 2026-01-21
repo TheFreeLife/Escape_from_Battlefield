@@ -31,7 +31,7 @@ export default class Player {
 
         // Grenade system
         this.throwCharge = 0;
-        this.maxThrowCharge = 1.0; // 1 second to max
+        this.maxThrowCharge = 1.8; // 1.8 seconds to max
 
         // Vehicle state
         this.isInVehicle = false;
@@ -329,15 +329,20 @@ export default class Player {
 
         const dx = mouseWorldX - this.x;
         const dy = mouseWorldY - this.y;
-        const distToMouse = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
 
+        // Calculate actual throw distance based ONLY on gauge
         const maxDist = 600;
-        const throwDist = (this.throwCharge / this.maxThrowCharge) * Math.min(maxDist, distToMouse);
+        const minThrowDist = 50;
+        const powerRatio = this.throwCharge / this.maxThrowCharge;
+        
+        // Throw distance is purely dictated by power ratio, not mouse proximity
+        const targetDist = minThrowDist + (powerRatio * (maxDist - minThrowDist));
 
-        const tx = this.x + Math.cos(angle) * throwDist;
-        const ty = this.y + Math.sin(angle) * throwDist;
+        const tx = this.x + Math.cos(angle) * targetDist;
+        const ty = this.y + Math.sin(angle) * targetDist;
 
+        // Create grenade with calculated target
         this.game.grenades.push(new Grenade(this.game, this.x, this.y, tx, ty, 100));
 
         // Consume item
@@ -346,8 +351,8 @@ export default class Player {
             this.game.inventory.hotbar[this.game.inventory.selectedSlot] = null;
         }
 
-        this.fireTimer = 1.0; // Cooldown after throw
-        console.log("Threw Grenade!");
+        this.fireTimer = 1.0; // Cooldown
+        console.log(`Threw Grenade! Power: ${Math.round(powerRatio * 100)}%`);
     }
 
     checkStealth() {
@@ -464,6 +469,46 @@ export default class Player {
         ctx.arc(screenX, screenY, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
+        
+        // 5. Grenade Landing Preview
+        if (this.throwCharge > 0 && itemDef && itemDef.type === 'grenade') {
+            const camera = this.game.camera;
+            const input = this.game.input;
+            const mouseWorldX = input.mouse.x / this.game.zoom + camera.x;
+            const mouseWorldY = input.mouse.y / this.game.zoom + camera.y;
+            const dx = mouseWorldX - this.x;
+            const dy = mouseWorldY - this.y;
+            const angle = Math.atan2(dy, dx);
+
+            const maxDist = 600;
+            const minThrowDist = 50;
+            const powerRatio = this.throwCharge / this.maxThrowCharge;
+            // Preview matches the new fixed-distance logic
+            const targetDist = minThrowDist + (powerRatio * (maxDist - minThrowDist));
+
+            const landingX = this.x + Math.cos(angle) * targetDist;
+            const landingY = this.y + Math.sin(angle) * targetDist;
+            const screenLandingX = landingX - camera.x;
+            const screenLandingY = landingY - camera.y;
+
+            // Draw Landing Circle
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(screenLandingX, screenLandingY, 40, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(231, 76, 60, 0.2)'; // Faded red
+            ctx.fill();
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = '#e74c3c';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Inner dot
+            ctx.beginPath();
+            ctx.arc(screenLandingX, screenLandingY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#e74c3c';
+            ctx.fill();
+            ctx.restore();
+        }
         
         // Face/Eye to show direction
         ctx.save();

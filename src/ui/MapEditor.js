@@ -152,50 +152,51 @@ export default class MapEditor {
                 div.addEventListener('click', () => this.selectTile(v.id, div));
                 palette.appendChild(div);
             });
-        } else if (this.activeLayer === 'items') {
-            const items = this.game.assetManager.getData('items') || [];
-            const weapons = items.filter(i => i.type === 'weapon');
-            const ammos = items.filter(i => i.type === 'ammo');
-            const consumables = items.filter(i => i.type === 'consumable');
-            const others = items.filter(i => i.type !== 'weapon' && i.type !== 'ammo' && i.type !== 'consumable');
-
-            if (weapons.length > 0) {
-                // ... (이전과 동일한 무기 분류 로직)
-                const melee = weapons.filter(w => w.subType === 'melee');
-                const pistols = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '9mm' || w.caliber === '.50 AE' || w.caliber === '.357'));
-                const rifles = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '5.56mm' || w.caliber === '7.62mm') && w.magSize > 10 && w.fireRate < 0.2);
-                const snipers = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '.338' || w.caliber === '7.62mm') && w.fireRate >= 0.4);
-                const shotguns = weapons.filter(w => w.caliber === '12g');
-                const heavy = weapons.filter(w => w.caliber === 'rocket' || w.caliber === '40mm' || w.magSize >= 100);
-
-                if (melee.length > 0) { addHeader('🗡️ 근접 무기'); melee.forEach(i => this.createPaletteTile(i, palette)); }
-                if (pistols.length > 0) { addHeader('🔫 권총'); pistols.forEach(i => this.createPaletteTile(i, palette)); }
-                if (rifles.length > 0) { addHeader('🔫 소총 / 기관단총'); rifles.forEach(i => this.createPaletteTile(i, palette)); }
-                if (snipers.length > 0) { addHeader('🔭 저격 / 지정사수'); snipers.forEach(i => this.createPaletteTile(i, palette)); }
-                if (shotguns.length > 0) { addHeader('🧱 산탄총'); shotguns.forEach(i => this.createPaletteTile(i, palette)); }
-                if (heavy.length > 0) { addHeader('🚀 중화기 / 폭발물'); heavy.forEach(i => this.createPaletteTile(i, palette)); }
-            }
-
-            if (ammos.length > 0) {
-                addHeader('📦 탄약');
-                ammos.forEach(i => this.createPaletteTile(i, palette));
-            }
-
-            if (consumables.length > 0) {
-                // 부품류와 진짜 소모품(의료기구) 분리
-                const partsIds = ['iron_ingot', 'wood_plank', 'spring', 'pistol_grip', 'short_barrel', 'long_barrel', 'ar_receiver', 'ak_receiver', 'smg_receiver', 'bolt_action_parts', 'shotgun_parts', 'explosive_material'];
-                const materials = consumables.filter(c => partsIds.includes(c.id));
-                const realConsumables = consumables.filter(c => !partsIds.includes(c.id));
-
-                if (materials.length > 0) {
-                    addHeader('🛠️ 제작 재료 / 부품');
-                    materials.forEach(i => this.createPaletteTile(i, palette));
-                }
-                if (realConsumables.length > 0) {
-                    addHeader('💊 일반 소모품');
-                    realConsumables.forEach(i => this.createPaletteTile(i, palette));
-                }
-            }
+                } else if (this.activeLayer === 'items') {
+                    const items = this.game.assetManager.getData('items') || [];
+                    
+                    const weapons = items.filter(i => i.type === 'weapon');
+                    const ammos = items.filter(i => i.type === 'ammo');
+                    const consumables = items.filter(i => i.type === 'consumable' || i.type === 'grenade'); // Include grenades
+                    const others = items.filter(i => i.type !== 'weapon' && i.type !== 'ammo' && i.type !== 'consumable' && i.type !== 'grenade');
+        
+                    if (weapons.length > 0) {
+                        // ... (무기 분류 로직 유지)
+                        const melee = weapons.filter(w => w.subType === 'melee');
+                        const pistols = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '9mm' || w.caliber === '.50 AE' || w.caliber === '.357'));
+                        const rifles = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '5.56mm' || w.caliber === '7.62mm') && w.magSize > 10 && w.fireRate < 0.2);
+                        const snipers = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '.338' || w.caliber === '7.62mm') && w.fireRate >= 0.4);
+                        const shotguns = weapons.filter(w => w.caliber === '12g');
+                        const heavy = weapons.filter(w => w.caliber === 'rocket' || w.caliber === '40mm' || w.magSize >= 100);
+        
+                        if (melee.length > 0) { addHeader('🗡️ 근접 무기'); melee.forEach(i => this.createPaletteTile(i, palette)); }
+                        if (pistols.length > 0) { addHeader('🔫 권총'); pistols.forEach(i => this.createPaletteTile(i, palette)); }
+                        if (rifles.length > 0) { addHeader('🔫 소총 / 기관단총'); rifles.forEach(i => this.createPaletteTile(i, palette)); }
+                        if (snipers.length > 0) { addHeader('🔭 저격 / 지정사수'); snipers.forEach(i => this.createPaletteTile(i, palette)); }
+                        if (shotguns.length > 0) { addHeader('🧱 산탄총'); shotguns.forEach(i => this.createPaletteTile(i, palette)); }
+                        if (heavy.length > 0) { addHeader('🚀 중화기 / 폭발물'); heavy.forEach(i => this.createPaletteTile(i, palette)); }
+                    }
+        
+                    if (ammos.length > 0) {
+                        addHeader('📦 탄약');
+                        ammos.forEach(i => this.createPaletteTile(i, palette));
+                    }
+        
+                    if (consumables.length > 0) {
+                        const partsIds = ['iron_ingot', 'wood_plank', 'spring', 'pistol_grip', 'short_barrel', 'long_barrel', 'ar_receiver', 'ak_receiver', 'smg_receiver', 'bolt_action_parts', 'shotgun_parts', 'explosive_material'];
+                        const materials = consumables.filter(c => partsIds.includes(c.id));
+                        const realConsumables = consumables.filter(c => !partsIds.includes(c.id));
+        
+                        if (materials.length > 0) {
+                            addHeader('🛠️ 제작 재료 / 부품');
+                            materials.forEach(i => this.createPaletteTile(i, palette));
+                        }
+                        if (realConsumables.length > 0) {
+                            addHeader('💊 일반 소모품 / 폭발물');
+                            realConsumables.forEach(i => this.createPaletteTile(i, palette));
+                        }
+                    }
+        
             
             if (others.length > 0) {
                 // 기타 아이템들 (장비 등)

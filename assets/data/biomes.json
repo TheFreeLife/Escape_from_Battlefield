@@ -3,11 +3,11 @@
         "id": "plains",
         "name": "평원",
         "tiles": ["grass", "grass", "dirt"],
-        "structures": ["military_outpost", "medical_camp"],
-        "enemies": ["zombie"],
-        "items": ["pistol", "ammo_9mm", "medkit"],
+        "structures": ["military_outpost", "checkpoint_small", "field_workshop", "medical_outpost", "defense_line", "destroyed_convoy", "ammo_cache"],
+        "enemies": ["zombie", "soldier"],
+        "items": ["pistol", "ammo_9mm", "medkit", "iron_ingot"],
         "spawnRate": {
-            "structures": 0.4,
+            "structures": 0.45,
             "enemies": 0.25,
             "items": 0.08
         },
@@ -17,11 +17,11 @@
         "id": "forest",
         "name": "숲",
         "tiles": ["grass", "dirt", "dirt"],
-        "structures": ["military_outpost", "abandoned_shack"],
+        "structures": ["military_outpost", "abandoned_shack", "forest_hideout", "sniper_nest", "field_workshop", "defense_line"],
         "enemies": ["zombie", "soldier"],
-        "items": ["ak47", "ammo_762", "medkit"],
+        "items": ["ak47", "ammo_762", "medkit", "wood_plank"],
         "spawnRate": {
-            "structures": 0.5,
+            "structures": 0.55,
             "enemies": 0.5,
             "items": 0.12
         },
@@ -31,11 +31,11 @@
         "id": "desert",
         "name": "사막",
         "tiles": ["sand", "sand", "dirt"],
-        "structures": ["military_outpost", "vehicle_depot"],
+        "structures": ["military_outpost", "vehicle_depot", "destroyed_convoy", "checkpoint_small", "ammo_cache", "explosive_depot", "comms_center"],
         "enemies": ["soldier", "mutant"],
-        "items": ["ak47", "awm", "ammo_762"],
+        "items": ["ak47", "awm", "ammo_762", "explosive_material"],
         "spawnRate": {
-            "structures": 0.4,
+            "structures": 0.45,
             "enemies": 0.4,
             "items": 0.1
         },
@@ -45,11 +45,11 @@
         "id": "tundra",
         "name": "툰드라",
         "tiles": ["snow", "snow", "dirt"],
-        "structures": ["medical_camp", "military_outpost"],
-        "enemies": ["mutant"],
-        "items": ["medkit", "awm", "ammo_338"],
+        "structures": ["medical_camp", "military_outpost", "comms_center", "medical_outpost", "ammo_cache", "sniper_nest", "field_workshop"],
+        "enemies": ["mutant", "soldier"],
+        "items": ["medkit", "awm", "ammo_338", "spring"],
         "spawnRate": {
-            "structures": 0.3,
+            "structures": 0.4,
             "enemies": 0.35,
             "items": 0.07
         },
