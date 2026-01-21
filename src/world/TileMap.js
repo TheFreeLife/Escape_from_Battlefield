@@ -189,9 +189,14 @@ export default class TileMap {
 
         const block = this.getBlockAt(tx, ty);
         if (block && block.def) {
+            // Special Case: Closed Door always blocks vision
+            if (block.id === 'door') return true;
+            // Special Case: Open Door never blocks vision
+            if (block.id === 'door_open') return false;
+
             // Check based on data definition
             if (block.def.blocksVision !== undefined) return block.def.blocksVision;
-            // Fallback: If not defined, blocks with collision usually block vision except fences
+            // Fallback
             return block.def.collidable && block.id !== 'fence';
         }
         return false;
