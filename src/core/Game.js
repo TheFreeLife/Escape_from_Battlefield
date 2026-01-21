@@ -154,6 +154,9 @@ export default class Game {
      */
     checkTileCollision(x, y, radius, moveType = 'land') {
         const buffer = radius * 0.8;
+        // For floor/terrain checks, use a much smaller buffer for sea units to prevent getting stuck on shores
+        const floorBuffer = (moveType === 'sea') ? radius * 0.2 : buffer;
+        
         const points = [
             { x: x - buffer, y: y - buffer },
             { x: x + buffer, y: y - buffer },
@@ -161,31 +164,39 @@ export default class Game {
             { x: x + buffer, y: y + buffer }
         ];
 
+        const floorPoints = (moveType === 'sea') ? [
+            { x: x - floorBuffer, y: y - floorBuffer },
+            { x: x + floorBuffer, y: y - floorBuffer },
+            { x: x - floorBuffer, y: y + floorBuffer },
+            { x: x + floorBuffer, y: y + floorBuffer },
+            { x: x, y: y } // Always check center for sea units
+        ] : points;
+
         if (!this.tileMap) return false;
 
-        return points.some(p => {
+        // 1. Block Collision (Walls, objects etc.) - Always use full buffer
+        const hasBlockCollision = points.some(p => {
+            const tx = Math.floor(p.x / 64);
+            const ty = Math.floor(p.y / 64);
+            const block = this.tileMap.getBlockAt(tx, ty);
+            return block && block.def && block.def.collidable;
+        });
+        if (hasBlockCollision) return true;
+
+        // 2. Floor Collision (Terrain types) - Use floorBuffer
+        return floorPoints.some(p => {
             const tx = Math.floor(p.x / 64);
             const ty = Math.floor(p.y / 64);
             const floorId = this.tileMap.getTile(tx, ty, 'floor');
-            const block = this.tileMap.getBlockAt(tx, ty);
 
-            // 1. Air Units: Fly over everything (can be extended later for high walls)
+            // Air Units: Fly over everything
             if (moveType === 'air') return false;
 
-            // 2. Block Collision (Walls, objects etc.)
-            if (block && block.def && block.def.collidable) return true;
-
-            // 3. Floor Collision (Terrain types)
             if (moveType === 'land') {
-                // Land units cannot enter water
                 if (floorId === 'water') return true;
             } else if (moveType === 'sea') {
-                // Sea units must stay on water. 
-                // To prevent getting stuck, we check if the floor is NOT water.
-                // If it's land (grass, dirt etc.), it's a collision for a sea unit.
                 if (floorId !== 'water' && floorId !== null) return true;
             }
-
             return false;
         });
     }
@@ -954,7 +965,7 @@ export default class Game {
                 let name = '차량';
                 if (v.type === 'tank') name = '전차';
                 else if (v.type === 'apc') name = '장갑차';
-                else if (v.type === 'transport_ship') name = '수송기';
+                else if (v.type === 'transport_ship') name = '운반선';
                 
                 candidates.push({ type: 'vehicle', entity: v, centerX: v.x, centerY: v.y, name, dist, angleDiff });
             }
@@ -995,7 +1006,7 @@ export default class Game {
             if (localX > -v.width / 4) {
                 label = `[F] ${best.name} 탑승`;
             } else if (v.hasExternalStorage) {
-                label = v.type === 'transport_ship' ? "[F] 화물칸" : "[F] 적재함";
+                label = v.type === 'transport_ship' ? "[F] 운반선" : "[F] 적재함";
             } else {
                 label = `[F] ${best.name} 탑승`; // Fallback for vehicles without storage
             }

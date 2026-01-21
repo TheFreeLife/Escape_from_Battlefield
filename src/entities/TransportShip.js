@@ -6,8 +6,9 @@ export default class TransportShip extends Vehicle {
         this.width = 180;
         this.height = 120;
         this.updateRadius();
-        this.maxSpeed = 300;
-        this.acceleration = 80;
+        this.maxSpeed = 500; // Increased
+        this.acceleration = 250; // Greatly increased
+        this.friction = 0.98; // Slides more on water
         this.weight = 100000; // 100 tons
         this.interactionRadius = 250; // Increased to reach from shore
         

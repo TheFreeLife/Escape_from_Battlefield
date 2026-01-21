@@ -131,31 +131,29 @@ export default class MapEditor {
                 });
             }
 
-            const vehicleTypes = [
-                { id: 'v_truck', name: '군용 트럭', color: '#4b5320' },
-                { id: 'v_tank', name: '전차 (Tank)', color: '#1e8449' },
-                { id: 'v_apc', name: '장갑차 (APC)', color: '#34495e' },
-                { id: 'v_transport_ship', name: '수송기 (Transport)', color: '#2c3e50' }
-            ];
-            
-            addHeader('🚜 이동수단 / 중장비');
-            vehicleTypes.forEach(v => {
-                const div = document.createElement('div');
-                div.className = 'palette-tile';
-                if (v.id === this.selectedTileId) div.classList.add('selected');
-                const previewCanvas = document.createElement('canvas');
-                previewCanvas.width = 50; previewCanvas.height = 50;
-                const pCtx = previewCanvas.getContext('2d');
-                pCtx.fillStyle = v.color; 
-                pCtx.fillRect(10, 15, 30, 20);
-                pCtx.strokeStyle = '#fff'; pCtx.lineWidth = 2; pCtx.strokeRect(10, 15, 30, 20);
-                div.appendChild(previewCanvas);
-                div.title = v.name;
-                div.addEventListener('click', () => this.selectTile(v.id, div));
-                palette.appendChild(div);
-            });
-                } else if (this.activeLayer === 'items') {
-                    const items = this.game.assetManager.getData('items') || [];
+                        const landVehicles = [
+                            { id: 'v_truck', name: '군용 트럭', color: '#4b5320' },
+                            { id: 'v_tank', name: '전차 (Tank)', color: '#1e8449' },
+                            { id: 'v_apc', name: '장갑차 (APC)', color: '#34495e' }
+                        ];
+                        const seaVehicles = [
+                            { id: 'v_transport_ship', name: '운반선 (Carrier)', color: '#2c3e50' }
+                        ];
+                        const airVehicles = []; // 공중 유닛 추가 시 여기에 정의
+                        
+                        if (landVehicles.length > 0) {
+                            addHeader('🚜 지상 이동수단');
+                            landVehicles.forEach(v => this.createVehiclePaletteTile(v, palette));
+                        }
+                        if (seaVehicles.length > 0) {
+                            addHeader('🚢 해상 이동수단');
+                            seaVehicles.forEach(v => this.createVehiclePaletteTile(v, palette));
+                        }
+                        if (airVehicles.length > 0) {
+                            addHeader('🚁 공중 이동수단');
+                            airVehicles.forEach(v => this.createVehiclePaletteTile(v, palette));
+                        }
+                    } else if (this.activeLayer === 'items') {                    const items = this.game.assetManager.getData('items') || [];
                     
                     const weapons = items.filter(i => i.type === 'weapon');
                     const ammos = items.filter(i => i.type === 'ammo');
@@ -231,33 +229,23 @@ export default class MapEditor {
     }
 
     createPaletteTile(tile, container) {
+        // ... (existing code)
+    }
+
+    createVehiclePaletteTile(v, palette) {
         const div = document.createElement('div');
         div.className = 'palette-tile';
-        if (tile.id === this.selectedTileId) div.classList.add('selected');
-        
+        if (v.id === this.selectedTileId) div.classList.add('selected');
         const previewCanvas = document.createElement('canvas');
         previewCanvas.width = 50; previewCanvas.height = 50;
         const pCtx = previewCanvas.getContext('2d');
-        
-        const tileImg = this.game.assetManager.get(tile.id);
-        if (tileImg) {
-            // Draw with aspect ratio consideration
-            const w = tile.width || 1;
-            const h = tile.height || 1;
-            if (w > h) {
-                pCtx.drawImage(tileImg, 0, 15, 50, 50 * (h/w));
-            } else {
-                pCtx.drawImage(tileImg, 0, 0, 50, 50);
-            }
-        } else {
-            pCtx.fillStyle = tile.color || '#333';
-            pCtx.fillRect(0, 0, 50, 50);
-        }
-        
+        pCtx.fillStyle = v.color; 
+        pCtx.fillRect(10, 15, 30, 20);
+        pCtx.strokeStyle = '#fff'; pCtx.lineWidth = 2; pCtx.strokeRect(10, 15, 30, 20);
         div.appendChild(previewCanvas);
-        div.title = tile.name;
-        div.addEventListener('click', () => this.selectTile(tile.id, div));
-        container.appendChild(div);
+        div.title = v.name;
+        div.addEventListener('click', () => this.selectTile(v.id, div));
+        palette.appendChild(div);
     }
 
     selectTile(id, element) {
@@ -690,72 +678,81 @@ export default class MapEditor {
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'; ctx.beginPath();
         for (let x = startGX; x <= endGX; x++) { const vx = this.offsetX + x * ts; ctx.moveTo(vx, 0); ctx.lineTo(vx, this.game.canvas.height); }
         for (let y = startGY; y <= endGY; y++) { const vy = this.offsetY + y * ts; ctx.moveTo(0, vy); ctx.lineTo(this.game.canvas.width, vy); }
-        ctx.stroke();
-
-        this.tiles.forEach((cell, key) => {
-            const [gx, gy] = key.split(',').map(Number);
-            if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
-            const tx = this.offsetX + gx * ts, ty = this.offsetY + gy * ts;
-            if (cell.floor && cell.floor !== 'occupied_space') {
-                const img = this.game.assetManager.get(cell.floor);
-                if (img) ctx.drawImage(img, tx, ty, ts, ts);
-                else { ctx.fillStyle = '#333'; ctx.fillRect(tx, ty, ts, ts); }
-            }
-            if (cell.block && cell.block !== 'occupied_space') {
-                const img = this.game.assetManager.get(cell.block);
-                const bSize = this.getTileSize(cell.block);
-                if (img) ctx.drawImage(img, tx, ty, ts * bSize.w, ts * bSize.h);
-                else { ctx.fillStyle = '#555'; ctx.fillRect(tx, ty, ts * bSize.w, ts * bSize.h); }
-            }
-            if (cell.item) {
-                const itemId = (cell.item && typeof cell.item === 'object') ? cell.item.id : cell.item;
-                const itemCount = (cell.item && typeof cell.item === 'object') ? (cell.item.count || 1) : 1;
-                
-                const img = this.game.assetManager.get(itemId);
-                if (img) {
-                    ctx.drawImage(img, tx+ts*0.2, ty+ts*0.2, ts*0.6, ts*0.6);
-                } else {
-                    const itemDef = this.game.assetManager.getData('items')?.find(it => it.id === itemId);
-                    ctx.fillStyle = itemDef?.color || '#f1c40f';
-                    ctx.fillRect(tx+ts*0.25, ty+ts*0.25, ts*0.5, ts*0.5);
-                }
-                
-                if (itemCount > 1) {
-                    ctx.fillStyle = '#fff';
-                    ctx.font = `bold ${Math.max(8, ts * 0.25)}px Arial`;
-                    ctx.textAlign = 'right';
-                    ctx.fillText(itemCount, tx + ts - 5, ty + ts - 5);
-                    ctx.textAlign = 'left';
-                }
-            }
-            if (cell.unit) {
-                if (cell.unit.id === 'occupied_space' || cell.unit.id === 'v_reserved') return;
-                if (cell.unit.id.startsWith('v_')) {
-                    const size = this.getUnitSize(cell.unit.id);
-                    let vColor = '#4b5320';
-                    if (cell.unit.id === 'v_tank') vColor = '#1e8449';
-                    else if (cell.unit.id === 'v_apc') vColor = '#34495e';
-                    else if (cell.unit.id === 'v_transport_ship') vColor = '#2c3e50';
-
-                    ctx.fillStyle = vColor;
-                    ctx.fillRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);
-                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);
-                    ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(10, ts * 0.3)}px Arial`; ctx.textAlign = 'center';
+                ctx.stroke();
+        
+                // Pass 1: Draw all floor tiles
+                this.tiles.forEach((cell, key) => {
+                    const [gx, gy] = key.split(',').map(Number);
+                    if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
+                    const tx = this.offsetX + gx * ts, ty = this.offsetY + gy * ts;
                     
-                    let label = cell.unit.id.replace('v_', '').toUpperCase();
-                    if (label === 'TRANSPORT_SHIP') label = 'SHIP';
-                    ctx.fillText(label, tx + (ts * size.w)/2, ty + (ts * size.h)/2 + 5);
-                } else {
-                    const def = enemiesData.find(e => e.id === cell.unit.id);
-                    ctx.fillStyle = def ? def.color : '#e74c3c';
-                    ctx.beginPath(); ctx.arc(tx + ts/2, ty + ts/2, ts * 0.35, 0, Math.PI * 2); ctx.fill();
-                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-                    ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(8, ts * 0.2)}px Arial`; ctx.textAlign = 'center';
-                    ctx.fillText(cell.unit.command, tx + ts/2, ty + ts * 0.85);
-                                }
-                            }
-                        });
-                
+                    if (cell.floor && cell.floor !== 'occupied_space') {
+                        const img = this.game.assetManager.get(cell.floor);
+                        if (img) ctx.drawImage(img, tx, ty, ts, ts);
+                        else { ctx.fillStyle = '#333'; ctx.fillRect(tx, ty, ts, ts); }
+                    }
+                });
+        
+                // Pass 2: Draw blocks, items, and units
+                this.tiles.forEach((cell, key) => {
+                    const [gx, gy] = key.split(',').map(Number);
+                    if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
+                    const tx = this.offsetX + gx * ts, ty = this.offsetY + gy * ts;
+        
+                    if (cell.block && cell.block !== 'occupied_space') {
+                        const img = this.game.assetManager.get(cell.block);
+                        const bSize = this.getTileSize(cell.block);
+                        if (img) ctx.drawImage(img, tx, ty, ts * bSize.w, ts * bSize.h);
+                        else { ctx.fillStyle = '#555'; ctx.fillRect(tx, ty, ts * bSize.w, ts * bSize.h); }
+                    }
+                    if (cell.item) {
+                        const itemId = (cell.item && typeof cell.item === 'object') ? cell.item.id : cell.item;
+                        const itemCount = (cell.item && typeof cell.item === 'object') ? (cell.item.count || 1) : 1;
+                        
+                        const img = this.game.assetManager.get(itemId);
+                        if (img) {
+                            ctx.drawImage(img, tx+ts*0.2, ty+ts*0.2, ts*0.6, ts*0.6);
+                        } else {
+                            const itemDef = this.game.assetManager.getData('items')?.find(it => it.id === itemId);
+                            ctx.fillStyle = itemDef?.color || '#f1c40f';
+                            ctx.fillRect(tx+ts*0.25, ty+ts*0.25, ts*0.5, ts*0.5);
+                        }
+                        
+                        if (itemCount > 1) {
+                            ctx.fillStyle = '#fff';
+                            ctx.font = `bold ${Math.max(8, ts * 0.25)}px Arial`;
+                            ctx.textAlign = 'right';
+                            ctx.fillText(itemCount, tx + ts - 5, ty + ts - 5);
+                            ctx.textAlign = 'left';
+                        }
+                    }
+                    if (cell.unit) {
+                        if (cell.unit.id === 'occupied_space' || cell.unit.id === 'v_reserved') return;
+                        if (cell.unit.id.startsWith('v_')) {
+                            const size = this.getUnitSize(cell.unit.id);
+                            let vColor = '#4b5320';
+                            if (cell.unit.id === 'v_tank') vColor = '#1e8449';
+                            else if (cell.unit.id === 'v_apc') vColor = '#34495e';
+                            else if (cell.unit.id === 'v_transport_ship') vColor = '#2c3e50';
+        
+                            ctx.fillStyle = vColor;
+                            ctx.fillRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);
+                            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);
+                            ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(10, ts * 0.3)}px Arial`; ctx.textAlign = 'center';
+                            
+                            let label = cell.unit.id.replace('v_', '').toUpperCase();
+                            if (label === 'TRANSPORT_SHIP') label = 'SHIP';
+                            ctx.fillText(label, tx + (ts * size.w)/2, ty + (ts * size.h)/2 + 5);
+                        } else {
+                            const def = enemiesData.find(e => e.id === cell.unit.id);
+                            ctx.fillStyle = def ? def.color : '#e74c3c';
+                            ctx.beginPath(); ctx.arc(tx + ts/2, ty + ts/2, ts * 0.35, 0, Math.PI * 2); ctx.fill();
+                            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+                            ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(8, ts * 0.2)}px Arial`; ctx.textAlign = 'center';
+                            ctx.fillText(cell.unit.command, tx + ts/2, ty + ts * 0.85);
+                        }
+                    }
+                });                
                         // Preview Cursor
                         const input = this.game.input;
                         const mx = input.mouse.x;

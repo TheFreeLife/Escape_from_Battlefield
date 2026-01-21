@@ -230,7 +230,6 @@ export default class TileMap {
     }
 
     render(ctx, camera) {
-        // ... (이전 render 메서드 유지하되 renderChunk 호출)
         const startCol = Math.floor(camera.x / TILE_SIZE);
         const endCol = startCol + (camera.width / TILE_SIZE) + 1;
         const startRow = Math.floor(camera.y / TILE_SIZE);
@@ -241,6 +240,7 @@ export default class TileMap {
         const startCy = Math.floor(startRow / CHUNK_SIZE);
         const endCy = Math.floor(endRow / CHUNK_SIZE);
 
+        const visibleChunks = [];
         for (let cy = startCy; cy <= endCy; cy++) {
             for (let cx = startCx; cx <= endCx; cx++) {
                 let chunk = this.getChunk(cx, cy);
@@ -248,15 +248,22 @@ export default class TileMap {
                     this.generator.generateChunk(this, cx, cy);
                     chunk = this.getChunk(cx, cy);
                 }
-                if (chunk) {
-                    this.renderChunk(ctx, chunk, camera);
-                }
+                if (chunk) visibleChunks.push(chunk);
             }
+        }
+
+        // Pass 1: Floor tiles for all visible chunks
+        for (const chunk of visibleChunks) {
+            this.renderChunkFloors(ctx, chunk, camera);
+        }
+
+        // Pass 2: Block tiles for all visible chunks
+        for (const chunk of visibleChunks) {
+            this.renderChunkBlocks(ctx, chunk, camera);
         }
     }
 
-    renderChunk(ctx, chunk, camera) {
-        // 1. Floor Pass
+    renderChunkFloors(ctx, chunk, camera) {
         for (let y = 0; y < CHUNK_SIZE; y++) {
             for (let x = 0; x < CHUNK_SIZE; x++) {
                 const worldX = (chunk.cx * CHUNK_SIZE + x) * TILE_SIZE;
@@ -271,10 +278,10 @@ export default class TileMap {
                 }
             }
         }
+    }
 
-        // 2. Block Pass
+    renderChunkBlocks(ctx, chunk, camera) {
         const allTiles = this.game.assetManager.getData('tiles');
-        
         for (let y = 0; y < CHUNK_SIZE; y++) {
             for (let x = 0; x < CHUNK_SIZE; x++) {
                 const blockId = chunk.blocks[y][x];
@@ -303,6 +310,12 @@ export default class TileMap {
                 }
             }
         }
+    }
+
+    renderChunk(ctx, chunk, camera) {
+        // This method is now split into renderChunkFloors and renderChunkBlocks
+        this.renderChunkFloors(ctx, chunk, camera);
+        this.renderChunkBlocks(ctx, chunk, camera);
     }
 
     renderOverlays(ctx, camera) {
