@@ -245,16 +245,6 @@ export default class Inventory {
             this.lastEState = false;
         }
 
-        // Allow closing external storage with 'T' key
-        if (input.isKeyPressed('KeyT')) {
-            if (!this.lastTState && this.isExternalStorageOpen) {
-                this.toggle();
-            }
-            this.lastTState = true;
-        } else {
-            this.lastTState = false;
-        }
-
         if (this.isOpen) {
             this.updateHover(input.mouse.x, input.mouse.y);
 

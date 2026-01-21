@@ -377,10 +377,9 @@ export default class Game {
     }
 
     handleInteraction() {
-        // 1. If any external storage is open, close it
-        if (this.inventory && this.inventory.isExternalStorageOpen) {
-            this.inventory.closeExternalStorage();
-            this.inventory.isOpen = false;
+        // 1. If any UI window is open (Inventory, Crafting, Storage), close it
+        if (this.inventory && this.inventory.isOpen) {
+            this.inventory.toggle(); // This will handle closing everything safely
             return;
         }
 
@@ -880,44 +879,82 @@ export default class Game {
     renderTileInteractionHints(ctx) {
         if (!this.player || this.player.isInVehicle || this.inventory.isOpen) return;
 
-        const range = 1.5;
-        const px = Math.floor(this.player.x / 64);
-        const py = Math.floor(this.player.y / 64);
+        const candidates = [];
+        const p = this.player;
+        const pAngle = p.facingAngle;
 
+        // 1. Collect Tiles (Loot boxes, Doors, Crafting)
+        const px = Math.floor(p.x / 64);
+        const py = Math.floor(p.y / 64);
         for (let y = py - 1; y <= py + 1; y++) {
             for (let x = px - 1; x <= px + 1; x++) {
                 const block = this.tileMap.getBlockAt(x, y);
                 if (block && block.def && (block.def.interactable || block.id === 'gun_workbench')) {
                     const centerX = block.anchorX * 64 + (block.def.width || 1) * 32;
                     const centerY = block.anchorY * 64 + (block.def.height || 1) * 32;
-                    
-                    const dx = this.player.x - centerX;
-                    const dy = this.player.y - centerY;
+                    const dx = centerX - p.x;
+                    const dy = centerY - p.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
 
                     if (dist < 100) {
-                        const screenX = centerX - this.camera.x;
-                        const screenY = centerY - this.camera.y;
-
-                        let label = `[F] ${block.def.name}`;
-                        if (block.id === 'door_open') label = "[F] 닫기";
-                        else if (block.id === 'door') label = "[F] 열기";
-
-                        ctx.fillStyle = '#fff';
-                        ctx.font = 'bold 16px Arial';
-                        ctx.textAlign = 'center';
-                        ctx.fillText(label, screenX, screenY - 45);
-                        
-                        ctx.strokeStyle = '#fff';
-                        ctx.lineWidth = 2;
-                        ctx.strokeRect(screenX - 10, screenY - 30, 20, 20);
-                        
-                        ctx.textAlign = 'left';
-                        return; // 한 블록에 대해 하나의 힌트만 표시
+                        const targetAngle = Math.atan2(dy, dx);
+                        let angleDiff = Math.abs(this.getAngleDiff(pAngle, targetAngle));
+                        candidates.push({ type: 'tile', centerX, centerY, id: block.id, name: block.def.name, dist, angleDiff });
                     }
                 }
             }
         }
+
+        // 2. Collect Vehicles
+        for (const v of this.vehicles) {
+            const dx = v.x - p.x;
+            const dy = v.y - p.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < v.interactionRadius) {
+                const targetAngle = Math.atan2(dy, dx);
+                let angleDiff = Math.abs(this.getAngleDiff(pAngle, targetAngle));
+                candidates.push({ type: 'vehicle', centerX: v.x, centerY: v.y, name: v.type === 'tank' ? '전차' : (v.type === 'apc' ? '장갑차' : '차량'), dist, angleDiff });
+            }
+        }
+
+        // 3. Collect Loots
+        for (const l of this.loots) {
+            const dx = l.x - p.x;
+            const dy = l.y - p.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 80) {
+                const targetAngle = Math.atan2(dy, dx);
+                let angleDiff = Math.abs(this.getAngleDiff(pAngle, targetAngle));
+                const itemDef = this.assetManager.data['items']?.find(it => it.id === l.itemId);
+                candidates.push({ type: 'loot', centerX: l.x, centerY: l.y, name: itemDef?.name || '아이템', dist, angleDiff });
+            }
+        }
+
+        if (candidates.length === 0) return;
+
+        // 4. Select the BEST candidate (closest angle difference)
+        candidates.sort((a, b) => a.angleDiff - b.angleDiff);
+        const best = candidates[0];
+
+        // 5. Render only the BEST one
+        const screenX = best.centerX - this.camera.x;
+        const screenY = best.centerY - this.camera.y;
+
+        let label = `[F] ${best.name}`;
+        if (best.id === 'door_open') label = "[F] 닫기";
+        else if (best.id === 'door') label = "[F] 열기";
+        else if (best.type === 'vehicle') label = `[F] ${best.name} 탑승`;
+
+        ctx.save();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, screenX, screenY - 45);
+        
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(screenX - 10, screenY - 30, 20, 20);
+        ctx.restore();
     }
 
     renderDaylightOverlay(ctx) {
