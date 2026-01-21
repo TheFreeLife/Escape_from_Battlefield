@@ -90,28 +90,48 @@ export default class MapEditor {
         if (!palette) return;
         palette.innerHTML = '';
         
+        const addHeader = (text) => {
+            const h = document.createElement('div');
+            h.style.width = '100%';
+            h.style.padding = '8px 5px';
+            h.style.fontSize = '12px';
+            h.style.color = '#aaa';
+            h.style.background = '#222';
+            h.style.marginBottom = '5px';
+            h.style.borderLeft = '3px solid #f1c40f';
+            h.style.gridColumn = '1 / -1'; // Grid layout 지원용
+            h.innerText = text;
+            palette.appendChild(h);
+        };
+
         if (this.activeLayer === 'units') {
             const enemies = this.game.assetManager.getData('enemies') || [];
-            enemies.forEach(enemy => {
-                const div = document.createElement('div');
-                div.className = 'palette-tile';
-                if (enemy.id === this.selectedTileId) div.classList.add('selected');
-                const previewCanvas = document.createElement('canvas');
-                previewCanvas.width = 50; previewCanvas.height = 50;
-                const pCtx = previewCanvas.getContext('2d');
-                pCtx.fillStyle = enemy.color || '#e74c3c';
-                pCtx.beginPath(); pCtx.arc(25, 25, 15, 0, Math.PI * 2); pCtx.fill();
-                div.appendChild(previewCanvas);
-                div.title = enemy.name;
-                div.addEventListener('click', () => this.selectTile(enemy.id, div));
-                palette.appendChild(div);
-            });
+            if (enemies.length > 0) {
+                addHeader('👥 인명 유닛');
+                enemies.forEach(enemy => {
+                    const div = document.createElement('div');
+                    div.className = 'palette-tile';
+                    if (enemy.id === this.selectedTileId) div.classList.add('selected');
+                    const previewCanvas = document.createElement('canvas');
+                    previewCanvas.width = 50; previewCanvas.height = 50;
+                    const pCtx = previewCanvas.getContext('2d');
+                    pCtx.fillStyle = enemy.color || '#e74c3c';
+                    pCtx.beginPath(); pCtx.arc(25, 25, 15, 0, Math.PI * 2); pCtx.fill();
+                    pCtx.strokeStyle = '#fff'; pCtx.lineWidth = 2; pCtx.stroke();
+                    div.appendChild(previewCanvas);
+                    div.title = enemy.name;
+                    div.addEventListener('click', () => this.selectTile(enemy.id, div));
+                    palette.appendChild(div);
+                });
+            }
 
             const vehicleTypes = [
                 { id: 'v_truck', name: '군용 트럭', color: '#4b5320' },
                 { id: 'v_tank', name: '전차 (Tank)', color: '#1e8449' },
                 { id: 'v_apc', name: '장갑차 (APC)', color: '#34495e' }
             ];
+            
+            addHeader('🚜 이동수단 / 중장비');
             vehicleTypes.forEach(v => {
                 const div = document.createElement('div');
                 div.className = 'palette-tile';
@@ -119,7 +139,9 @@ export default class MapEditor {
                 const previewCanvas = document.createElement('canvas');
                 previewCanvas.width = 50; previewCanvas.height = 50;
                 const pCtx = previewCanvas.getContext('2d');
-                pCtx.fillStyle = v.color; pCtx.fillRect(10, 15, 30, 20);
+                pCtx.fillStyle = v.color; 
+                pCtx.fillRect(10, 15, 30, 20);
+                pCtx.strokeStyle = '#fff'; pCtx.lineWidth = 2; pCtx.strokeRect(10, 15, 30, 20);
                 div.appendChild(previewCanvas);
                 div.title = v.name;
                 div.addEventListener('click', () => this.selectTile(v.id, div));
@@ -127,40 +149,91 @@ export default class MapEditor {
             });
         } else if (this.activeLayer === 'items') {
             const items = this.game.assetManager.getData('items') || [];
-            items.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'palette-tile';
-                if (item.id === this.selectedTileId) div.classList.add('selected');
-                const previewCanvas = document.createElement('canvas');
-                previewCanvas.width = 50; previewCanvas.height = 50;
-                const pCtx = previewCanvas.getContext('2d');
-                const itemImg = this.game.assetManager.get(item.id);
-                if (itemImg) pCtx.drawImage(itemImg, 5, 5, 40, 40);
-                else { pCtx.fillStyle = item.color || '#f1c40f'; pCtx.fillRect(10, 10, 30, 30); }
-                div.appendChild(previewCanvas);
-                div.title = item.name;
-                div.addEventListener('click', () => this.selectTile(item.id, div));
-                palette.appendChild(div);
-            });
+            
+            const weapons = items.filter(i => i.type === 'weapon');
+            const ammos = items.filter(i => i.type === 'ammo');
+            const consumables = items.filter(i => i.type === 'consumable');
+            const others = items.filter(i => i.type !== 'weapon' && i.type !== 'ammo' && i.type !== 'consumable');
+
+            if (weapons.length > 0) {
+                // Weapons sub-categorization
+                const melee = weapons.filter(w => w.subType === 'melee');
+                const pistols = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '9mm' || w.caliber === '.50 AE' || w.caliber === '.357'));
+                const rifles = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '5.56mm' || w.caliber === '7.62mm') && w.magSize > 10 && w.fireRate < 0.2);
+                const snipers = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '.338' || w.caliber === '7.62mm') && w.fireRate >= 0.4);
+                const shotguns = weapons.filter(w => w.caliber === '12g');
+                const heavy = weapons.filter(w => w.caliber === 'rocket' || w.caliber === '40mm' || w.magSize >= 100);
+
+                if (melee.length > 0) { addHeader('🗡️ 근접 무기'); melee.forEach(i => this.createPaletteTile(i, palette)); }
+                if (pistols.length > 0) { addHeader('🔫 권총'); pistols.forEach(i => this.createPaletteTile(i, palette)); }
+                if (rifles.length > 0) { addHeader('🔫 소총 / 기관단총'); rifles.forEach(i => this.createPaletteTile(i, palette)); }
+                if (snipers.length > 0) { addHeader('🔭 저격 / 지정사수'); snipers.forEach(i => this.createPaletteTile(i, palette)); }
+                if (shotguns.length > 0) { addHeader('🧱 산탄총'); shotguns.forEach(i => this.createPaletteTile(i, palette)); }
+                if (heavy.length > 0) { addHeader('🚀 중화기 / 폭발물'); heavy.forEach(i => this.createPaletteTile(i, palette)); }
+            }
+
+            if (ammos.length > 0) {
+                addHeader('📦 탄약');
+                ammos.forEach(i => this.createPaletteTile(i, palette));
+            }
+            if (consumables.length > 0) {
+                addHeader('💊 소모품 / 장비');
+                consumables.forEach(i => this.createPaletteTile(i, palette));
+            }
+            if (others.length > 0) {
+                addHeader('ETC');
+                others.forEach(i => this.createPaletteTile(i, palette));
+            }
+        } else if (this.activeLayer === 'block') {
+            const tiles = this.game.assetManager.getData('tiles') || [];
+            const blocks = tiles.filter(t => t.layer === 'block');
+            
+            const interactable = blocks.filter(b => b.interactable);
+            const normal = blocks.filter(b => !b.interactable);
+
+            if (interactable.length > 0) {
+                addHeader('상호작용 가능 (상자, 문 등)');
+                interactable.forEach(tile => this.createPaletteTile(tile, palette));
+            }
+            if (normal.length > 0) {
+                addHeader('일반 블록 (벽, 엄폐물 등)');
+                normal.forEach(tile => this.createPaletteTile(tile, palette));
+            }
         } else {
             const tiles = this.game.assetManager.getData('tiles') || [];
             const filtered = tiles.filter(t => t.layer === this.activeLayer);
-            filtered.forEach(tile => {
-                const div = document.createElement('div');
-                div.className = 'palette-tile';
-                if (tile.id === this.selectedTileId) div.classList.add('selected');
-                const previewCanvas = document.createElement('canvas');
-                previewCanvas.width = 50; previewCanvas.height = 50;
-                const pCtx = previewCanvas.getContext('2d');
-                const tileImg = this.game.assetManager.get(tile.id);
-                if (tileImg) pCtx.drawImage(tileImg, 0, 0, 50, 50);
-                else { pCtx.fillStyle = tile.color || '#333'; pCtx.fillRect(0, 0, 50, 50); }
-                div.appendChild(previewCanvas);
-                div.title = tile.name;
-                div.addEventListener('click', () => this.selectTile(tile.id, div));
-                palette.appendChild(div);
-            });
+            filtered.forEach(tile => this.createPaletteTile(tile, palette));
         }
+    }
+
+    createPaletteTile(tile, container) {
+        const div = document.createElement('div');
+        div.className = 'palette-tile';
+        if (tile.id === this.selectedTileId) div.classList.add('selected');
+        
+        const previewCanvas = document.createElement('canvas');
+        previewCanvas.width = 50; previewCanvas.height = 50;
+        const pCtx = previewCanvas.getContext('2d');
+        
+        const tileImg = this.game.assetManager.get(tile.id);
+        if (tileImg) {
+            // Draw with aspect ratio consideration
+            const w = tile.width || 1;
+            const h = tile.height || 1;
+            if (w > h) {
+                pCtx.drawImage(tileImg, 0, 15, 50, 50 * (h/w));
+            } else {
+                pCtx.drawImage(tileImg, 0, 0, 50, 50);
+            }
+        } else {
+            pCtx.fillStyle = tile.color || '#333';
+            pCtx.fillRect(0, 0, 50, 50);
+        }
+        
+        div.appendChild(previewCanvas);
+        div.title = tile.name;
+        div.addEventListener('click', () => this.selectTile(tile.id, div));
+        container.appendChild(div);
     }
 
     selectTile(id, element) {

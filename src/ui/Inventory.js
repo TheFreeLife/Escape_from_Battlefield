@@ -312,7 +312,7 @@ export default class Inventory {
                         this.tryAttach(item, slot.type, slot.i);
                         return;
                     }
-                    if (itemDef.type === 'magazine' || itemDef.id === 'medkit') {
+                    if (itemDef.id === 'medkit') {
                         this.useItemAt(slot.type, slot.i);
                         return;
                     }
@@ -520,7 +520,7 @@ export default class Inventory {
         const canMerge = (item1, item2) => {
             if (!item1 || !item2 || item1.id !== item2.id) return false;
             const def = this.getItemDef(item1.id);
-            return def && (def.type === 'consumable' || def.type === 'magazine' || def.type === 'tank_shell' || def.type === 'apc_ammo');
+            return def && (def.type === 'consumable' || def.type === 'ammo' || def.type === 'tank_shell' || def.type === 'apc_ammo');
         };
 
         // 0. External Storage
