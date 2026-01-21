@@ -53,6 +53,11 @@ export default class MapEditor {
         document.getElementById('loot-settings-save').addEventListener('click', () => this.saveLootSettings());
         document.getElementById('loot-settings-cancel').addEventListener('click', () => this.closeLootSettings());
 
+        // Item Settings
+        document.getElementById('item-settings-save').addEventListener('click', () => this.saveItemSettings());
+        document.getElementById('item-settings-cancel').addEventListener('click', () => this.closeItemSettings());
+        document.getElementById('item-settings-delete').addEventListener('click', () => this.deleteItem());
+
         this.updatePaletteFilter();
         document.getElementById('export-btn').addEventListener('click', () => this.exportArray());
         document.getElementById('import-btn').addEventListener('click', () => this.importArray());
@@ -149,14 +154,13 @@ export default class MapEditor {
             });
         } else if (this.activeLayer === 'items') {
             const items = this.game.assetManager.getData('items') || [];
-            
             const weapons = items.filter(i => i.type === 'weapon');
             const ammos = items.filter(i => i.type === 'ammo');
             const consumables = items.filter(i => i.type === 'consumable');
             const others = items.filter(i => i.type !== 'weapon' && i.type !== 'ammo' && i.type !== 'consumable');
 
             if (weapons.length > 0) {
-                // Weapons sub-categorization
+                // ... (이전과 동일한 무기 분류 로직)
                 const melee = weapons.filter(w => w.subType === 'melee');
                 const pistols = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '9mm' || w.caliber === '.50 AE' || w.caliber === '.357'));
                 const rifles = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '5.56mm' || w.caliber === '7.62mm') && w.magSize > 10 && w.fireRate < 0.2);
@@ -176,13 +180,30 @@ export default class MapEditor {
                 addHeader('📦 탄약');
                 ammos.forEach(i => this.createPaletteTile(i, palette));
             }
+
             if (consumables.length > 0) {
-                addHeader('💊 소모품 / 장비');
-                consumables.forEach(i => this.createPaletteTile(i, palette));
+                // 부품류와 진짜 소모품(의료기구) 분리
+                const partsIds = ['iron_ingot', 'wood_plank', 'spring', 'pistol_grip', 'short_barrel', 'long_barrel', 'ar_receiver', 'ak_receiver', 'smg_receiver', 'bolt_action_parts', 'shotgun_parts', 'explosive_material'];
+                const materials = consumables.filter(c => partsIds.includes(c.id));
+                const realConsumables = consumables.filter(c => !partsIds.includes(c.id));
+
+                if (materials.length > 0) {
+                    addHeader('🛠️ 제작 재료 / 부품');
+                    materials.forEach(i => this.createPaletteTile(i, palette));
+                }
+                if (realConsumables.length > 0) {
+                    addHeader('💊 일반 소모품');
+                    realConsumables.forEach(i => this.createPaletteTile(i, palette));
+                }
             }
+            
             if (others.length > 0) {
-                addHeader('ETC');
-                others.forEach(i => this.createPaletteTile(i, palette));
+                // 기타 아이템들 (장비 등)
+                const equipment = others.filter(o => o.type === 'equipment');
+                const attachments = others.filter(o => o.type === 'attachment');
+                
+                if (equipment.length > 0) { addHeader('👕 개인 장비'); equipment.forEach(i => this.createPaletteTile(i, palette)); }
+                if (attachments.length > 0) { addHeader('🔍 총기 부착물'); attachments.forEach(i => this.createPaletteTile(i, palette)); }
             }
         } else if (this.activeLayer === 'block') {
             const tiles = this.game.assetManager.getData('tiles') || [];
@@ -239,8 +260,15 @@ export default class MapEditor {
     selectTile(id, element) {
         document.querySelectorAll('.palette-tile').forEach(el => el.classList.remove('selected'));
         element.classList.add('selected');
-        this.selectedTileId = id;
+        
+        // Ensure ID is a string for internal tracking, but setTileAt will handle layers
+        this.selectedTileId = id; 
+        
         if (this.selectedTool === 'eraser') this.selectTool('pen');
+    }
+
+    isCellEmpty(cell) {
+        return cell.floor === null && cell.block === null && cell.unit === null && cell.item === null;
     }
 
     getTileAt(x, y) {
@@ -251,41 +279,68 @@ export default class MapEditor {
         const key = `${x},${y}`;
         const cell = this.tiles.get(key) || { floor: null, block: null, unit: null, item: null, metadata: null };
         
-        // 1. Get size definition
-        const size = (layer === 'units') ? this.getUnitSize(tileId) : this.getTileSize(tileId);
-        
-        // 2. Erasing Logic
+        // --- 1. ERASER LOGIC ---
         if (tileId === null) {
-            const currentItem = cell[layer];
-            if (!currentItem) return;
-
-            // Handle erasing of occupied space or master
-            const isOccupied = (layer === 'units' && (currentItem.id === 'occupied_space' || currentItem.id === 'v_reserved')) ||
-                             ((layer === 'floor' || layer === 'block') && currentItem === 'occupied_space');
-            
-            const masterKey = isOccupied ? (cell.metadata?.[layer + 'Master'] || (cell.unit?.master)) : key;
-            if (!masterKey) return;
-
-            const [mx, my] = masterKey.split(',').map(Number);
-            const masterCell = this.tiles.get(masterKey);
-            if (!masterCell) return;
-
-            const mItem = masterCell[layer];
-            const mSize = (layer === 'units') ? this.getUnitSize(mItem.id) : this.getTileSize(mItem);
-
-            for (let oy = 0; oy < mSize.h; oy++) {
-                for (let ox = 0; ox < mSize.w; ox++) {
-                    const tKey = `${mx + ox},${my + oy}`;
-                    const tCell = this.tiles.get(tKey);
-                    if (tCell) {
-                        tCell[layer] = null;
-                        if (tCell.metadata) delete tCell.metadata[layer + 'Master'];
-                        if (tCell.floor === null && tCell.block === null && tCell.unit === null && tCell.item === null) this.tiles.delete(tKey);
+            if (layer === 'items') {
+                cell.item = null;
+            } else if (layer === 'units') {
+                const unit = cell.unit;
+                if (!unit) return;
+                let masterKey = key;
+                if (unit.id === 'occupied_space') masterKey = unit.master || key;
+                
+                const [mx, my] = masterKey.split(',').map(Number);
+                const masterCell = this.tiles.get(masterKey);
+                const mUnit = masterCell?.unit;
+                if (mUnit) {
+                    const { w, h } = this.getUnitSize(mUnit.id);
+                    for (let oy = 0; oy < h; oy++) {
+                        for (let ox = 0; ox < w; ox++) {
+                            const tKey = `${mx + ox},${my + oy}`;
+                            const tCell = this.tiles.get(tKey);
+                            if (tCell) {
+                                tCell.unit = null;
+                                if (this.isCellEmpty(tCell)) this.tiles.delete(tKey);
+                            }
+                        }
                     }
+                } else {
+                    cell.unit = null;
+                }
+            } else {
+                // floor or block layer
+                const current = cell[layer];
+                if (!current) return;
+                let masterKey = key;
+                if (current === 'occupied_space') masterKey = cell.metadata?.[layer + 'Master'] || key;
+
+                const [mx, my] = masterKey.split(',').map(Number);
+                const masterCell = this.tiles.get(masterKey);
+                const mItem = masterCell?.[layer];
+                if (mItem) {
+                    const { w, h } = this.getTileSize(mItem);
+                    for (let oy = 0; oy < h; oy++) {
+                        for (let ox = 0; ox < w; ox++) {
+                            const tKey = `${mx + ox},${my + oy}`;
+                            const tCell = this.tiles.get(tKey);
+                            if (tCell) {
+                                tCell[layer] = null;
+                                if (tCell.metadata) delete tCell.metadata[layer + 'Master'];
+                                if (this.isCellEmpty(tCell)) this.tiles.delete(tKey);
+                            }
+                        }
+                    }
+                } else {
+                    cell[layer] = null;
                 }
             }
+            
+            if (this.isCellEmpty(cell)) this.tiles.delete(key);
             return;
         }
+
+        // 2. Get size definition for placement
+        const size = (layer === 'units') ? this.getUnitSize(tileId) : this.getTileSize(tileId);
 
         // 3. Multi-tile Placement Logic
         if (size.w > 1 || size.h > 1) {
@@ -324,7 +379,14 @@ export default class MapEditor {
         if (layer === 'units') {
             cell.unit = { id: tileId, command: 'GUARD', patrolRadius: 250, healthMult: 1.0, damageMult: 1.0, speedMult: 1.0 };
         } else if (layer === 'items') {
-            cell.item = tileId;
+            if (tileId === null) {
+                cell.item = null;
+            } else {
+                // Standardize item data structure to object
+                const itemId = (typeof tileId === 'object') ? tileId.id : tileId;
+                const count = (typeof tileId === 'object') ? (tileId.count || 1) : 1;
+                cell.item = { id: itemId, count: count };
+            }
         } else {
             cell[layer] = tileId;
             if (layer === 'block' && tileId === 'loot_box' && !cell.metadata) cell.metadata = { lootTable: [] };
@@ -372,6 +434,52 @@ export default class MapEditor {
 
     closeLootSettings() { document.getElementById('loot-box-settings-modal').classList.add('hidden'); this.editingLootPos = null; }
 
+    openItemSettings(gx, gy) {
+        const cell = this.getTileAt(gx, gy);
+        if (!cell.item) return;
+        
+        this.editingItemPos = { x: gx, y: gy };
+        const modal = document.getElementById('item-settings-modal');
+        const countInput = document.getElementById('item-count-input');
+        
+        modal.classList.remove('hidden');
+        
+        const itemId = (typeof cell.item === 'string') ? cell.item : cell.item.id;
+        const itemCount = (typeof cell.item === 'string') ? 1 : (cell.item.count || 1);
+        
+        const itemDef = this.game.assetManager.getData('items')?.find(it => it.id === itemId);
+        const isWeapon = itemDef?.type === 'weapon';
+        
+        countInput.value = isWeapon ? 1 : itemCount;
+        countInput.disabled = isWeapon; // Weapons always fixed to 1
+    }
+
+    saveItemSettings() {
+        if (!this.editingItemPos) return;
+        const cell = this.getTileAt(this.editingItemPos.x, this.editingItemPos.y);
+        const countInput = document.getElementById('item-count-input');
+        
+        const itemId = (typeof cell.item === 'string') ? cell.item : cell.item.id;
+        cell.item = { id: itemId, count: parseInt(countInput.value) || 1 };
+        
+        this.closeItemSettings();
+    }
+
+    closeItemSettings() {
+        document.getElementById('item-settings-modal').classList.add('hidden');
+        this.editingItemPos = null;
+    }
+
+    deleteItem() {
+        if (!this.editingItemPos) return;
+        const cell = this.getTileAt(this.editingItemPos.x, this.editingItemPos.y);
+        cell.item = null;
+        if (cell.floor === null && cell.block === null && cell.unit === null && cell.item === null) {
+            this.tiles.delete(`${this.editingItemPos.x},${this.editingItemPos.y}`);
+        }
+        this.closeItemSettings();
+    }
+
     openUnitSettings(gx, gy) {
         const cell = this.getTileAt(gx, gy);
         if (!cell.unit) return;
@@ -402,17 +510,27 @@ export default class MapEditor {
 
     update(dt) {
         if (this.game.gameState !== 'EDITOR') return;
+        
         const unitModal = document.getElementById('unit-settings-modal');
         const lootModal = document.getElementById('loot-box-settings-modal');
-        const isModalOpen = (unitModal && !unitModal.classList.contains('hidden')) || (lootModal && !lootModal.classList.contains('hidden'));
-        const input = this.game.input; const mx = input.mouse.x; const my = input.mouse.y;
+        const itemModal = document.getElementById('item-settings-modal');
+        
+        const isModalOpen = (unitModal && !unitModal.classList.contains('hidden')) || 
+                           (lootModal && !lootModal.classList.contains('hidden')) ||
+                           (itemModal && !itemModal.classList.contains('hidden'));
+
+        const input = this.game.input; 
+        const mx = input.mouse.x; 
+        const my = input.mouse.y;
         const ts = this.baseTileSize * this.zoom;
-        const gx = Math.floor((mx - this.offsetX) / ts); const gy = Math.floor((my - this.offsetY) / ts);
+        const gx = Math.floor((mx - this.offsetX) / ts); 
+        const gy = Math.floor((my - this.offsetY) / ts);
+        
         let isOverUI = mx > this.game.canvas.width - 300;
+        
         if (isModalOpen) {
-            const activeModal = !unitModal.classList.contains('hidden') ? unitModal : lootModal;
-            const rect = activeModal.getBoundingClientRect();
-            if (mx >= rect.left && mx <= rect.right && my >= rect.top && my <= rect.bottom) isOverUI = true;
+            // If ANY modal is open, we consider the mouse over UI to block drawing
+            isOverUI = true; 
         }
         if (input.mouse.rightDown && !isOverUI) {
             const dx = mx - this.lastMousePos.x; const dy = my - this.lastMousePos.y;
@@ -423,6 +541,7 @@ export default class MapEditor {
                 const cell = this.getTileAt(gx, gy);
                 if (cell.unit && !cell.unit.id.startsWith('v_')) this.openUnitSettings(gx, gy);
                 else if (cell.block === 'loot_box') this.openLootSettings(gx, gy);
+                else if (cell.item) this.openItemSettings(gx, gy);
             }
             this.rightClickMoveDist = 0;
         }
@@ -586,9 +705,25 @@ export default class MapEditor {
                 else { ctx.fillStyle = '#555'; ctx.fillRect(tx, ty, ts * bSize.w, ts * bSize.h); }
             }
             if (cell.item) {
-                const img = this.game.assetManager.get(cell.item);
-                if (img) ctx.drawImage(img, tx+ts*0.2, ty+ts*0.2, ts*0.6, ts*0.6);
-                else { ctx.fillStyle = '#f1c40f'; ctx.fillRect(tx+ts*0.25, ty+ts*0.25, ts*0.5, ts*0.5); }
+                const itemId = (cell.item && typeof cell.item === 'object') ? cell.item.id : cell.item;
+                const itemCount = (cell.item && typeof cell.item === 'object') ? (cell.item.count || 1) : 1;
+                
+                const img = this.game.assetManager.get(itemId);
+                if (img) {
+                    ctx.drawImage(img, tx+ts*0.2, ty+ts*0.2, ts*0.6, ts*0.6);
+                } else {
+                    const itemDef = this.game.assetManager.getData('items')?.find(it => it.id === itemId);
+                    ctx.fillStyle = itemDef?.color || '#f1c40f';
+                    ctx.fillRect(tx+ts*0.25, ty+ts*0.25, ts*0.5, ts*0.5);
+                }
+                
+                if (itemCount > 1) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = `bold ${Math.max(8, ts * 0.25)}px Arial`;
+                    ctx.textAlign = 'right';
+                    ctx.fillText(itemCount, tx + ts - 5, ty + ts - 5);
+                    ctx.textAlign = 'left';
+                }
             }
             if (cell.unit) {
                 if (cell.unit.id === 'occupied_space' || cell.unit.id === 'v_reserved') return;

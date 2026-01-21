@@ -1,3 +1,5 @@
+import { recipes } from '../items/recipes.js';
+
 export default class Inventory {
     constructor(game) {
         this.game = game;
@@ -31,6 +33,11 @@ export default class Inventory {
         this.currentExternalStorage = null;
         this.externalStorageType = null; // 'vehicle' or 'chest'
         this.isExternalStorageOpen = false;
+
+        // Crafting System (3x2 grid + 1 result)
+        this.craftingSlots = new Array(6).fill(null);
+        this.craftingResult = null;
+        this.isCraftingOpen = false;
 
         // Reload system
         this.isReloading = false;
@@ -77,6 +84,11 @@ export default class Inventory {
 
         this.addItem({ id: 'tank_shell_he', count: 10 });
         this.addItem({ id: 'tank_shell_ap', count: 10 });
+
+        // Add Crafting Materials
+        this.addItem({ id: 'iron_ingot', count: 20 });
+        this.addItem({ id: 'wood_plank', count: 10 });
+        this.addItem({ id: 'spring', count: 15 });
     }
 
     openExternalStorage(storageObj, type = 'chest') {
@@ -95,14 +107,55 @@ export default class Inventory {
         this.isExternalStorageOpen = false;
     }
 
+    openCrafting() {
+        this.isCraftingOpen = true;
+        this.isOpen = true;
+    }
+
+    checkCraftingRecipe() {
+        // Convert flat 6 slots to 2x3 grid (2 rows, 3 columns)
+        const grid = [
+            [this.craftingSlots[0]?.id || null, this.craftingSlots[1]?.id || null, this.craftingSlots[2]?.id || null],
+            [this.craftingSlots[3]?.id || null, this.craftingSlots[4]?.id || null, this.craftingSlots[5]?.id || null]
+        ];
+
+        const match = recipes.find(r => {
+            return JSON.stringify(r.ingredients) === JSON.stringify(grid);
+        });
+
+        if (match) {
+            this.craftingResult = { id: match.result, count: 1 };
+        } else {
+            this.craftingResult = null;
+        }
+    }
+
+    onCraftingTake() {
+        // Consume one from each ingredient slot
+        for (let i = 0; i < 6; i++) {
+            if (this.craftingSlots[i]) {
+                this.craftingSlots[i].count--;
+                if (this.craftingSlots[i].count <= 0) this.craftingSlots[i] = null;
+            }
+        }
+        this.checkCraftingRecipe();
+    }
+
     toggle() {
         this.isOpen = !this.isOpen;
         if (!this.isOpen) {
             this.closeExternalStorage();
-            if (this.heldItem) {
-                if (!this.addItem(this.heldItem)) {
-                    // Drop ground TBD
+            this.isCraftingOpen = false;
+            // Return crafting items to inventory
+            for (let i = 0; i < 6; i++) {
+                if (this.craftingSlots[i]) {
+                    if (!this.addItem(this.craftingSlots[i])) { /* Drop TBD */ }
+                    this.craftingSlots[i] = null;
                 }
+            }
+            this.craftingResult = null;
+            if (this.heldItem) {
+                if (!this.addItem(this.heldItem)) { }
                 this.heldItem = null;
             }
             this.hoveredSlotInfo = null;
@@ -111,11 +164,12 @@ export default class Inventory {
 
     addItem(item) {
         const itemDef = this.getItemDef(item.id);
-        const isAmmo = itemDef && (itemDef.type === 'ammo' || itemDef.type === 'tank_shell' || itemDef.type === 'apc_ammo');
-        const isStackable = itemDef && (isAmmo || itemDef.type === 'consumable');
-        const maxStack = isAmmo ? 9999 : 99;
+        if (!itemDef) return false;
 
-        // 1. Try to stack if it's stackable
+        const maxStack = 999;
+        const isStackable = !!itemDef.stackable;
+
+        // 1. Try to stack if the item is stackable
         if (isStackable) {
             // Check hotbar
             for (let i = 0; i < this.hotbarSlots; i++) {
@@ -137,15 +191,14 @@ export default class Inventory {
             }
         }
 
-        // 2. Find empty slot if still has count
+        // 2. Find empty slot
         for (let i = 0; i < this.slots; i++) {
             if (!this.items[i]) {
-                // Initialize weapon state for ANY weapon entering inventory
-                if (itemDef && itemDef.type === 'weapon') {
+                if (itemDef.type === 'weapon') {
                     if (item.ammo === undefined) item.ammo = itemDef.magSize || 0;
                     if (!item.attachments) item.attachments = { optic: null, barrel: null, underbarrel: null };
                 }
-                this.items[i] = item;
+                this.items[i] = { ...item };
                 return true;
             }
         }
@@ -295,7 +348,70 @@ export default class Inventory {
 
     handleInputRightClick(mx, my) {
         const layout = this.getLayout();
-        // Check if we right-clicked an attachment in storage/hotbar to attach it to held weapon
+        const input = this.game.input;
+
+        // Helper to check and split/place items
+        const processRightClick = (item, setItemFunc) => {
+            if (this.heldItem) {
+                // 1. If holding something, place 1 unit
+                if (!item) {
+                    // Empty slot: Place 1 from held
+                    const oneItem = { ...this.heldItem, count: 1 };
+                    setItemFunc(oneItem);
+                    this.heldItem.count--;
+                    if (this.heldItem.count <= 0) this.heldItem = null;
+                    return true;
+                } else if (item.id === this.heldItem.id) {
+                    // Same item: Add 1 to stack
+                    const maxStack = 99; // Adjust based on item type if needed
+                    if (item.count < maxStack) {
+                        item.count++;
+                        this.heldItem.count--;
+                        if (this.heldItem.count <= 0) this.heldItem = null;
+                        return true;
+                    }
+                }
+            } else {
+                // 2. If not holding anything, pick up half
+                if (item && item.count > 0) {
+                    const takeCount = Math.ceil(item.count / 2);
+                    this.heldItem = { ...item, count: takeCount };
+                    item.count -= takeCount;
+                    if (item.count <= 0) setItemFunc(null);
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        // 0. Crafting Slots
+        if (this.isCraftingOpen) {
+            for (let i = 0; i < 6; i++) {
+                if (this.pointInRect(mx, my, layout.craftingInput[i])) {
+                    if (processRightClick(this.craftingSlots[i], (val) => this.craftingSlots[i] = val)) {
+                        this.checkCraftingRecipe();
+                        return;
+                    }
+                }
+            }
+        }
+
+        // 1. Storage slots
+        for (let i = 0; i < this.slots; i++) {
+            if (this.pointInRect(mx, my, layout.storage[i])) {
+                if (processRightClick(this.items[i], (val) => this.items[i] = val)) return;
+            }
+        }
+
+        // 2. Hotbar slots
+        for (let i = 0; i < this.hotbarSlots; i++) {
+            if (this.pointInRect(mx, my, layout.hotbar[i])) {
+                if (processRightClick(this.hotbar[i], (val) => this.hotbar[i] = val)) return;
+            }
+        }
+
+        // 3. Equipment & Attachments (Original right-click logic for quick-actions)
+        // Keep original functionality for attachments and medkits
         const checkSlots = [
             ...layout.storage.map((r, i) => ({ r, i, type: 'storage' })),
             ...layout.hotbar.map((r, i) => ({ r, i, type: 'hotbar' }))
@@ -483,6 +599,19 @@ export default class Inventory {
             if (this.hoveredSlotInfo) return;
         }
 
+        // Check crafting slots
+        if (this.isCraftingOpen) {
+            layout.craftingInput.forEach((rect, i) => {
+                if (this.pointInRect(mx, my, rect) && this.craftingSlots[i]) {
+                    this.hoveredSlotInfo = { item: this.craftingSlots[i], x: rect.x, y: rect.y, size: rect.size };
+                }
+            });
+            if (layout.craftingResult && this.pointInRect(mx, my, layout.craftingResult) && this.craftingResult) {
+                this.hoveredSlotInfo = { item: this.craftingResult, x: layout.craftingResult.x, y: layout.craftingResult.y, size: layout.craftingResult.size };
+            }
+            if (this.hoveredSlotInfo) return;
+        }
+
         // Check storage
         for (let i = 0; i < this.slots; i++) {
             const rect = layout.storage[i];
@@ -520,8 +649,54 @@ export default class Inventory {
         const canMerge = (item1, item2) => {
             if (!item1 || !item2 || item1.id !== item2.id) return false;
             const def = this.getItemDef(item1.id);
-            return def && (def.type === 'consumable' || def.type === 'ammo' || def.type === 'tank_shell' || def.type === 'apc_ammo');
+            return def && !!def.stackable;
         };
+
+        const maxStack = 999;
+
+        // 0. Crafting Logic
+        if (this.isCraftingOpen) {
+            // Input Slots
+            for (let i = 0; i < 6; i++) {
+                const rect = layout.craftingInput[i];
+                if (this.pointInRect(mx, my, rect)) {
+                    const slotItem = this.craftingSlots[i];
+                    
+                    if (this.heldItem && slotItem && this.heldItem.id === slotItem.id) {
+                        // Merge Logic
+                        const total = slotItem.count + this.heldItem.count;
+                        if (total <= maxStack) {
+                            slotItem.count = total;
+                            this.heldItem = null;
+                        } else {
+                            slotItem.count = maxStack;
+                            this.heldItem.count = total - maxStack;
+                        }
+                    } else {
+                        // Swap Logic
+                        const temp = this.craftingSlots[i];
+                        this.craftingSlots[i] = this.heldItem;
+                        this.heldItem = temp;
+                    }
+                    
+                    this.checkCraftingRecipe();
+                    return;
+                }
+            }
+            // Result Slot
+            const resRect = layout.craftingResult;
+            if (this.pointInRect(mx, my, resRect) && this.craftingResult) {
+                if (!this.heldItem) {
+                    this.heldItem = this.craftingResult;
+                    this.onCraftingTake();
+                    return;
+                } else if (this.heldItem.id === this.craftingResult.id && this.heldItem.count < maxStack) {
+                    this.heldItem.count++;
+                    this.onCraftingTake();
+                    return;
+                }
+            }
+        }
 
         // 0. External Storage
         if (this.isExternalStorageOpen) {
@@ -550,12 +725,12 @@ export default class Inventory {
                     if (this.heldItem && canMerge(this.heldItem, storageItems[i])) {
                         const target = storageItems[i];
                         const total = target.count + this.heldItem.count;
-                        if (total <= 99) {
+                        if (total <= maxStack) {
                             target.count = total;
                             this.heldItem = null;
                         } else {
-                            target.count = 99;
-                            this.heldItem.count = total - 99;
+                            target.count = maxStack;
+                            this.heldItem.count = total - maxStack;
                         }
                         return;
                     }
@@ -593,12 +768,12 @@ export default class Inventory {
                 if (this.heldItem && canMerge(this.heldItem, this.items[i])) {
                     const target = this.items[i];
                     const total = target.count + this.heldItem.count;
-                    if (total <= 99) {
+                    if (total <= maxStack) {
                         target.count = total;
                         this.heldItem = null;
                     } else {
-                        target.count = 99;
-                        this.heldItem.count = total - 99;
+                        target.count = maxStack;
+                        this.heldItem.count = total - maxStack;
                     }
                     return;
                 }
@@ -623,12 +798,12 @@ export default class Inventory {
                 if (this.heldItem && canMerge(this.heldItem, this.hotbar[i])) {
                     const target = this.hotbar[i];
                     const total = target.count + this.heldItem.count;
-                    if (total <= 99) {
+                    if (total <= maxStack) {
                         target.count = total;
                         this.heldItem = null;
                     } else {
-                        target.count = 99;
-                        this.heldItem.count = total - 99;
+                        target.count = maxStack;
+                        this.heldItem.count = total - maxStack;
                     }
                     return;
                 }
@@ -789,7 +964,8 @@ export default class Inventory {
         const padding = 8;
         const winW = (slotSize + padding) * cols + padding + 40;
         
-        let winH = this.isExternalStorageOpen ? 520 : 580; 
+        // Increase window height for crafting to prevent overlap
+        let winH = (this.isExternalStorageOpen || this.isCraftingOpen) ? 620 : 580; 
 
         const winX = (this.game.canvas.width - winW) / 2;
         const winY = (this.game.canvas.height - winH) / 2;
@@ -800,13 +976,35 @@ export default class Inventory {
             equipment: {},
             storage: [],
             hotbar: [],
-            externalStorage: []
+            externalStorage: [],
+            craftingInput: [],
+            craftingResult: null
         };
 
-        // External Storage Slots (Loot boxes, Vehicles)
+        // Crafting Layout (3x2 Grid)
+        if (this.isCraftingOpen) {
+            const startX = winX + 80;
+            const startY = winY + 80;
+            for (let i = 0; i < 6; i++) {
+                layout.craftingInput.push({
+                    x: startX + (i % 3) * (slotSize + padding),
+                    y: startY + Math.floor(i / 3) * (slotSize + padding),
+                    size: slotSize
+                });
+            }
+            layout.craftingResult = {
+                x: startX + 4 * (slotSize + padding) + 10,
+                y: startY + (slotSize + padding) * 0.5,
+                size: slotSize
+            };
+            layout.craftingArrowX = startX + 3.5 * (slotSize + padding);
+            layout.craftingArrowY = startY + (slotSize + padding) - 5;
+        }
+
+        // External Storage Slots
         if (this.isExternalStorageOpen) {
             const extSlots = this.currentExternalStorage.storageSlots || this.currentExternalStorage.items.length;
-            const extCols = 8; // Change from 5 to 8 to match inventory width
+            const extCols = 8;
             for (let i = 0; i < extSlots; i++) {
                 const col = i % extCols;
                 const row = Math.floor(i / extCols);
@@ -819,7 +1017,7 @@ export default class Inventory {
         }
 
         // Equipment Slots
-        if (!this.isExternalStorageOpen) {
+        if (!this.isExternalStorageOpen && !this.isCraftingOpen) {
             const eqStartX = layout.preview.x + layout.preview.w + 20;
             const eqStartY = layout.preview.y;
             const eqRows = ['head', 'chest', 'top', 'bottom', 'acc1', 'acc2'];
@@ -835,8 +1033,10 @@ export default class Inventory {
             });
         }
 
-        // Player Inventory Storage position
-        const storageStartY = this.isExternalStorageOpen ? winY + 200 : layout.preview.y + layout.preview.h + 30;
+        // --- FIXED: Push Storage Start Y down to avoid overlap ---
+        // For crafting, the bottom of the grid is around Y + 240, so start at 280
+        const storageStartY = (this.isExternalStorageOpen || this.isCraftingOpen) ? winY + 280 : layout.preview.y + layout.preview.h + 30;
+        
         for (let i = 0; i < this.slots; i++) {
             const col = i % cols;
             const row = Math.floor(i / cols);
@@ -890,6 +1090,28 @@ export default class Inventory {
             });
             ctx.fillStyle = '#fff';
             ctx.fillText("Inventory", win.x + 25, storage[0].y - 15);
+        } else if (this.isCraftingOpen) {
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillText("Gun Workbench", win.x + 25, win.y + 40);
+            
+            // Draw Input Slots
+            layout.craftingInput.forEach((rect, i) => {
+                this.drawSlot(ctx, rect, this.craftingSlots[i], false);
+            });
+
+            // Draw Arrow
+            ctx.fillStyle = '#fff';
+            ctx.font = '30px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText("→", layout.craftingArrowX, layout.craftingArrowY);
+            ctx.textAlign = 'left';
+
+            // Draw Result
+            this.drawSlot(ctx, layout.craftingResult, this.craftingResult, false, 'Result');
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText("Inventory", win.x + 25, storage[0].y - 15);
         } else {
             // Normal Inventory Mode
             ctx.fillText("Character", win.x + 25, win.y + 40);
@@ -925,7 +1147,9 @@ export default class Inventory {
         });
 
         // Hotbar
-        if (!this.isVehicleStorageOpen) ctx.fillText("Hotbar Slots", win.x + 25, hotbar[0].y - 10);
+        ctx.fillStyle = '#aaa';
+        ctx.font = '12px Arial';
+        ctx.fillText("Hotbar Slots", win.x + 25, hotbar[0].y - 10);
         hotbar.forEach((rect, i) => {
             this.drawSlot(ctx, rect, this.hotbar[i], false);
         });

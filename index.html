@@ -47,6 +47,7 @@
 
             <!-- Loot Box Settings Modal -->
             <div id="loot-box-settings-modal" class="hidden">
+                <!-- ... (기존 내용 유지) -->
                 <div class="modal-content">
                     <h4>전리품 상자 설정</h4>
                     <div id="loot-table-editor">
@@ -62,6 +63,19 @@
                     <div class="modal-buttons">
                         <button id="loot-settings-save">저장</button>
                         <button id="loot-settings-cancel">취소</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item Settings Modal -->
+            <div id="item-settings-modal" class="hidden">
+                <div class="modal-content">
+                    <h4>아이템 설정</h4>
+                    <label>수량: <input type="number" id="item-count-input" value="1" min="1" max="999"></label>
+                    <div class="modal-buttons">
+                        <button id="item-settings-save">저장</button>
+                        <button id="item-settings-cancel">취소</button>
+                        <button id="item-settings-delete" style="background-color: #e74c3c;">삭제</button>
                     </div>
                 </div>
             </div>

@@ -458,7 +458,9 @@ export default class Game {
 
         // 6. Execute Interaction
         if (best.type === 'tile') {
-            if (best.id === 'loot_box') {
+            if (best.id === 'gun_workbench') {
+                this.inventory.openCrafting();
+            } else if (best.id === 'loot_box') {
                 let metadata = this.tileMap.getMetadata(best.x, best.y);
                 if (!metadata) {
                     metadata = { items: new Array(16).fill(null) };
@@ -480,8 +482,12 @@ export default class Game {
                 this.inventory.openExternalStorage(best.entity, 'vehicle');
             }
         } else if (best.type === 'loot') {
-            if (this.inventory.addItem({ id: best.entity.itemId, count: best.entity.count })) {
-                best.entity.markedForDeletion = true;
+            const lootItem = best.entity;
+            const itemId = (typeof lootItem.itemId === 'object') ? lootItem.itemId.id : lootItem.itemId;
+            const count = (typeof lootItem.itemId === 'object') ? (lootItem.itemId.count || 1) : (lootItem.count || 1);
+            
+            if (this.inventory.addItem({ id: itemId, count: count })) {
+                lootItem.markedForDeletion = true;
             }
         }
     }

@@ -182,7 +182,11 @@ export default class MapGenerator {
                     if (itemId) {
                         const ix = (startX + x) * TILE_SIZE + TILE_SIZE / 2;
                         const iy = (startY + y) * TILE_SIZE + TILE_SIZE / 2;
-                        this.game.loots.push(new Loot(this.game, ix, iy, itemId));
+                        
+                        const id = (typeof itemId === 'object') ? itemId.id : itemId;
+                        const count = (typeof itemId === 'object') ? (itemId.count || 1) : 1;
+                        
+                        this.game.loots.push(new Loot(this.game, ix, iy, id, count));
                     }
                 } else if (cell !== null && cell !== undefined) {
                     tileMap.setTile(startX + x, startY + y, cell, 'block');

@@ -262,7 +262,7 @@ body, html {
     display: none !important;
 }
 
-#unit-settings-modal, #loot-box-settings-modal {
+#unit-settings-modal, #loot-box-settings-modal, #item-settings-modal {
     position: fixed;
     top: 50%;
     left: 50%;
