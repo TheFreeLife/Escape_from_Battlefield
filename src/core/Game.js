@@ -13,6 +13,7 @@ import Grenade from '../entities/Grenade.js';
 import Vehicle from '../entities/Vehicle.js';
 import Tank from '../entities/Tank.js';
 import APC from '../entities/APC.js';
+import TransportShip from '../entities/TransportShip.js';
 
 import { allItems } from '../items/index.js';
 
@@ -151,7 +152,7 @@ export default class Game {
     /**
      * Check only tile map collision
      */
-    checkTileCollision(x, y, radius) {
+    checkTileCollision(x, y, radius, moveType = 'land') {
         const buffer = radius * 0.8;
         const points = [
             { x: x - buffer, y: y - buffer },
@@ -159,14 +160,44 @@ export default class Game {
             { x: x - buffer, y: y + buffer },
             { x: x + buffer, y: y + buffer }
         ];
-        return this.tileMap && points.some(p => this.tileMap.isCollidable(p.x, p.y));
+
+        if (!this.tileMap) return false;
+
+        return points.some(p => {
+            const tx = Math.floor(p.x / 64);
+            const ty = Math.floor(p.y / 64);
+            const floorId = this.tileMap.getTile(tx, ty, 'floor');
+            const block = this.tileMap.getBlockAt(tx, ty);
+
+            // 1. Air Units: Fly over everything (can be extended later for high walls)
+            if (moveType === 'air') return false;
+
+            // 2. Block Collision (Walls, objects etc.)
+            if (block && block.def && block.def.collidable) return true;
+
+            // 3. Floor Collision (Terrain types)
+            if (moveType === 'land') {
+                // Land units cannot enter water
+                if (floorId === 'water') return true;
+            } else if (moveType === 'sea') {
+                // Sea units must stay on water. 
+                // To prevent getting stuck, we check if the floor is NOT water.
+                // If it's land (grass, dirt etc.), it's a collision for a sea unit.
+                if (floorId !== 'water' && floorId !== null) return true;
+            }
+
+            return false;
+        });
     }
 
-    checkCollision(x, y, radius, ignore = null) {
-        // 1. Tile Map Collision (Walls always block)
-        if (this.checkTileCollision(x, y, radius)) return true;
+    checkCollision(x, y, radius, ignore = null, moveType = 'land') {
+        // 1. Tile Map Collision (Based on moveType)
+        if (this.checkTileCollision(x, y, radius, moveType)) return true;
 
         // 2. Entity Collision
+        // Air units usually don't collide with ground entities
+        if (moveType === 'air') return false;
+
         const entities = [
             this.player,
             ...this.enemies,
@@ -176,6 +207,10 @@ export default class Game {
         for (const ent of entities) {
             if (!ent || ent === ignore || !ent.isCollidable) continue;
             
+            // For sea/land separation, maybe vehicles of different moveTypes don't collide?
+            // Usually, they should still collide if they hit each other (e.g. ship hitting a bridge/dock)
+            // But for simplicity, we'll keep standard circular collision.
+
             const dx = x - ent.x;
             const dy = y - ent.y;
             const distSq = dx * dx + dy * dy;
@@ -196,7 +231,9 @@ export default class Game {
                     const pushY = -ny * overlap;
 
                     // Can the entity be pushed there? (Check tile collision for the entity)
-                    if (!this.checkTileCollision(ent.x + pushX, ent.y + pushY, ent.radius)) {
+                    // Use entity's own moveType if available, fallback to 'land'
+                    const entMoveType = ent.moveType || 'land';
+                    if (!this.checkTileCollision(ent.x + pushX, ent.y + pushY, ent.radius, entMoveType)) {
                         // Push successful
                         ent.x += pushX;
                         ent.y += pushY;
@@ -237,6 +274,7 @@ export default class Game {
         this.vehicles.push(new Vehicle(this, 500, 500));
         this.vehicles.push(new Tank(this, 700, 300));
         this.vehicles.push(new APC(this, 900, 500));
+        this.vehicles.push(new TransportShip(this, 1100, 300));
 
         this.isReady = true;
         this.start();
@@ -913,7 +951,12 @@ export default class Game {
             if (dist < v.interactionRadius) {
                 const targetAngle = Math.atan2(dy, dx);
                 let angleDiff = Math.abs(this.getAngleDiff(pAngle, targetAngle));
-                candidates.push({ type: 'vehicle', centerX: v.x, centerY: v.y, name: v.type === 'tank' ? '전차' : (v.type === 'apc' ? '장갑차' : '차량'), dist, angleDiff });
+                let name = '차량';
+                if (v.type === 'tank') name = '전차';
+                else if (v.type === 'apc') name = '장갑차';
+                else if (v.type === 'transport_ship') name = '수송기';
+                
+                candidates.push({ type: 'vehicle', entity: v, centerX: v.x, centerY: v.y, name, dist, angleDiff });
             }
         }
 
@@ -943,7 +986,20 @@ export default class Game {
         let label = `[F] ${best.name}`;
         if (best.id === 'door_open') label = "[F] 닫기";
         else if (best.id === 'door') label = "[F] 열기";
-        else if (best.type === 'vehicle') label = `[F] ${best.name} 탑승`;
+        else if (best.type === 'vehicle') {
+            const v = best.entity;
+            const dx = p.x - v.x;
+            const dy = p.y - v.y;
+            const localX = dx * Math.cos(-v.angle) - dy * Math.sin(-v.angle);
+            
+            if (localX > -v.width / 4) {
+                label = `[F] ${best.name} 탑승`;
+            } else if (v.hasExternalStorage) {
+                label = v.type === 'transport_ship' ? "[F] 화물칸" : "[F] 적재함";
+            } else {
+                label = `[F] ${best.name} 탑승`; // Fallback for vehicles without storage
+            }
+        }
 
         ctx.save();
         ctx.fillStyle = '#fff';

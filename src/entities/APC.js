@@ -3,9 +3,10 @@ import Projectile from './Projectile.js';
 
 export default class APC extends Vehicle {
     constructor(game, x, y) {
-        super(game, x, y, 'apc');
+        super(game, x, y, 'apc', 'land');
         this.width = 140;
         this.height = 90;
+        this.updateRadius();
         this.maxSpeed = 450;
         this.acceleration = 180;
         this.weight = 20000; // 20 tons
@@ -124,22 +125,5 @@ export default class APC extends Vehicle {
         ctx.restore();
 
         ctx.restore();
-
-        // Interaction Hint
-        if (!this.isOccupied) {
-            const player = this.game.player;
-            const dist = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
-            if (dist < this.interactionRadius) {
-                const dx = player.x - this.x;
-                const dy = player.y - this.y;
-                const localX = dx * Math.cos(-this.angle) - dy * Math.sin(-this.angle);
-                if (localX > 0) {
-                    ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 16px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText("[F] 장갑차 탑승", screenX, screenY - 70);
-                }
-            }
-        }
     }
 }

@@ -3,9 +3,10 @@ import Projectile from './Projectile.js';
 
 export default class Tank extends Vehicle {
     constructor(game, x, y) {
-        super(game, x, y, 'tank');
+        super(game, x, y, 'tank', 'land');
         this.width = 160;
         this.height = 100;
+        this.updateRadius();
         this.maxSpeed = 250;
         this.acceleration = 100;
         this.weight = 50000; // 50 tons
@@ -123,25 +124,6 @@ export default class Tank extends Vehicle {
         ctx.restore();
 
         ctx.restore();
-
-        // Interaction Hint
-        if (!this.isOccupied) {
-            const player = this.game.player;
-            const dist = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
-            if (dist < this.interactionRadius) {
-                const dx = player.x - this.x;
-                const dy = player.y - this.y;
-                const localX = dx * Math.cos(-this.angle) - dy * Math.sin(-this.angle);
-
-                // Only show "Enter" hint if at the front (cabin area)
-                if (localX > 0) {
-                    ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 16px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText("[F] 전차 탑승", screenX, screenY - 80);
-                }
-            }
-        }
     }
 
     renderTankHUD(ctx) {

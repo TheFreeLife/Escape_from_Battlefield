@@ -1,9 +1,10 @@
 export default class Vehicle {
-    constructor(game, x, y, type = 'truck') {
+    constructor(game, x, y, type = 'truck', moveType = 'land') {
         this.game = game;
         this.x = x;
         this.y = y;
         this.type = type;
+        this.moveType = moveType;
         this.width = 120;
         this.height = 80;
         this.angle = 0;
@@ -18,13 +19,17 @@ export default class Vehicle {
 
         this.interactionRadius = 100;
         this.isCollidable = true;
-        this.radius = Math.max(this.width, this.height) * 0.5; // Circular radius for simplified collision
         this.weight = 2000;
+        this.updateRadius();
 
         // Trunk Storage (10 slots)
         this.storageSlots = 10;
         this.storage = new Array(this.storageSlots).fill(null);
         this.isStorageOpen = false;
+    }
+
+    updateRadius() {
+        this.radius = Math.max(this.width, this.height) * 0.5;
     }
 
     handleInteraction(playerX, playerY) {
@@ -37,7 +42,8 @@ export default class Vehicle {
         const localY = dx * Math.sin(-this.angle) + dy * Math.cos(-this.angle);
 
         // Vehicle width is 120. Cabin is at positive local X, Trunk is at negative local X.
-        if (localX > 0) {
+        // We allow entry from the front 3/4 of the vehicle.
+        if (localX > -this.width / 4) {
             // Front side -> Cabin
             if (!this.isOccupied) {
                 this.enter();
@@ -72,14 +78,14 @@ export default class Vehicle {
         const vy = Math.sin(this.angle) * this.speed * dt;
 
         // Try moving X
-        if (!this.game.checkCollision(this.x + vx, this.y, this.radius, this)) {
+        if (!this.game.checkCollision(this.x + vx, this.y, this.radius, this, this.moveType)) {
             this.x += vx;
         } else {
             this.speed *= 0.3; // Hit something
         }
 
         // Try moving Y
-        if (!this.game.checkCollision(this.x, this.y + vy, this.radius, this)) {
+        if (!this.game.checkCollision(this.x, this.y + vy, this.radius, this, this.moveType)) {
             this.y += vy;
         } else {
             this.speed *= 0.3; // Hit something
@@ -117,6 +123,9 @@ export default class Vehicle {
         this.isOccupied = true;
         this.game.player.isInVehicle = true;
         this.game.player.currentVehicle = this;
+        // Snap player to vehicle center immediately
+        this.game.player.x = this.x;
+        this.game.player.y = this.y;
         console.log("Entered vehicle");
     }
 
@@ -185,31 +194,5 @@ export default class Vehicle {
         ctx.fillRect(this.width / 2 - 40, this.height / 2 - 10, wheelW, wheelH);
 
         ctx.restore();
-
-        // Interaction Hint
-        if (!this.isOccupied) {
-            const player = this.game.player;
-            const dist = Math.sqrt((player.x - this.x) ** 2 + (player.y - this.y) ** 2);
-            if (dist < this.interactionRadius) {
-                // Determine label based on local position
-                const dx = player.x - this.x;
-                const dy = player.y - this.y;
-                const localX = dx * Math.cos(-this.angle) - dy * Math.sin(-this.angle);
-                
-                let label = null;
-                if (localX > 0) {
-                    label = "[F] 탑승";
-                } else if (this.hasExternalStorage) {
-                    label = "[F] 적재함";
-                }
-
-                if (label) {
-                    ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 16px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(label, screenX, screenY - 60);
-                }
-            }
-        }
     }
 }

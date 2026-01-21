@@ -71,6 +71,7 @@ export default class MapEditor {
         if (id === 'v_tank') return { w: 2, h: 2 };
         if (id === 'v_apc') return { w: 2, h: 2 };
         if (id === 'v_truck') return { w: 2, h: 2 };
+        if (id === 'v_transport_ship') return { w: 3, h: 2 };
         return { w: 1, h: 1 };
     }
 
@@ -133,7 +134,8 @@ export default class MapEditor {
             const vehicleTypes = [
                 { id: 'v_truck', name: '군용 트럭', color: '#4b5320' },
                 { id: 'v_tank', name: '전차 (Tank)', color: '#1e8449' },
-                { id: 'v_apc', name: '장갑차 (APC)', color: '#34495e' }
+                { id: 'v_apc', name: '장갑차 (APC)', color: '#34495e' },
+                { id: 'v_transport_ship', name: '수송기 (Transport)', color: '#2c3e50' }
             ];
             
             addHeader('🚜 이동수단 / 중장비');
@@ -730,11 +732,19 @@ export default class MapEditor {
                 if (cell.unit.id === 'occupied_space' || cell.unit.id === 'v_reserved') return;
                 if (cell.unit.id.startsWith('v_')) {
                     const size = this.getUnitSize(cell.unit.id);
-                    ctx.fillStyle = cell.unit.id === 'v_tank' ? '#1e8449' : (cell.unit.id === 'v_apc' ? '#34495e' : '#4b5320');
+                    let vColor = '#4b5320';
+                    if (cell.unit.id === 'v_tank') vColor = '#1e8449';
+                    else if (cell.unit.id === 'v_apc') vColor = '#34495e';
+                    else if (cell.unit.id === 'v_transport_ship') vColor = '#2c3e50';
+
+                    ctx.fillStyle = vColor;
                     ctx.fillRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);
                     ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);
                     ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(10, ts * 0.3)}px Arial`; ctx.textAlign = 'center';
-                    ctx.fillText(cell.unit.id.replace('v_', '').toUpperCase(), tx + (ts * size.w)/2, ty + (ts * size.h)/2 + 5);
+                    
+                    let label = cell.unit.id.replace('v_', '').toUpperCase();
+                    if (label === 'TRANSPORT_SHIP') label = 'SHIP';
+                    ctx.fillText(label, tx + (ts * size.w)/2, ty + (ts * size.h)/2 + 5);
                 } else {
                     const def = enemiesData.find(e => e.id === cell.unit.id);
                     ctx.fillStyle = def ? def.color : '#e74c3c';

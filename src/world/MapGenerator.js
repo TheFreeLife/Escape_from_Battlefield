@@ -4,6 +4,7 @@ import Loot from '../entities/Loot.js';
 import Vehicle from '../entities/Vehicle.js';
 import Tank from '../entities/Tank.js';
 import APC from '../entities/APC.js';
+import TransportShip from '../entities/TransportShip.js';
 import Noise from '../core/Noise.js';
 
 export default class MapGenerator {
@@ -168,6 +169,7 @@ export default class MapGenerator {
                             let v;
                             if (uid === 'v_tank') v = new Tank(this.game, centerX, centerY);
                             else if (uid === 'v_apc') v = new APC(this.game, centerX, centerY);
+                            else if (uid === 'v_transport_ship') v = new TransportShip(this.game, centerX, centerY);
                             else v = new Vehicle(this.game, centerX, centerY); 
                             this.game.vehicles.push(v);
                             console.log(`Spawned ${uid} at center: ${centerX}, ${centerY}`);
