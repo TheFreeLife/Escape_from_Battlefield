@@ -21,6 +21,34 @@
         "svg": "<path d='M0 0h64v64H0z' fill='#7a7a7a'/><path d='M0 0l64 64M64 0L0 64' stroke='#666' stroke-width='1' opacity='0.3'/>"
     },
     {
+        "id": "runway_asphalt",
+        "name": "활주로 아스팔트",
+        "layer": "floor",
+        "color": "#2c3e50",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#2c3e50'/><circle cx='10' cy='10' r='1' fill='#34495e'/><circle cx='40' cy='50' r='1' fill='#34495e'/>"
+    },
+    {
+        "id": "runway_line_center",
+        "name": "활주로 중앙 점선",
+        "layer": "floor",
+        "color": "#2c3e50",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#2c3e50'/><rect x='28' y='10' width='8' height='44' fill='#fff'/>"
+    },
+    {
+        "id": "runway_line_edge",
+        "name": "활주로 외곽선",
+        "layer": "floor",
+        "color": "#2c3e50",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#2c3e50'/><rect x='0' y='0' width='10' height='64' fill='#f1c40f'/>"
+    },
+    {
+        "id": "runway_threshold",
+        "name": "활주로 정지선",
+        "layer": "floor",
+        "color": "#2c3e50",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#2c3e50'/><rect x='5' y='5' width='6' height='54' fill='#fff'/><rect x='17' y='5' width='6' height='54' fill='#fff'/><rect x='29' y='5' width='6' height='54' fill='#fff'/><rect x='41' y='5' width='6' height='54' fill='#fff'/><rect x='53' y='5' width='6' height='54' fill='#fff'/>"
+    },
+    {
         "id": "sand",
         "name": "모래",
         "layer": "floor",
@@ -50,6 +78,30 @@
         "blocksVision": true,
         "color": "#555555",
         "svg": "<rect x='0' y='0' width='64' height='64' fill='#555' stroke='black' stroke-width='4' /><path d='M0 0l64 64M64 0L0 64' stroke='#444' stroke-width='2'/>"
+    },
+    {
+        "id": "runway_light_white",
+        "name": "활주로 유도등 (백색)",
+        "layer": "block",
+        "collidable": false,
+        "color": "#fff",
+        "svg": "<circle cx='32' cy='32' r='10' fill='#fff' stroke='#aaa' stroke-width='2'/><circle cx='32' cy='32' r='15' fill='#fff' opacity='0.3'/>"
+    },
+    {
+        "id": "runway_light_red",
+        "name": "활주로 정지등 (적색)",
+        "layer": "block",
+        "collidable": false,
+        "color": "#e74c3c",
+        "svg": "<circle cx='32' cy='32' r='10' fill='#e74c3c' stroke='#c0392b' stroke-width='2'/><circle cx='32' cy='32' r='15' fill='#e74c3c' opacity='0.3'/>"
+    },
+    {
+        "id": "wind_sock",
+        "name": "풍향계 (Windsock)",
+        "layer": "block",
+        "collidable": false,
+        "color": "#e67e22",
+        "svg": "<rect x='30' y='30' width='4' height='34' fill='#7f8c8d'/><path d='M32 10 L60 15 L60 25 L32 30 Z' fill='#e67e22' stroke='#d35400' stroke-width='2'/>"
     },
     {
         "id": "sandbag",
