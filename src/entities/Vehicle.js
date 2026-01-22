@@ -192,28 +192,64 @@ export default class Vehicle {
 
     exit() {
         const player = this.game.player;
-        const exitDist = this.radius + player.radius + 15; // Position outside collision radius
-        const sideAngle = this.angle - Math.PI / 2; // Exit to the left side
+        const exitDist = this.radius + player.radius + 20; 
+        
+        // 1. Define candidate exit angles (Left, Right, Back, Front, and diagonals)
+        const angles = [
+            -Math.PI / 2, // Left
+            Math.PI / 2,  // Right
+            Math.PI,      // Back
+            0,            // Front
+            -Math.PI * 0.75, // Back-Left
+            Math.PI * 0.75,  // Back-Right
+            -Math.PI * 0.25, // Front-Left
+            Math.PI * 0.25   // Front-Right
+        ];
 
-        let targetX = this.x + Math.cos(sideAngle) * exitDist;
-        let targetY = this.y + Math.sin(sideAngle) * exitDist;
+        let foundSafeSpot = false;
+        let finalX = this.x;
+        let finalY = this.y;
 
-        // Check if the left side is blocked by a wall or another object
-        if (this.game.checkCollision(targetX, targetY, player.radius, this)) {
-            // Try the right side instead
-            const otherSide = this.angle + Math.PI / 2;
-            targetX = this.x + Math.cos(otherSide) * exitDist;
-            targetY = this.y + Math.sin(otherSide) * exitDist;
+        for (const relAngle of angles) {
+            const checkAngle = this.angle + relAngle;
+            const targetX = this.x + Math.cos(checkAngle) * exitDist;
+            const targetY = this.y + Math.sin(checkAngle) * exitDist;
+
+            // Check if this spot is safe (no tile collision and no other entity collision)
+            if (!this.game.checkCollision(targetX, targetY, player.radius, this)) {
+                finalX = targetX;
+                finalY = targetY;
+                foundSafeSpot = true;
+                break;
+            }
         }
 
-        // Apply new position
-        player.x = targetX;
-        player.y = targetY;
+        // 2. Emergency Fallback: If all directions blocked, try to find ANY non-colliding tile nearby
+        if (!foundSafeSpot) {
+            console.log("No immediate safe exit found, searching for nearest empty tile...");
+            for (let r = exitDist; r < exitDist + 200; r += 32) {
+                for (let a = 0; r < exitDist + 200 && a < Math.PI * 2; a += Math.PI / 4) {
+                    const tx = this.x + Math.cos(a) * r;
+                    const ty = this.y + Math.sin(a) * r;
+                    if (!this.game.checkCollision(tx, ty, player.radius, this)) {
+                        finalX = tx;
+                        finalY = ty;
+                        foundSafeSpot = true;
+                        break;
+                    }
+                }
+                if (foundSafeSpot) break;
+            }
+        }
+
+        // 3. Final Placement
+        player.x = finalX;
+        player.y = finalY;
 
         this.isOccupied = false;
         player.isInVehicle = false;
         player.currentVehicle = null;
-        console.log("Exited vehicle");
+        console.log("Exited vehicle" + (foundSafeSpot ? "" : " (EMERGENCY)"));
     }
 
     render(ctx, camera) {

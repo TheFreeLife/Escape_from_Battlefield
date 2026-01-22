@@ -175,6 +175,9 @@ export default class Game {
 
         if (!this.tileMap) return false;
 
+        // Air Units: Fly over everything (Blocks and Floor)
+        if (moveType === 'air') return false;
+
         // 1. Block Collision (Walls, objects etc.) - Always use full buffer
         const hasBlockCollision = points.some(p => {
             const tx = Math.floor(p.x / 64);

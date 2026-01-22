@@ -51,13 +51,13 @@ export default class TransportPlane extends Vehicle {
                 this.speed = Math.min(600, this.speed + 120 * dt); 
                 this.takeOffDistance += this.speed * dt;
 
-                // Gain altitude only after rolling for 640 pixels (10 tiles)
-                if (this.takeOffDistance > 640) {
-                    this.altitude += 0.2 * dt; // Gradual climb
+                // Gain altitude only after rolling for 256 pixels (approx 4 tiles)
+                if (this.takeOffDistance > 256) {
+                    this.altitude += 0.4 * dt; // Faster climb
                     
                     if (this.altitude >= 0.7 && this.moveType !== 'air') {
-                        this.moveType = 'air';
-                        console.log("AIRBORNE - Collision disabled");
+                        this.moveType = 'air'; // Disable ground collision
+                        console.log("Status: AIRBORNE (Obstacles ignored)");
                     }
                     
                     if (this.altitude >= 1.0) {
@@ -94,7 +94,7 @@ export default class TransportPlane extends Vehicle {
                     this.speed = Math.max(0, this.speed - 80 * dt); // Brake
                     this.landingRollDistance += this.speed * dt;
                     
-                    if (this.speed <= 5 || this.landingRollDistance > 640) {
+                    if (this.speed <= 5 || this.landingRollDistance > 256) {
                         this.speed = 0;
                         this.landingSequence = false;
                         this.isLanded = true;
@@ -126,16 +126,28 @@ export default class TransportPlane extends Vehicle {
         const vx = Math.cos(this.angle) * this.speed * dt;
         const vy = Math.sin(this.angle) * this.speed * dt;
 
+        let collided = false;
+
+        // Check X movement
         if (!this.game.checkCollision(this.x + vx, this.y, this.radius, this, this.moveType)) {
             this.x += vx;
         } else {
-            this.speed *= 0.3;
+            collided = true;
         }
 
+        // Check Y movement
         if (!this.game.checkCollision(this.x, this.y + vy, this.radius, this, this.moveType)) {
             this.y += vy;
         } else {
-            this.speed *= 0.3;
+            collided = true;
+        }
+
+        // --- Realistic Crash Logic ---
+        // If the plane hits an obstacle while on ground or during takeoff/landing roll
+        if (collided && (this.isLanded || this.takeOffSequence || this.landingSequence)) {
+            console.log("CRASH DETECTED! Plane destroyed.");
+            this.takeDamage(this.maxHealth); // Instant destruction
+            return;
         }
 
         if (this.isOccupied) {
@@ -175,6 +187,38 @@ export default class TransportPlane extends Vehicle {
 
         ctx.restore();
         this.renderHealthBar(ctx, screenX, screenY);
+        this.renderAltitudeUI(ctx, screenX, screenY);
+    }
+
+    renderAltitudeUI(ctx, x, y) {
+        // Show altitude UI only when flying or during sequences
+        if (this.altitude <= 0 && this.isLanded) return;
+
+        const barW = 100;
+        const barH = 6;
+        const barX = x - barW / 2;
+        const barY = y - this.radius - 30;
+
+        // Label
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        const altPercent = Math.round(this.altitude * 100);
+        ctx.fillText(`고도: ${altPercent}%`, x, barY - 5);
+
+        // Bar Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(barX, barY, barW, barH);
+
+        // Bar Fill (Light Blue)
+        ctx.fillStyle = '#3498db';
+        ctx.fillRect(barX, barY, barW * this.altitude, barH);
+
+        // Transition Threshold Marker (70%)
+        ctx.fillStyle = '#f1c40f';
+        ctx.fillRect(barX + barW * 0.7 - 1, barY, 2, barH);
+
+        ctx.textAlign = 'left';
     }
 
     drawPlaneShape(ctx, ox, oy) {
