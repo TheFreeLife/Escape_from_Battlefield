@@ -70,7 +70,8 @@ export default class MapEditor {
         this.updatePaletteFilter();
         document.getElementById('export-btn').addEventListener('click', () => this.exportArray());
         document.getElementById('import-btn').addEventListener('click', () => this.importArray());
-        document.getElementById('test-editor-btn').addEventListener('click', () => this.testCurrentStructure());
+        document.getElementById('test-editor-btn').addEventListener('click', () => this.testCurrentMap());
+        document.getElementById('save-map-btn').addEventListener('click', () => this.saveMap());
         document.getElementById('clear-editor-btn').addEventListener('click', () => {
             if(confirm("정말 모든 타일을 삭제하시겠습니까?")) this.tiles.clear();
         });
@@ -656,24 +657,44 @@ export default class MapEditor {
         }
     }
 
-    exportArray() {
-        if (this.tiles.size === 0) { alert("배치된 타일이 없습니다."); return; }
+    saveMap() {
+        if (this.tiles.size === 0) { alert("저장할 타일이 없습니다."); return; }
+        const name = prompt("맵 이름을 입력하세요:", "새로운 맵");
+        if (!name) return;
+
+        const layout = this.getLayoutArray();
+        const saved = localStorage.getItem('efb_custom_maps');
+        const customMaps = saved ? JSON.parse(saved) : {};
+        customMaps[name] = layout;
+        localStorage.setItem('efb_custom_maps', JSON.stringify(customMaps));
+        alert(`'${name}' 맵이 저장되었습니다.`);
+    }
+
+    getLayoutArray() {
+        if (this.tiles.size === 0) return [];
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         this.tiles.forEach((_, key) => {
             const [x, y] = key.split(',').map(Number);
             minX = Math.min(minX, x); maxX = Math.max(maxX, x);
             minY = Math.min(minY, y); maxY = Math.max(maxY, y);
         });
-        const cropped = [];
+
+        const layout = [];
         for(let y = minY; y <= maxY; y++) {
             const row = [];
             for(let x = minX; x <= maxX; x++) {
                 const c = this.getTileAt(x, y);
                 row.push([c.floor, c.block, (c.unit && (c.unit.id === 'occupied_space' || c.unit.id === 'v_reserved')) ? null : c.unit, c.item, c.metadata]);
             }
-            cropped.push(row);
+            layout.push(row);
         }
-        document.getElementById('export-output').value = JSON.stringify(cropped).replace(/]]],\[\[/g, ']],\n    [[').replace('[[[', '[\n    [[') .replace(']]]', ']]\n]');
+        return layout;
+    }
+
+    exportArray() {
+        const layout = this.getLayoutArray();
+        if (layout.length === 0) { alert("배치된 타일이 없습니다."); return; }
+        document.getElementById('export-output').value = JSON.stringify(layout).replace(/]]],\[\[/g, ']],\n    [[').replace('[[[', '[\n    [[') .replace(']]]', ']]\n]');
     }
 
     importArray() {
@@ -711,22 +732,9 @@ export default class MapEditor {
         } catch (e) { alert("가져오기 실패: " + e.message); }
     }
 
-    testCurrentStructure() {
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        this.tiles.forEach((_, key) => {
-            const [x, y] = key.split(',').map(Number);
-            minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-            minY = Math.min(minY, y); maxY = Math.max(maxY, y);
-        });
-        const layout = [];
-        for(let y = minY; y <= maxY; y++) {
-            const row = [];
-            for(let x = minX; x <= maxX; x++) {
-                const c = this.getTileAt(x, y);
-                row.push([c.floor, c.block, (c.unit && (c.unit.id === 'occupied_space' || c.unit.id === 'v_reserved')) ? null : c.unit, c.item, c.metadata]);
-            }
-            layout.push(row);
-        }
+    testCurrentMap() {
+        const layout = this.getLayoutArray();
+        if (layout.length === 0) { alert("배치된 타일이 없습니다."); return; }
         this.game.startTestMode(layout);
     }
 

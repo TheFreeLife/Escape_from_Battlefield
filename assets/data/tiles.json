@@ -1,5 +1,14 @@
 [
     {
+        "id": "void",
+        "name": "공허",
+        "layer": "floor",
+        "collidable": true,
+        "blocksVision": true,
+        "color": "#000000",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#000000'/>"
+    },
+    {
         "id": "grass",
         "name": "풀밭",
         "layer": "floor",

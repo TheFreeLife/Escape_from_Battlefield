@@ -21,6 +21,18 @@
             </div>
         </div>
 
+        <div id="map-selection-menu" class="hidden">
+            <div class="modal-content" style="min-width: 400px; pointer-events: auto;">
+                <h2>맵 선택</h2>
+                <div id="map-list">
+                    <!-- Maps will be listed here -->
+                </div>
+                <div class="modal-buttons">
+                    <button id="map-back-btn" style="background-color: #e74c3c; color: white; width: 100%; padding: 10px;">뒤로 가기</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Transport Plane Control Modal -->
         <div id="plane-control-modal" class="hidden">
             <div class="modal-content">
@@ -59,7 +71,6 @@
 
             <!-- Loot Box Settings Modal -->
             <div id="loot-box-settings-modal" class="hidden">
-                <!-- ... (기존 내용 유지) -->
                 <div class="modal-content">
                     <h4>전리품 상자 설정</h4>
                     <div id="loot-table-editor">
@@ -117,6 +128,7 @@
                 <h3>Tile Palette</h3>
                 <div id="tile-palette"></div>
                 <div id="editor-controls">
+                    <button id="save-map-btn" style="background-color: #27ae60;">SAVE MAP</button>
                     <button id="export-btn">EXPORT ARRAY</button>
                     <button id="import-btn">IMPORT ARRAY</button>
                     <button id="test-editor-btn">TEST STRUCTURE</button>
@@ -127,6 +139,59 @@
             </div>
         </div>
     </div>
+    <style>
+        #map-selection-menu {
+            pointer-events: auto;
+            background: rgba(10, 10, 10, 0.95);
+            padding: 40px;
+            border: 2px solid #f1c40f;
+            border-radius: 15px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.9);
+            z-index: 500;
+        }
+        .map-select-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 12px;
+            background-color: #34495e;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .map-select-btn:hover { 
+            background-color: #f1c40f; 
+            color: black;
+            transform: scale(1.02);
+        }
+        .map-header {
+            color: #f1c40f;
+            margin: 20px 0 10px 0;
+            font-weight: bold;
+            font-size: 14px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+        #map-list { 
+            max-height: 400px; 
+            overflow-y: auto; 
+            margin-bottom: 25px; 
+            padding: 10px;
+        }
+        #map-selection-menu h2 { 
+            text-align: center; 
+            color: #f1c40f; 
+            margin-bottom: 25px; 
+            font-size: 32px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+    </style>
     <canvas id="gameCanvas"></canvas>
     <script type="module" src="src/core/Game.js"></script>
     <script type="module">
