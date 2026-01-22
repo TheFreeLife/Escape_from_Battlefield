@@ -229,7 +229,29 @@ export default class MapEditor {
     }
 
     createPaletteTile(tile, container) {
-        // ... (existing code)
+        const div = document.createElement('div');
+        div.className = 'palette-tile';
+        if (tile.id === this.selectedTileId) div.classList.add('selected');
+
+        const previewCanvas = document.createElement('canvas');
+        previewCanvas.width = 50; previewCanvas.height = 50;
+        const pCtx = previewCanvas.getContext('2d');
+
+        const img = this.game.assetManager.get(tile.id);
+        if (img) {
+            pCtx.drawImage(img, 5, 5, 40, 40);
+        } else {
+            pCtx.fillStyle = tile.color || '#555';
+            pCtx.fillRect(10, 10, 30, 30);
+            pCtx.strokeStyle = '#fff';
+            pCtx.lineWidth = 1;
+            pCtx.strokeRect(10, 10, 30, 30);
+        }
+
+        div.appendChild(previewCanvas);
+        div.title = tile.name || tile.id;
+        div.addEventListener('click', () => this.selectTile(tile.id, div));
+        container.appendChild(div);
     }
 
     createVehiclePaletteTile(v, palette) {
