@@ -221,16 +221,46 @@ export default class MapEditor {
             const tiles = this.game.assetManager.getData('tiles') || [];
             const blocks = tiles.filter(t => t.layer === 'block');
             
+            const structures = blocks.filter(b => b.width > 1 || b.height > 1);
+            const props = blocks.filter(b => (b.width || 1) === 1 && (b.height || 1) === 1 && !b.interactable);
             const interactable = blocks.filter(b => b.interactable);
-            const normal = blocks.filter(b => !b.interactable);
 
+            if (structures.length > 0) {
+                addHeader('🏢 대형 구조물 및 시설');
+                structures.forEach(tile => this.createPaletteTile(tile, palette));
+            }
+            if (props.length > 0) {
+                addHeader('🧱 일반 블록 및 소품');
+                props.forEach(tile => this.createPaletteTile(tile, palette));
+            }
             if (interactable.length > 0) {
-                addHeader('상호작용 가능 (상자, 문 등)');
+                addHeader('🖱️ 상호작용 가능');
                 interactable.forEach(tile => this.createPaletteTile(tile, palette));
             }
-            if (normal.length > 0) {
-                addHeader('일반 블록 (벽, 엄폐물 등)');
-                normal.forEach(tile => this.createPaletteTile(tile, palette));
+        } else if (this.activeLayer === 'floor') {
+            const tiles = this.game.assetManager.getData('tiles') || [];
+            const floors = tiles.filter(t => t.layer === 'floor');
+
+            const natural = floors.filter(f => !f.id.includes('runway') && !f.id.includes('road') && !f.id.includes('sidewalk') && !f.id.includes('crosswalk') && !f.id.includes('asphalt'));
+            const road = floors.filter(f => f.id.includes('road') || f.id === 'asphalt' || f.id === 'crosswalk');
+            const sidewalk = floors.filter(f => f.id.includes('sidewalk'));
+            const runway = floors.filter(f => f.id.includes('runway'));
+
+            if (natural.length > 0) {
+                addHeader('🌿 자연 및 기본 지형');
+                natural.forEach(tile => this.createPaletteTile(tile, palette));
+            }
+            if (road.length > 0) {
+                addHeader('🛣️ 도로 및 교통');
+                road.forEach(tile => this.createPaletteTile(tile, palette));
+            }
+            if (sidewalk.length > 0) {
+                addHeader('🚶 인도 및 보도');
+                sidewalk.forEach(tile => this.createPaletteTile(tile, palette));
+            }
+            if (runway.length > 0) {
+                addHeader('🛫 활주로 시설');
+                runway.forEach(tile => this.createPaletteTile(tile, palette));
             }
         } else {
             const tiles = this.game.assetManager.getData('tiles') || [];

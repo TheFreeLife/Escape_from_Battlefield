@@ -3,7 +3,7 @@
         "id": "plains",
         "name": "평원",
         "tiles": ["grass", "grass", "dirt"],
-        "structures": ["military_outpost", "checkpoint_small", "field_workshop", "medical_outpost", "defense_line", "destroyed_convoy", "ammo_cache"],
+        "structures": ["military_hq", "checkpoint", "fuel_depot", "small_hangar"],
         "enemies": ["zombie", "soldier"],
         "items": ["pistol", "ammo_9mm", "medkit", "iron_ingot"],
         "spawnRate": {
@@ -17,7 +17,7 @@
         "id": "forest",
         "name": "숲",
         "tiles": ["grass", "dirt", "dirt"],
-        "structures": ["military_outpost", "abandoned_shack", "forest_hideout", "sniper_nest", "field_workshop", "defense_line"],
+        "structures": ["military_hq", "fuel_depot"],
         "enemies": ["zombie", "soldier"],
         "items": ["ak47", "ammo_762", "medkit", "wood_plank"],
         "spawnRate": {
@@ -28,31 +28,31 @@
         "color": "#228b22"
     },
     {
-        "id": "desert",
-        "name": "사막",
-        "tiles": ["sand", "sand", "dirt"],
-        "structures": ["military_outpost", "vehicle_depot", "destroyed_convoy", "checkpoint_small", "ammo_cache", "explosive_depot", "comms_center"],
-        "enemies": ["soldier", "mutant"],
-        "items": ["ak47", "awm", "ammo_762", "explosive_material"],
+        "id": "sea",
+        "name": "바다",
+        "tiles": ["water"],
+        "structures": ["radar_station", "fuel_depot"],
+        "enemies": ["soldier"],
+        "items": ["medkit", "iron_ingot"],
         "spawnRate": {
-            "structures": 0.45,
-            "enemies": 0.4,
-            "items": 0.1
+            "structures": 0.15,
+            "enemies": 0.1,
+            "items": 0.05
         },
-        "color": "#edc9af"
+        "color": "#3498db"
     },
     {
-        "id": "tundra",
-        "name": "툰드라",
-        "tiles": ["snow", "snow", "dirt"],
-        "structures": ["medical_camp", "military_outpost", "comms_center", "medical_outpost", "ammo_cache", "sniper_nest", "field_workshop"],
-        "enemies": ["mutant", "soldier"],
-        "items": ["medkit", "awm", "ammo_338", "spring"],
+        "id": "city",
+        "name": "도시",
+        "tiles": ["concrete", "asphalt", "sidewalk", "concrete"],
+        "structures": ["military_hq", "road_block", "workshop_v2"],
+        "enemies": ["soldier", "zombie"],
+        "items": ["m4a1", "ammo_556", "medkit", "iron_ingot"],
         "spawnRate": {
-            "structures": 0.4,
-            "enemies": 0.35,
-            "items": 0.07
+            "structures": 0.65,
+            "enemies": 0.45,
+            "items": 0.15
         },
-        "color": "#ffffff"
+        "color": "#7f8c8d"
     }
 ]

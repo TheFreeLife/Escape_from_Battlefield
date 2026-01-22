@@ -105,11 +105,35 @@ export default class Game {
         this.loots = [];
         this.grenades = [];
         this.vehicles = [];
-        this.tileMap.chunks.clear(); // Clear all generated terrain
+        this.tileMap.chunks.clear(); 
         
-        // Re-initialize player at origin
-        this.player.x = 300;
-        this.player.y = 300;
+        // Find a safe land spot near origin
+        let sx = 300, sy = 300;
+        if (this.mapGenerator) {
+            let foundLand = false;
+            // Larger spiral search for a solid land biome
+            for (let r = 0; r < 5000; r += 64) {
+                for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
+                    const worldX = 300 + Math.cos(a) * r;
+                    const worldY = 300 + Math.sin(a) * r;
+                    const tx = Math.floor(worldX / 64);
+                    const ty = Math.floor(worldY / 64);
+                    
+                    const biome = this.mapGenerator.getBiomeAt(tx, ty);
+                    // Check if this biome is NOT Sea and has solid ground
+                    if (biome && biome.id !== 'sea') {
+                        sx = worldX;
+                        sy = worldY;
+                        foundLand = true;
+                        break;
+                    }
+                }
+                if (foundLand) break;
+            }
+        }
+
+        this.player.x = sx;
+        this.player.y = sy;
         this.player.health = this.player.maxHealth;
         this.player.stamina = this.player.maxStamina;
         this.player.isInVehicle = false;

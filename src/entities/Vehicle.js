@@ -128,28 +128,87 @@ export default class Vehicle {
             return;
         }
 
-        if (this.isOccupied) {
-            this.handleInput(dt);
-        } else {
-            this.speed *= this.friction;
+        // 1. Terrain Check
+        const tx = Math.floor(this.x / 64);
+        const ty = Math.floor(this.y / 64);
+        const floorId = this.game.tileMap.getTile(tx, ty, 'floor');
+        
+        let terrainMaxSpeed = this.maxSpeed;
+        let terrainFriction = this.friction;
+
+        if (this.moveType === 'sea' && floorId !== 'water') {
+            terrainMaxSpeed = 60; // Slightly faster taxi speed
+            terrainFriction = 0.85;
+        } else if (this.moveType === 'land' && floorId === 'water') {
+            terrainMaxSpeed = 30;
+            terrainFriction = 0.7;
         }
 
-        // Move
+        // 2. Input Handling
+        if (this.isOccupied) {
+            const input = this.game.input;
+            if (input.isKeyPressed('KeyW')) {
+                this.speed = Math.min(terrainMaxSpeed, this.speed + this.acceleration * dt);
+            } else if (input.isKeyPressed('KeyS')) {
+                this.speed = Math.max(-terrainMaxSpeed * 0.5, this.speed - this.acceleration * dt);
+            } else {
+                this.speed *= terrainFriction;
+            }
+
+            // Steering (Allow steering even at very low speeds for ships on land)
+            const minSteerSpeed = (this.moveType === 'sea' && floorId !== 'water') ? 5 : 10;
+            if (Math.abs(this.speed) > minSteerSpeed) {
+                const steerSpeed = 2.5 * (Math.abs(this.speed) / terrainMaxSpeed);
+                if (input.isKeyPressed('KeyA')) this.angle -= steerSpeed * dt;
+                if (input.isKeyPressed('KeyD')) this.angle += steerSpeed * dt;
+            }
+        } else {
+            this.speed *= terrainFriction;
+        }
+
+        if (Math.abs(this.speed) < 1) this.speed = 0;
+
+        // 3. Collision and Movement
         const vx = Math.cos(this.angle) * this.speed * dt;
         const vy = Math.sin(this.angle) * this.speed * dt;
 
-        // Try moving X
-        if (!this.game.checkCollision(this.x + vx, this.y, this.radius, this, this.moveType)) {
+        // Skip ground collision for sea units on land to allow 'dragging'
+        // But always check for BLOCKS (walls)
+        const checkMove = (nx, ny) => {
+            // 1. Check for physical blocks (walls, entities) using 'air' moveType (which ignores floor)
+            if (this.game.checkCollision(nx, ny, this.radius, this, 'air')) return false;
+            
+            // 2. Sea unit logic
+            if (this.moveType === 'sea') {
+                // If it's a ship, we allow it to move on water AND land,
+                // because we already checked for BLOCKS in step 1.
+                // Standard checkTileCollision('sea') would block land tiles, which we don't want.
+                return true; 
+            }
+            
+            // 3. Land unit logic
+            if (this.moveType === 'land') {
+                const tx = Math.floor(nx / 64);
+                const ty = Math.floor(ny / 64);
+                const floor = this.game.tileMap.getTile(tx, ty, 'floor');
+                
+                // If it's water, block it immediately
+                if (floor === 'water') return false;
+            }
+            
+            return !this.game.checkTileCollision(nx, ny, this.radius, this.moveType);
+        };
+
+        if (checkMove(this.x + vx, this.y)) {
             this.x += vx;
         } else {
-            this.speed *= 0.3; // Hit something
+            this.speed *= 0.5;
         }
 
-        // Try moving Y
-        if (!this.game.checkCollision(this.x, this.y + vy, this.radius, this, this.moveType)) {
+        if (checkMove(this.x, this.y + vy)) {
             this.y += vy;
         } else {
-            this.speed *= 0.3; // Hit something
+            this.speed *= 0.5;
         }
 
         // Update Occupant Position

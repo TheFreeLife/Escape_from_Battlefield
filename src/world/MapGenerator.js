@@ -19,7 +19,6 @@ export default class MapGenerator {
         const biomes = this.game.assetManager.getData('biomes');
         if (!biomes) return null;
 
-        // Test Mode: Always return Plains
         if (this.game.testStructure) {
             return biomes.find(b => b.id === 'plains') || biomes[0];
         }
@@ -35,20 +34,18 @@ export default class MapGenerator {
         
         const isTestMode = !!this.game.testStructure;
 
-        // --- 1. Terrain Generation (Fill empty tiles only) ---
         for (let ly = 0; ly < CHUNK_SIZE; ly++) {
             for (let lx = 0; lx < CHUNK_SIZE; lx++) {
                 const tx = cx * CHUNK_SIZE + lx;
                 const ty = cy * CHUNK_SIZE + ly;
 
-                // Only generate floor if it's empty to avoid overwriting structures
                 if (chunk.getTile(lx, ly, 'floor') === null) {
                     const biome = this.getBiomeAt(tx, ty);
                     if (!biome) continue;
 
                     let tileId;
                     if (isTestMode) {
-                        tileId = biome.tiles[0]; // Use first tile as default floor in test mode
+                        tileId = biome.tiles[0];
                     } else {
                         const tn = this.noise.perlin2D(tx / 10, ty / 10, 2, 0.5);
                         const tileIndex = Math.floor(tn * biome.tiles.length);
@@ -61,20 +58,20 @@ export default class MapGenerator {
         
         chunk.isGenerated = true;
 
-        // --- 2. Normal Mode Structure & Entity Placement ---
         if (!isTestMode) {
             const structures = this.game.assetManager.getData('structures');
             if (structures) {
                 const distFromOrigin = Math.sqrt(cx * cx + cy * cy);
-                if (distFromOrigin >= 1) {
+                if (distFromOrigin >= 0.5) {
                     const biome = this.getBiomeAt(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
                     if (biome) {
-                        const structureAttempts = 3; 
+                        const structureAttempts = 5; 
                         let structuresInChunk = 0;
                         for (let i = 0; i < structureAttempts; i++) {
-                            if (structuresInChunk >= 1) break; // Limit to 1 major structure per chunk for better spacing
+                            if (structuresInChunk >= 1) break;
                             
-                            if (Math.random() < biome.spawnRate.structures) {
+                            // Check spawn rate
+                            if (Math.random() < (biome.spawnRate.structures || 0.4)) {
                                 const prefabId = biome.structures[Math.floor(Math.random() * biome.structures.length)];
                                 const prefab = structures.find(s => s.id === prefabId);
 
@@ -97,15 +94,18 @@ export default class MapGenerator {
                 }
             }
 
-            // Entity Spawning (Vehicles only)
             const spawnBiome = this.getBiomeAt(cx * CHUNK_SIZE, cy * CHUNK_SIZE);
             if (spawnBiome) {
-                // Vehicles
-                if (Math.random() < 0.05) {
+                // Increased Vehicle Spawn Rate (0.15 = 15% per chunk)
+                if (Math.random() < 0.15) {
                     const vx = (cx * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * TILE_SIZE;
                     const vy = (cy * CHUNK_SIZE + Math.random() * CHUNK_SIZE) * TILE_SIZE;
-
-                    if (!tileMap.isCollidable(vx, vy)) {
+                    
+                    if (spawnBiome.id === 'sea') {
+                        // Spawn Ship in Sea biome
+                        this.game.vehicles.push(new TransportShip(this.game, vx, vy));
+                    } else if (!tileMap.isCollidable(vx, vy)) {
+                        // Spawn Truck in other biomes
                         this.game.vehicles.push(new Vehicle(this.game, vx, vy));
                     }
                 }
@@ -116,11 +116,10 @@ export default class MapGenerator {
     canPlaceStructure(tileMap, prefab, startX, startY) {
         const pHeight = prefab.layout.length;
         const pWidth = prefab.layout[0].length;
-        const padding = 2; // Tiles of empty space required around the structure
+        const padding = 1;
         
         for (let y = -padding; y < pHeight + padding; y++) {
             for (let x = -padding; x < pWidth + padding; x++) {
-                // Check if there's already a block at this location
                 if (tileMap.getTile(startX + x, startY + y, 'block')) {
                     return false;
                 }
@@ -134,12 +133,9 @@ export default class MapGenerator {
             row.forEach((cell, x) => {
                 if (Array.isArray(cell)) {
                     const [floorId, blockId, unitData, itemId, metadata] = cell;
-                    
-                    // Handle Loot Box Initialization or existing metadata (like rotations)
                     let finalMetadata = metadata ? JSON.parse(JSON.stringify(metadata)) : null;
                     
                     if (blockId === 'loot_box' && finalMetadata?.lootTable) {
-                        // ... (loot table generation)
                         const items = new Array(16).fill(null);
                         let slotIdx = 0;
                         finalMetadata.lootTable.forEach(entry => {
@@ -152,12 +148,17 @@ export default class MapGenerator {
                         delete finalMetadata.lootTable; 
                     }
 
-                    // Apply floor with metadata (for floorRotation)
+                    if (blockId === 'occupied_space') {
+                        if (finalMetadata?.blockMaster) {
+                            const [relX, relY] = finalMetadata.blockMaster.split(',').map(Number);
+                            finalMetadata.blockMaster = `${startX + relX},${startY + relY}`;
+                        }
+                    }
+
                     if (floorId !== null && floorId !== undefined) {
                         tileMap.setTile(startX + x, startY + y, floorId, 'floor', finalMetadata);
                     }
                     
-                    // Skip 'occupied_space' as TileMap.setTile handles it when the master tile is placed
                     if (blockId !== null && blockId !== undefined && blockId !== 'occupied_space') {
                         tileMap.setTile(startX + x, startY + y, blockId, 'block', finalMetadata);
                     }
@@ -165,7 +166,6 @@ export default class MapGenerator {
                     if (unitData && unitData.id) {
                         const uid = unitData.id;
                         if (uid.startsWith('v_')) {
-                            // Calculate center based on unit size (default 2x2 if not specified)
                             const uw = unitData.w || 2;
                             const uh = unitData.h || 2;
                             const centerX = (startX + x + uw / 2) * TILE_SIZE;
@@ -178,15 +178,9 @@ export default class MapGenerator {
                             else if (uid === 'v_transport_plane') v = new TransportPlane(this.game, centerX, centerY);
                             else v = new Vehicle(this.game, centerX, centerY); 
                             
-                            // Apply rotation from editor
-                            if (unitData.angle !== undefined) {
-                                v.angle = unitData.angle;
-                            }
-                            
+                            if (unitData.angle !== undefined) v.angle = unitData.angle;
                             this.game.vehicles.push(v);
-                            console.log(`Spawned ${uid} at center: ${centerX}, ${centerY}`);
                         } else {
-                            // Spawn Enemy (1x1 center)
                             const ex = (startX + x) * TILE_SIZE + TILE_SIZE / 2;
                             const ey = (startY + y) * TILE_SIZE + TILE_SIZE / 2;
                             this.game.enemies.push(new Enemy(this.game, ex, ey, uid, unitData));
@@ -196,10 +190,8 @@ export default class MapGenerator {
                     if (itemId) {
                         const ix = (startX + x) * TILE_SIZE + TILE_SIZE / 2;
                         const iy = (startY + y) * TILE_SIZE + TILE_SIZE / 2;
-                        
                         const id = (typeof itemId === 'object') ? itemId.id : itemId;
                         const count = (typeof itemId === 'object') ? (itemId.count || 1) : 1;
-                        
                         this.game.loots.push(new Loot(this.game, ix, iy, id, count));
                     }
                 } else if (cell !== null && cell !== undefined) {

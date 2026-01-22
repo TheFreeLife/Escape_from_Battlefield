@@ -54,11 +54,20 @@ export default class Projectile {
             for (let i = 1; i <= steps; i++) {
                 const checkX = oldX + (this.dx * dist * (i / steps));
                 const checkY = oldY + (this.dy * dist * (i / steps));
+                
+                // If it hits a collidable tile...
                 if (this.game.tileMap.isCollidable(checkX, checkY)) {
-                    hitWall = true;
-                    hitX = checkX;
-                    hitY = checkY;
-                    break;
+                    // Check if it's JUST water (we want to fly OVER water)
+                    const floorId = this.game.tileMap.getTileAtWorldPos(checkX, checkY, 'floor');
+                    const block = this.game.tileMap.getBlockAt(Math.floor(checkX/64), Math.floor(checkY/64));
+                    
+                    // If there is a BLOCK (like a wall), or if it's not water, it should hit
+                    if (block || floorId !== 'water') {
+                        hitWall = true;
+                        hitX = checkX;
+                        hitY = checkY;
+                        break;
+                    }
                 }
             }
 
