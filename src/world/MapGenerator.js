@@ -135,10 +135,11 @@ export default class MapGenerator {
                 if (Array.isArray(cell)) {
                     const [floorId, blockId, unitData, itemId, metadata] = cell;
                     
-                    // Handle Loot Box Initialization
+                    // Handle Loot Box Initialization or existing metadata (like rotations)
                     let finalMetadata = metadata ? JSON.parse(JSON.stringify(metadata)) : null;
+                    
                     if (blockId === 'loot_box' && finalMetadata?.lootTable) {
-                        // Generate actual items from loot table into a fixed 16-slot array
+                        // ... (loot table generation)
                         const items = new Array(16).fill(null);
                         let slotIdx = 0;
                         finalMetadata.lootTable.forEach(entry => {
@@ -151,7 +152,10 @@ export default class MapGenerator {
                         delete finalMetadata.lootTable; 
                     }
 
-                    if (floorId !== null && floorId !== undefined) tileMap.setTile(startX + x, startY + y, floorId, 'floor');
+                    // Apply floor with metadata (for floorRotation)
+                    if (floorId !== null && floorId !== undefined) {
+                        tileMap.setTile(startX + x, startY + y, floorId, 'floor', finalMetadata);
+                    }
                     
                     // Skip 'occupied_space' as TileMap.setTile handles it when the master tile is placed
                     if (blockId !== null && blockId !== undefined && blockId !== 'occupied_space') {

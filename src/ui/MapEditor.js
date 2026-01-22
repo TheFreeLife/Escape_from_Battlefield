@@ -10,12 +10,21 @@ export default class MapEditor {
         this.selectedTileId = 'grass';
         this.selectedTool = 'pen';
         this.activeLayer = 'floor';
+        this.currentRotation = 0; // 0, 90, 180, 270 degrees
         this.rectStart = null;
         this.isDrawing = false;
         this.init();
     }
 
     init() {
+        window.addEventListener('keydown', (e) => {
+            if (this.game.gameState !== 'EDITOR') return;
+            if (e.key.toLowerCase() === 'r') {
+                this.currentRotation = (this.currentRotation + 90) % 360;
+                console.log(`Rotation: ${this.currentRotation}°`);
+            }
+        });
+
         const shapeMainBtn = document.getElementById('tool-shape-main');
         const shapeSubPalette = document.getElementById('shape-sub-palette');
 
@@ -164,7 +173,6 @@ export default class MapEditor {
                     const others = items.filter(i => i.type !== 'weapon' && i.type !== 'ammo' && i.type !== 'consumable' && i.type !== 'grenade');
         
                     if (weapons.length > 0) {
-                        // ... (무기 분류 로직 유지)
                         const melee = weapons.filter(w => w.subType === 'melee');
                         const pistols = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '9mm' || w.caliber === '.50 AE' || w.caliber === '.357'));
                         const rifles = weapons.filter(w => ['ranged'].includes(w.subType) && (w.caliber === '5.56mm' || w.caliber === '7.62mm') && w.magSize > 10 && w.fireRate < 0.2);
@@ -276,10 +284,7 @@ export default class MapEditor {
     selectTile(id, element) {
         document.querySelectorAll('.palette-tile').forEach(el => el.classList.remove('selected'));
         element.classList.add('selected');
-        
-        // Ensure ID is a string for internal tracking, but setTileAt will handle layers
         this.selectedTileId = id; 
-        
         if (this.selectedTool === 'eraser') this.selectTool('pen');
     }
 
@@ -295,9 +300,7 @@ export default class MapEditor {
         const key = `${x},${y}`;
         const cell = this.tiles.get(key) || { floor: null, block: null, unit: null, item: null, metadata: null };
         
-        // --- 1. ERASER LOGIC ---
         if (tileId === null) {
-            // ... (기존 지우개 로직 동일)
             if (layer === 'items') {
                 cell.item = null;
             } else if (layer === 'units') {
@@ -325,7 +328,6 @@ export default class MapEditor {
                     cell.unit = null;
                 }
             } else {
-                // floor or block layer
                 const current = cell[layer];
                 if (!current) return;
                 let masterKey = key;
@@ -335,9 +337,15 @@ export default class MapEditor {
                 const masterCell = this.tiles.get(masterKey);
                 const mItem = masterCell?.[layer];
                 if (mItem) {
-                    const { w, h } = this.getTileSize(mItem);
-                    for (let oy = 0; oy < h; oy++) {
-                        for (let ox = 0; ox < w; ox++) {
+                    const metadata = masterCell.metadata || {};
+                    const rot = (metadata[layer + 'Rotation'] || 0);
+                    const baseSize = this.getTileSize(mItem);
+                    const isRotated = (rot === 90 || rot === 270);
+                    const ew = isRotated ? baseSize.h : baseSize.w;
+                    const eh = isRotated ? baseSize.w : baseSize.h;
+
+                    for (let oy = 0; oy < eh; oy++) {
+                        for (let ox = 0; ox < ew; ox++) {
                             const tKey = `${mx + ox},${my + oy}`;
                             const tCell = this.tiles.get(tKey);
                             if (tCell) {
@@ -351,49 +359,42 @@ export default class MapEditor {
                     cell[layer] = null;
                 }
             }
-            
             if (this.isCellEmpty(cell)) this.tiles.delete(key);
             return;
         }
 
-        // 2. Get size definition for placement
-        const size = (layer === 'units') ? this.getUnitSize(tileId) : this.getTileSize(tileId);
+        const baseSize = (layer === 'units') ? this.getUnitSize(tileId) : this.getTileSize(tileId);
+        const isRotated = (this.currentRotation === 90 || this.currentRotation === 270);
+        const ew = isRotated ? baseSize.h : baseSize.w;
+        const eh = isRotated ? baseSize.w : baseSize.h;
 
-        // --- 2.5. OVERLAP CHECK (Cross-layer: Units vs Blocks) ---
-        // Prevents placing units over blocks and blocks over units
-        if (size.w > 1 || size.h > 1 || (layer === 'units' || layer === 'block')) {
-            for (let oy = 0; oy < size.h; oy++) {
-                for (let ox = 0; ox < size.w; ox++) {
+        if (ew > 1 || eh > 1 || (layer === 'units' || layer === 'block')) {
+            for (let oy = 0; oy < eh; oy++) {
+                for (let ox = 0; ox < ew; ox++) {
                     const tKey = `${x + ox},${y + oy}`;
                     const tCell = this.tiles.get(tKey);
                     if (tCell) {
-                        // 1. If we are placing a UNIT, check if there's already a unit OR a block here
                         if (layer === 'units' && (tCell.unit !== null || tCell.block !== null)) return;
-                        
-                        // 2. If we are placing a BLOCK, check if there's already a block OR a unit here
                         if (layer === 'block' && (tCell.block !== null || tCell.unit !== null)) return;
                     }
                 }
             }
         }
 
-        // 3. Multi-tile Placement Logic
-        if (size.w > 1 || size.h > 1) {
+        if (ew > 1 || eh > 1) {
             if (phase !== 'start') return;
-
-            // Collision check with existing units/blocks if needed (Optional)
-            
-            for (let oy = 0; oy < size.h; oy++) {
-                for (let ox = 0; ox < size.w; ox++) {
+            for (let oy = 0; oy < eh; oy++) {
+                for (let ox = 0; ox < ew; ox++) {
                     const tKey = `${x + ox},${y + oy}`;
                     const tCell = this.tiles.get(tKey) || { floor: null, block: null, unit: null, item: null, metadata: null };
-                    
                     if (ox === 0 && oy === 0) {
                         if (layer === 'units') {
-                            tCell.unit = { id: tileId, w: size.w, h: size.h, command: 'GUARD', patrolRadius: 250, healthMult: 1.0, damageMult: 1.0, speedMult: 1.0 };
+                            tCell.unit = { id: tileId, w: ew, h: eh, command: 'GUARD', patrolRadius: 250, healthMult: 1.0, damageMult: 1.0, speedMult: 1.0 };
                         } else {
                             tCell[layer] = tileId;
-                            if (layer === 'block' && tileId === 'loot_box' && !tCell.metadata) tCell.metadata = { lootTable: [] };
+                            if (!tCell.metadata) tCell.metadata = {};
+                            tCell.metadata[layer + 'Rotation'] = this.currentRotation;
+                            if (layer === 'block' && tileId === 'loot_box' && !tCell.metadata.lootTable) tCell.metadata.lootTable = [];
                         }
                     } else {
                         if (layer === 'units') {
@@ -410,23 +411,18 @@ export default class MapEditor {
             return;
         }
 
-        // 4. Single-tile Placement Logic
         if (layer === 'units') {
             cell.unit = { id: tileId, command: 'GUARD', patrolRadius: 250, healthMult: 1.0, damageMult: 1.0, speedMult: 1.0 };
         } else if (layer === 'items') {
-            if (tileId === null) {
-                cell.item = null;
-            } else {
-                // Standardize item data structure to object
-                const itemId = (typeof tileId === 'object') ? tileId.id : tileId;
-                const count = (typeof tileId === 'object') ? (tileId.count || 1) : 1;
-                cell.item = { id: itemId, count: count };
-            }
+            const itemId = (typeof tileId === 'object') ? tileId.id : tileId;
+            const count = (typeof tileId === 'object') ? (tileId.count || 1) : 1;
+            cell.item = { id: itemId, count: count };
         } else {
             cell[layer] = tileId;
-            if (layer === 'block' && tileId === 'loot_box' && !cell.metadata) cell.metadata = { lootTable: [] };
+            if (!cell.metadata) cell.metadata = {};
+            cell.metadata[layer + 'Rotation'] = this.currentRotation;
+            if (layer === 'block' && tileId === 'loot_box' && !cell.metadata.lootTable) cell.metadata.lootTable = [];
         }
-        
         this.tiles.set(key, cell);
     }
 
@@ -472,31 +468,24 @@ export default class MapEditor {
     openItemSettings(gx, gy) {
         const cell = this.getTileAt(gx, gy);
         if (!cell.item) return;
-        
         this.editingItemPos = { x: gx, y: gy };
         const modal = document.getElementById('item-settings-modal');
         const countInput = document.getElementById('item-count-input');
-        
         modal.classList.remove('hidden');
-        
         const itemId = (typeof cell.item === 'string') ? cell.item : cell.item.id;
         const itemCount = (typeof cell.item === 'string') ? 1 : (cell.item.count || 1);
-        
         const itemDef = this.game.assetManager.getData('items')?.find(it => it.id === itemId);
         const isWeapon = itemDef?.type === 'weapon';
-        
         countInput.value = isWeapon ? 1 : itemCount;
-        countInput.disabled = isWeapon; // Weapons always fixed to 1
+        countInput.disabled = isWeapon; 
     }
 
     saveItemSettings() {
         if (!this.editingItemPos) return;
         const cell = this.getTileAt(this.editingItemPos.x, this.editingItemPos.y);
         const countInput = document.getElementById('item-count-input');
-        
         const itemId = (typeof cell.item === 'string') ? cell.item : cell.item.id;
         cell.item = { id: itemId, count: parseInt(countInput.value) || 1 };
-        
         this.closeItemSettings();
     }
 
@@ -545,28 +534,18 @@ export default class MapEditor {
 
     update(dt) {
         if (this.game.gameState !== 'EDITOR') return;
-        
         const unitModal = document.getElementById('unit-settings-modal');
         const lootModal = document.getElementById('loot-box-settings-modal');
         const itemModal = document.getElementById('item-settings-modal');
-        
-        const isModalOpen = (unitModal && !unitModal.classList.contains('hidden')) || 
-                           (lootModal && !lootModal.classList.contains('hidden')) ||
-                           (itemModal && !itemModal.classList.contains('hidden'));
-
+        const isModalOpen = (unitModal && !unitModal.classList.contains('hidden')) || (lootModal && !lootModal.classList.contains('hidden')) || (itemModal && !itemModal.classList.contains('hidden'));
         const input = this.game.input; 
         const mx = input.mouse.x; 
         const my = input.mouse.y;
         const ts = this.baseTileSize * this.zoom;
         const gx = Math.floor((mx - this.offsetX) / ts); 
         const gy = Math.floor((my - this.offsetY) / ts);
-        
         let isOverUI = mx > this.game.canvas.width - 300;
-        
-        if (isModalOpen) {
-            // If ANY modal is open, we consider the mouse over UI to block drawing
-            isOverUI = true; 
-        }
+        if (isModalOpen) isOverUI = true; 
         if (input.mouse.rightDown && !isOverUI) {
             const dx = mx - this.lastMousePos.x; const dy = my - this.lastMousePos.y;
             this.offsetX += dx; this.offsetY += dy;
@@ -687,7 +666,6 @@ export default class MapEditor {
                         }
                     });
                 });
-                console.log("Import complete.");
             }
         } catch (e) { alert("가져오기 실패: " + e.message); }
     }
@@ -715,136 +693,117 @@ export default class MapEditor {
         if (this.game.gameState !== 'EDITOR') return;
         const ts = this.baseTileSize * this.zoom;
         const enemiesData = this.game.assetManager.getData('enemies') || [];
-        const itemsData = this.game.assetManager.getData('items') || [];
         ctx.fillStyle = '#111'; ctx.fillRect(0, 0, this.game.canvas.width, this.game.canvas.height);
         const startGX = Math.floor(-this.offsetX / ts), endGX = Math.ceil((this.game.canvas.width - this.offsetX) / ts);
         const startGY = Math.floor(-this.offsetY / ts), endGY = Math.ceil((this.game.canvas.height - this.offsetY) / ts);
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'; ctx.beginPath();
         for (let x = startGX; x <= endGX; x++) { const vx = this.offsetX + x * ts; ctx.moveTo(vx, 0); ctx.lineTo(vx, this.game.canvas.height); }
         for (let y = startGY; y <= endGY; y++) { const vy = this.offsetY + y * ts; ctx.moveTo(0, vy); ctx.lineTo(this.game.canvas.width, vy); }
-                ctx.stroke();
-        
-                // Pass 1: Draw all floor tiles
-                this.tiles.forEach((cell, key) => {
-                    const [gx, gy] = key.split(',').map(Number);
-                    if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
-                    const tx = this.offsetX + gx * ts, ty = this.offsetY + gy * ts;
-                    
-                    if (cell.floor && cell.floor !== 'occupied_space') {
-                        const img = this.game.assetManager.get(cell.floor);
-                        if (img) ctx.drawImage(img, tx, ty, ts, ts);
-                        else { ctx.fillStyle = '#333'; ctx.fillRect(tx, ty, ts, ts); }
-                    }
-                });
-        
-                // Pass 2: Draw blocks, items, and units
-                this.tiles.forEach((cell, key) => {
-                    const [gx, gy] = key.split(',').map(Number);
-                    if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
-                    const tx = this.offsetX + gx * ts, ty = this.offsetY + gy * ts;
-        
-                    if (cell.block && cell.block !== 'occupied_space') {
-                        const img = this.game.assetManager.get(cell.block);
-                        const bSize = this.getTileSize(cell.block);
-                        if (img) ctx.drawImage(img, tx, ty, ts * bSize.w, ts * bSize.h);
-                        else { ctx.fillStyle = '#555'; ctx.fillRect(tx, ty, ts * bSize.w, ts * bSize.h); }
-                    }
-                    if (cell.item) {
-                        const itemId = (cell.item && typeof cell.item === 'object') ? cell.item.id : cell.item;
-                        const itemCount = (cell.item && typeof cell.item === 'object') ? (cell.item.count || 1) : 1;
-                        
-                        const img = this.game.assetManager.get(itemId);
-                        if (img) {
-                            ctx.drawImage(img, tx+ts*0.2, ty+ts*0.2, ts*0.6, ts*0.6);
-                        } else {
-                            const itemDef = this.game.assetManager.getData('items')?.find(it => it.id === itemId);
-                            ctx.fillStyle = itemDef?.color || '#f1c40f';
-                            ctx.fillRect(tx+ts*0.25, ty+ts*0.25, ts*0.5, ts*0.5);
-                        }
-                        
-                        if (itemCount > 1) {
-                            ctx.fillStyle = '#fff';
-                            ctx.font = `bold ${Math.max(8, ts * 0.25)}px Arial`;
-                            ctx.textAlign = 'right';
-                            ctx.fillText(itemCount, tx + ts - 5, ty + ts - 5);
-                            ctx.textAlign = 'left';
-                        }
-                    }
-                    if (cell.unit) {
-                        if (cell.unit.id === 'occupied_space' || cell.unit.id === 'v_reserved') return;
-                        if (cell.unit.id.startsWith('v_')) {
-                            const size = this.getUnitSize(cell.unit.id);
-                            let vColor = '#4b5320';
-                            if (cell.unit.id === 'v_tank') vColor = '#1e8449';
-                            else if (cell.unit.id === 'v_apc') vColor = '#34495e';
-                            else if (cell.unit.id === 'v_transport_ship') vColor = '#2c3e50';
-                            else if (cell.unit.id === 'v_transport_plane') vColor = '#7f8c8d';
-        
-                            ctx.fillStyle = vColor;
-                            ctx.fillRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);
-                            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);
-                            ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(10, ts * 0.3)}px Arial`; ctx.textAlign = 'center';
-                            
-                            let label = cell.unit.id.replace('v_', '').toUpperCase();
-                            if (label === 'TRANSPORT_SHIP') label = 'SHIP';
-                            ctx.fillText(label, tx + (ts * size.w)/2, ty + (ts * size.h)/2 + 5);
-                        } else {
-                            const def = enemiesData.find(e => e.id === cell.unit.id);
-                            ctx.fillStyle = def ? def.color : '#e74c3c';
-                            ctx.beginPath(); ctx.arc(tx + ts/2, ty + ts/2, ts * 0.35, 0, Math.PI * 2); ctx.fill();
-                            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-                            ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(8, ts * 0.2)}px Arial`; ctx.textAlign = 'center';
-                            ctx.fillText(cell.unit.command, tx + ts/2, ty + ts * 0.85);
-                        }
-                    }
-                });                
-                        // Preview Cursor
-                        const input = this.game.input;
-                        const mx = input.mouse.x;
-                        const my = input.mouse.y;
-                        if (mx < this.game.canvas.width - 300) {
-                            const gx = Math.floor((mx - this.offsetX) / ts);
-                            const gy = Math.floor((my - this.offsetY) / ts);
-                            const tx = this.offsetX + gx * ts;
-                            const ty = this.offsetY + gy * ts;
-                
-                            ctx.save();
-                            ctx.globalAlpha = 0.5;
-                            
-                            if (this.selectedTool === 'eraser') {
-                                ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
-                                ctx.fillRect(tx, ty, ts, ts);
-                                ctx.strokeStyle = '#e74c3c';
-                                ctx.lineWidth = 2;
-                                ctx.strokeRect(tx, ty, ts, ts);
-                            } else if (this.selectedTileId) {
-                                const size = (this.activeLayer === 'units') ? this.getUnitSize(this.selectedTileId) : this.getTileSize(this.selectedTileId);
-                                const w = size.w * ts;
-                                const h = size.h * ts;
-                
-                                if (this.activeLayer === 'units') {
-                                    if (this.selectedTileId.startsWith('v_')) {
-                                        ctx.fillStyle = '#fff';
-                                        ctx.fillRect(tx, ty, w, h);
-                                    } else {
-                                        ctx.fillStyle = '#e74c3c';
-                                        ctx.beginPath(); ctx.arc(tx + ts/2, ty + ts/2, ts * 0.35, 0, Math.PI * 2); ctx.fill();
-                                    }
-                                } else {
-                                    const img = this.game.assetManager.get(this.selectedTileId);
-                                    if (img) {
-                                        ctx.drawImage(img, tx, ty, w, h);
-                                    } else {
-                                        ctx.fillStyle = '#fff';
-                                        ctx.fillRect(tx, ty, w, h);
-                                    }
-                                }
-                                ctx.strokeStyle = '#2ecc71';
-                                ctx.lineWidth = 2;
-                                ctx.strokeRect(tx, ty, w, h);
-                            }
-                            ctx.restore();
-                        }
-                    }
+        ctx.stroke();
+        this.tiles.forEach((cell, key) => {
+            const [gx, gy] = key.split(',').map(Number);
+            if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
+            const tx = this.offsetX + gx * ts, ty = this.offsetY + gy * ts;
+            if (cell.floor && cell.floor !== 'occupied_space') {
+                const img = this.game.assetManager.get(cell.floor);
+                const rot = (cell.metadata?.floorRotation || 0) * (Math.PI / 180);
+                ctx.save();
+                ctx.translate(tx + ts/2, ty + ts/2);
+                ctx.rotate(rot);
+                if (img) ctx.drawImage(img, -ts/2, -ts/2, ts, ts);
+                else { ctx.fillStyle = '#333'; ctx.fillRect(-ts/2, -ts/2, ts, ts); }
+                ctx.restore();
+            }
+        });
+        this.tiles.forEach((cell, key) => {
+            const [gx, gy] = key.split(',').map(Number);
+            if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
+            const tx = this.offsetX + gx * ts, ty = this.offsetY + gy * ts;
+            if (cell.block && cell.block !== 'occupied_space') {
+                const img = this.game.assetManager.get(cell.block);
+                const baseSize = this.getTileSize(cell.block);
+                const rot = (cell.metadata?.blockRotation || 0);
+                const isRotated = (rot === 90 || rot === 270);
+                const ew = isRotated ? baseSize.h : baseSize.w;
+                const eh = isRotated ? baseSize.w : baseSize.h;
+                ctx.save();
+                ctx.translate(tx + (ts * ew)/2, ty + (ts * eh)/2);
+                ctx.rotate(rot * Math.PI / 180);
+                if (img) ctx.drawImage(img, -(ts * baseSize.w)/2, -(ts * baseSize.h)/2, ts * baseSize.w, ts * baseSize.h);
+                else { ctx.fillStyle = '#555'; ctx.fillRect(-(ts * baseSize.w)/2, -(ts * baseSize.h)/2, ts * baseSize.w, ts * baseSize.h); }
+                ctx.restore();
+            }
+            if (cell.item) {
+                const itemId = (cell.item && typeof cell.item === 'object') ? cell.item.id : cell.item;
+                const itemCount = (cell.item && typeof cell.item === 'object') ? (cell.item.count || 1) : 1;
+                const img = this.game.assetManager.get(itemId);
+                if (img) ctx.drawImage(img, tx+ts*0.2, ty+ts*0.2, ts*0.6, ts*0.6);
+                else { 
+                    const itemDef = this.game.assetManager.getData('items')?.find(it => it.id === itemId);
+                    ctx.fillStyle = itemDef?.color || '#f1c40f';
+                    ctx.fillRect(tx+ts*0.25, ty+ts*0.25, ts*0.5, ts*0.5);
                 }
-                
+                if (itemCount > 1) {
+                    ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(8, ts * 0.25)}px Arial`; ctx.textAlign = 'right';
+                    ctx.fillText(itemCount, tx + ts - 5, ty + ts - 5); ctx.textAlign = 'left';
+                }
+            }
+            if (cell.unit) {
+                if (cell.unit.id === 'occupied_space' || cell.unit.id === 'v_reserved') return;
+                if (cell.unit.id.startsWith('v_')) {
+                    const size = this.getUnitSize(cell.unit.id);
+                    let vColor = '#4b5320';
+                    if (cell.unit.id === 'v_tank') vColor = '#1e8449';
+                    else if (cell.unit.id === 'v_apc') vColor = '#34495e';
+                    else if (cell.unit.id === 'v_transport_ship') vColor = '#2c3e50';
+                    else if (cell.unit.id === 'v_transport_plane') vColor = '#7f8c8d';
+                    ctx.fillStyle = vColor;
+                    ctx.fillRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);
+                    ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(10, ts * 0.3)}px Arial`; ctx.textAlign = 'center';
+                    let label = cell.unit.id.replace('v_', '').toUpperCase();
+                    if (label === 'TRANSPORT_SHIP') label = 'SHIP';
+                    ctx.fillText(label, tx + (ts * size.w)/2, ty + (ts * size.h)/2 + 5);
+                } else {
+                    const def = enemiesData.find(e => e.id === cell.unit.id);
+                    ctx.fillStyle = def ? def.color : '#e74c3c';
+                    ctx.beginPath(); ctx.arc(tx + ts/2, ty + ts/2, ts * 0.35, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+                    ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(8, ts * 0.2)}px Arial`; ctx.textAlign = 'center';
+                    ctx.fillText(cell.unit.command, tx + ts/2, ty + ts * 0.85);
+                }
+            }
+        });                
+        const input = this.game.input; const mx = input.mouse.x; const my = input.mouse.y;
+        if (mx < this.game.canvas.width - 300) {
+            const gx = Math.floor((mx - this.offsetX) / ts); const gy = Math.floor((my - this.offsetY) / ts);
+            const tx = this.offsetX + gx * ts; const ty = this.offsetY + gy * ts;
+            ctx.save(); ctx.globalAlpha = 0.5;
+            if (this.selectedTool === 'eraser') {
+                ctx.fillStyle = 'rgba(231, 76, 60, 0.3)'; ctx.fillRect(tx, ty, ts, ts);
+                ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 2; ctx.strokeRect(tx, ty, ts, ts);
+            } else if (this.selectedTileId) {
+                const baseSize = (this.activeLayer === 'units') ? this.getUnitSize(this.selectedTileId) : this.getTileSize(this.selectedTileId);
+                const isRotated = (this.currentRotation === 90 || this.currentRotation === 270);
+                const ew = isRotated ? baseSize.h : baseSize.w;
+                const eh = isRotated ? baseSize.w : baseSize.h;
+                const rot = this.currentRotation * (Math.PI / 180);
+                ctx.translate(tx + (ew * ts)/2, ty + (eh * ts)/2);
+                ctx.rotate(rot);
+                if (this.activeLayer === 'units') {
+                    if (this.selectedTileId.startsWith('v_')) {
+                        ctx.fillStyle = '#fff'; ctx.fillRect(-(baseSize.w*ts)/2, -(baseSize.h*ts)/2, baseSize.w*ts, baseSize.h*ts);
+                    } else {
+                        ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.arc(0, 0, ts * 0.35, 0, Math.PI * 2); ctx.fill();
+                    }
+                } else {
+                    const img = this.game.assetManager.get(this.selectedTileId);
+                    if (img) ctx.drawImage(img, -(baseSize.w*ts)/2, -(baseSize.h*ts)/2, baseSize.w * ts, baseSize.h * ts);
+                    else { ctx.fillStyle = '#fff'; ctx.fillRect(-(baseSize.w*ts)/2, -(baseSize.h*ts)/2, baseSize.w*ts, baseSize.h*ts); }
+                }
+                ctx.strokeStyle = '#2ecc71'; ctx.lineWidth = 2; ctx.strokeRect(-(baseSize.w*ts)/2, -(baseSize.h*ts)/2, baseSize.w*ts, baseSize.h*ts);
+            }
+            ctx.restore();
+        }
+    }
+}

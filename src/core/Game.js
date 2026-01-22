@@ -457,8 +457,9 @@ export default class Game {
             for (let x = px - 1; x <= px + 1; x++) {
                 const block = this.tileMap.getBlockAt(x, y);
                 if (block && block.def && (block.id === 'loot_box' || block.id === 'door' || block.id === 'door_open' || block.id === 'gun_workbench')) {
-                    const centerX = block.anchorX * 64 + (block.def.width || 1) * 32;
-                    const centerY = block.anchorY * 64 + (block.def.height || 1) * 32;
+                    // Use rotated width/height for center calculation
+                    const centerX = block.anchorX * 64 + block.width * 32;
+                    const centerY = block.anchorY * 64 + block.height * 32;
                     const dx = centerX - p.x;
                     const dy = centerY - p.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -948,8 +949,9 @@ export default class Game {
             for (let x = px - 1; x <= px + 1; x++) {
                 const block = this.tileMap.getBlockAt(x, y);
                 if (block && block.def && (block.def.interactable || block.id === 'gun_workbench')) {
-                    const centerX = block.anchorX * 64 + (block.def.width || 1) * 32;
-                    const centerY = block.anchorY * 64 + (block.def.height || 1) * 32;
+                    // Use rotated width/height for center calculation
+                    const centerX = block.anchorX * 64 + block.width * 32;
+                    const centerY = block.anchorY * 64 + block.height * 32;
                     const dx = centerX - p.x;
                     const dy = centerY - p.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
