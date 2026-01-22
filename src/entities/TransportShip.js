@@ -10,7 +10,6 @@ export default class TransportShip extends Vehicle {
         this.acceleration = 250; // Greatly increased
         this.friction = 0.98; // Slides more on water
         this.weight = 100000; // 100 tons
-        this.interactionRadius = 250; // Increased to reach from shore
         
         // Large storage for transport
         this.storageSlots = 8; // Reduced to 1 row

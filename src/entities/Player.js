@@ -38,6 +38,7 @@ export default class Player {
         this.currentVehicle = null;
 
         this.isStealth = false; // Stealth state
+        this.isSwimming = false; // Swimming state
         this.isCollidable = true;
         this.weight = 100;
     }
@@ -48,6 +49,12 @@ export default class Player {
         const targetX = this.game.input.mouse.x / this.game.zoom + camera.x;
         const targetY = this.game.input.mouse.y / this.game.zoom + camera.y;
         this.facingAngle = Math.atan2(targetY - this.y, targetX - this.x);
+
+        // Check if swimming
+        const tx = Math.floor(this.x / 64);
+        const ty = Math.floor(this.y / 64);
+        const floor = this.game.tileMap.getTile(tx, ty, 'floor');
+        this.isSwimming = (floor === 'water');
 
         // Stealth Check (e.g. In Bush)
         this.checkStealth();
@@ -105,6 +112,15 @@ export default class Player {
 
         let currentSpeed = this.isSprinting ? this.speed * this.sprintSpeedMultiplier : this.speed;
         currentSpeed *= speedMultiplier;
+
+        // --- Swimming Penalty ---
+        if (this.isSwimming) {
+            currentSpeed *= 0.4; // 60% speed reduction
+            if (this.isSprinting) {
+                this.stamina = Math.max(0, this.stamina - this.staminaDrainRate * 0.5 * dt); // Additional drain
+            }
+        }
+
         this.currentSpeed = currentSpeed;
 
         if (isMoving) {
@@ -375,13 +391,19 @@ export default class Player {
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
 
-        // Apply Stealth Alpha
+        // Apply visual modifications
         ctx.save();
+        ctx.translate(screenX, screenY); // Move origin to player center
+
         if (this.isStealth) {
-            ctx.globalAlpha = 0.5; // Half transparent when hidden
+            ctx.globalAlpha = 0.5; 
+        }
+        if (this.isSwimming) {
+            ctx.globalAlpha = 0.7; 
+            ctx.scale(0.85, 0.85); 
         }
 
-        // Calculate angle towards mouse
+        // Calculate angle towards mouse - adjusted for new local space
         const input = this.game.input;
         const targetX = input.mouse.x / this.game.zoom + camera.x;
         const targetY = input.mouse.y / this.game.zoom + camera.y;
@@ -390,16 +412,14 @@ export default class Player {
         const selectedItem = this.game.inventory.getSelectedItem();
         const itemDef = selectedItem ? this.game.inventory.getItemDef(selectedItem.id) : null;
 
-        // 1. Weapon Rendering (Hand-held feeling)
+        // 1. Weapon Rendering (In local space, center is 0,0)
         if (itemDef && itemDef.type === 'weapon' && !this.game.inventory.isOpen) {
             ctx.save();
-            ctx.translate(screenX, screenY);
             ctx.rotate(angle);
 
             const isMelee = itemDef.subType === 'melee';
             const weaponImg = this.game.assetManager.get(itemDef.id);
             
-            // Recoil/Swing offsets
             let offX = 25;
             let offY = 15;
             let rotOffset = 0;
@@ -407,13 +427,10 @@ export default class Player {
             if (this.fireTimer > 0) {
                 const animRate = this.lastFireRate || itemDef.fireRate || 0.2;
                 const p = Math.min(1.0, this.fireTimer / animRate);
-                
                 if (isMelee) {
-                    // Swing animation
                     rotOffset = Math.sin(p * Math.PI) * 1.5;
                     offX += Math.sin(p * Math.PI) * 20;
                 } else {
-                    // Recoil animation
                     offX -= p * 15;
                 }
             }
@@ -423,96 +440,71 @@ export default class Player {
                 ctx.rotate(rotOffset);
                 ctx.drawImage(weaponImg, offX, -h/2 + offY, w, h);
             } else {
-                // Fallback: simple rectangle if no image
                 ctx.fillStyle = itemDef.color || '#555';
                 ctx.fillRect(offX, -5 + offY, 30, 10);
             }
             ctx.restore();
         }
 
-        // 2. Laser Sight Visual
+        // 2. Laser Sight (From local center 0,0)
         if (selectedItem && selectedItem.attachments?.underbarrel?.id === 'laser_sight' && !this.game.inventory.isOpen) {
             const laserLen = 1500; 
             ctx.save();
             ctx.beginPath();
-            ctx.moveTo(screenX, screenY);
-            ctx.lineTo(screenX + Math.cos(angle) * laserLen, screenY + Math.sin(angle) * laserLen);
+            ctx.moveTo(0, 0);
+            ctx.lineTo(Math.cos(angle) * laserLen, Math.sin(angle) * laserLen);
             ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
             ctx.lineWidth = 1.5;
             ctx.shadowColor = 'red'; ctx.shadowBlur = 8;
             ctx.stroke();
-            ctx.closePath();
             ctx.restore();
         }
 
-        // 3. Punch Visual (Melee Swing Arc)
+        // 3. Punch Visual
         if (this.punchVisualTimer > 0) {
             const alpha = this.punchVisualTimer / 0.15;
             const punchRange = 100;
             const punchArc = Math.PI * 0.6;
-
             ctx.save();
             ctx.beginPath();
-            const grad = ctx.createRadialGradient(screenX, screenY, this.radius, screenX, screenY, punchRange);
+            const grad = ctx.createRadialGradient(0, 0, this.radius, 0, 0, punchRange);
             grad.addColorStop(0, `rgba(255, 255, 255, 0)`);
             grad.addColorStop(0.5, `rgba(255, 255, 255, ${alpha * 0.4})`);
             grad.addColorStop(1, `rgba(255, 255, 255, 0)`);
             ctx.fillStyle = grad;
-            ctx.moveTo(screenX, screenY);
-            ctx.arc(screenX, screenY, punchRange, this.punchAngle - punchArc / 2, this.punchAngle + punchArc / 2);
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, punchRange, this.punchAngle - punchArc / 2, this.punchAngle + punchArc / 2);
             ctx.fill();
             ctx.restore();
         }
 
-        // 4. Character Body
+        // 4. Character Body (at center 0,0)
         ctx.beginPath();
-        ctx.arc(screenX, screenY, this.radius, 0, Math.PI * 2);
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
         
         // 5. Grenade Landing Preview
         if (this.throwCharge > 0 && itemDef && itemDef.type === 'grenade') {
-            const camera = this.game.camera;
-            const input = this.game.input;
-            const mouseWorldX = input.mouse.x / this.game.zoom + camera.x;
-            const mouseWorldY = input.mouse.y / this.game.zoom + camera.y;
-            const dx = mouseWorldX - this.x;
-            const dy = mouseWorldY - this.y;
-            const angle = Math.atan2(dy, dx);
-
-            const maxDist = 600;
-            const minThrowDist = 50;
             const powerRatio = this.throwCharge / this.maxThrowCharge;
-            // Preview matches the new fixed-distance logic
-            const targetDist = minThrowDist + (powerRatio * (maxDist - minThrowDist));
+            const targetDist = 50 + (powerRatio * (600 - 50));
+            const lx = Math.cos(angle) * targetDist;
+            const ly = Math.sin(angle) * targetDist;
 
-            const landingX = this.x + Math.cos(angle) * targetDist;
-            const landingY = this.y + Math.sin(angle) * targetDist;
-            const screenLandingX = landingX - camera.x;
-            const screenLandingY = landingY - camera.y;
-
-            // Draw Landing Circle
             ctx.save();
             ctx.beginPath();
-            ctx.arc(screenLandingX, screenLandingY, 40, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(231, 76, 60, 0.2)'; // Faded red
+            ctx.arc(lx, ly, 40, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(231, 76, 60, 0.2)';
             ctx.fill();
             ctx.setLineDash([5, 5]);
             ctx.strokeStyle = '#e74c3c';
             ctx.lineWidth = 2;
             ctx.stroke();
-            
-            // Inner dot
-            ctx.beginPath();
-            ctx.arc(screenLandingX, screenLandingY, 5, 0, Math.PI * 2);
-            ctx.fillStyle = '#e74c3c';
-            ctx.fill();
             ctx.restore();
         }
         
-        // Face/Eye to show direction
+        // Face/Eye
         ctx.save();
-        ctx.translate(screenX, screenY);
         ctx.rotate(angle);
         ctx.fillStyle = '#fff';
         ctx.beginPath();
@@ -521,10 +513,10 @@ export default class Player {
         ctx.fill();
         ctx.restore();
 
-        // UI Indicators (Health, Reload, Stamina etc.)
-        this.renderStatusEffects(ctx, screenX, screenY);
+        // 6. UI Indicators (Reset translation for global UI elements if needed, or draw locally)
+        this.renderStatusEffects(ctx, 0, 0);
 
-        ctx.restore(); // Restore stealth alpha
+        ctx.restore(); 
     }
 
     renderStatusEffects(ctx, screenX, screenY) {

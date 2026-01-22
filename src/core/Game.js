@@ -221,7 +221,12 @@ export default class Game {
             if (moveType === 'air') return false;
 
             if (moveType === 'land') {
-                if (floorId === 'water') return true;
+                // If it's water, check if the radius is small (likely player) 
+                // to allow swimming, while blocking large vehicles.
+                if (floorId === 'water') {
+                    if (radius <= 32) return false; // Allow player (32px radius)
+                    return true; // Block vehicles (>32px radius)
+                }
             } else if (moveType === 'sea') {
                 if (floorId !== 'water' && floorId !== null) return true;
             }
@@ -991,8 +996,7 @@ export default class Game {
             const dy = v.y - p.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             
-            // Allow a bit more buffer for interaction hints
-            if (dist < v.interactionRadius + 20) {
+            if (dist < v.interactionRadius) {
                 const targetAngle = Math.atan2(dy, dx);
                 let angleDiff = Math.abs(this.getAngleDiff(pAngle, targetAngle));
                 let name = '차량';

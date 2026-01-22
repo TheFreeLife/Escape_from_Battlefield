@@ -81,8 +81,8 @@ export default class Vehicle {
 
     updateRadius() {
         this.radius = Math.max(this.width, this.height) * 0.5;
-        // Interaction range must be larger than the vehicle's physical radius + player radius
-        this.interactionRadius = this.radius + 100; 
+        // Require closer proximity for interaction (Radius + 40px)
+        this.interactionRadius = this.radius + 40; 
     }
 
     handleInteraction(playerX, playerY) {
@@ -175,25 +175,31 @@ export default class Vehicle {
         // Skip ground collision for sea units on land to allow 'dragging'
         // But always check for BLOCKS (walls)
         const checkMove = (nx, ny) => {
-            // 1. Check for physical blocks (walls, entities) using 'air' moveType (which ignores floor)
+            // 1. Check for entity collisions (players, other vehicles)
+            // Using 'air' here is fine for entities as they are usually ground-based
             if (this.game.checkCollision(nx, ny, this.radius, this, 'air')) return false;
             
-            // 2. Sea unit logic
+            // 2. CRITICAL: Check for physical block collisions (Walls, buildings)
+            // Even if it's a ship on land, it should NEVER pass through a concrete wall.
+            if (this.game.checkTileCollision(nx, ny, this.radius, 'land')) {
+                // If 'land' collision is true, it might be a floor OR a block.
+                // We need to know if it's specifically a BLOCK.
+                const tx = Math.floor(nx / 64);
+                const ty = Math.floor(ny / 64);
+                if (this.game.tileMap.getBlockAt(tx, ty)) return false; // Hit a wall!
+            }
+
+            // 3. Sea unit ground logic
             if (this.moveType === 'sea') {
-                // If it's a ship, we allow it to move on water AND land,
-                // because we already checked for BLOCKS in step 1.
-                // Standard checkTileCollision('sea') would block land tiles, which we don't want.
-                return true; 
+                return true; // Allow moving over any floor (water or land)
             }
             
-            // 3. Land unit logic
+            // 4. Land unit logic
             if (this.moveType === 'land') {
                 const tx = Math.floor(nx / 64);
                 const ty = Math.floor(ny / 64);
                 const floor = this.game.tileMap.getTile(tx, ty, 'floor');
-                
-                // If it's water, block it immediately
-                if (floor === 'water') return false;
+                if (floor === 'water') return false; // Block land vehicles from water
             }
             
             return !this.game.checkTileCollision(nx, ny, this.radius, this.moveType);
