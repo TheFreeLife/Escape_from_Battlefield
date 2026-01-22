@@ -271,20 +271,39 @@ export default class Player {
 
             const baseAngle = Math.atan2(dy, dx);
 
-            for (let i = 0; i < numPellets; i++) {
-                const finalAngle = baseAngle + (Math.random() - 0.5) * spread;
-                const pdx = Math.cos(finalAngle);
-                const pdy = Math.sin(finalAngle);
+            // --- Special Weapon Handling: Flamethrower ---
+            if (itemDef.caliber === 'fuel') {
+                for (let i = 0; i < 2; i++) {
+                    const finalAngle = baseAngle + (Math.random() - 0.5) * 0.4;
+                    const pdx = Math.cos(finalAngle);
+                    const pdy = Math.sin(finalAngle);
+                    
+                    const prj = new Projectile(this.game, this.x + pdx * 40, this.y + pdy * 40, pdx, pdy, {
+                        owner: this,
+                        damage: damage,
+                        speed: 400 + Math.random() * 200, // Slower but varying
+                        life: 0.5 + Math.random() * 0.3,
+                        isFlame: true
+                    });
+                    this.game.projectiles.push(prj);
+                }
+            } else {
+                // Standard Ranged Weapon logic
+                for (let i = 0; i < numPellets; i++) {
+                    const finalAngle = baseAngle + (Math.random() - 0.5) * spread;
+                    const pdx = Math.cos(finalAngle);
+                    const pdy = Math.sin(finalAngle);
 
-                const prj = new Projectile(this.game, this.x, this.y, pdx, pdy, {
-                    owner: this,
-                    damage: damage,
-                    speed: bSpeed,
-                    life: life,
-                    isExplosive: itemDef.isExplosive,
-                    explodeRadius: itemDef.explodeRadius
-                });
-                this.game.projectiles.push(prj);
+                    const prj = new Projectile(this.game, this.x, this.y, pdx, pdy, {
+                        owner: this,
+                        damage: damage,
+                        speed: bSpeed,
+                        life: life,
+                        isExplosive: itemDef.isExplosive,
+                        explodeRadius: itemDef.explodeRadius
+                    });
+                    this.game.projectiles.push(prj);
+                }
             }
 
             this.fireTimer = fireRate;

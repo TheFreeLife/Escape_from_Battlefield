@@ -401,8 +401,24 @@ export const weapons = [
                 magSize: 100,
                 reloadTime: 3.5,
                 weight: 38.0,
-                description: '전설적인 50구경 중기관총입니다. T키를 눌러 거치한 후 사용할 수 있습니다.',
-                svg: `<rect x="5" y="22" width="54" height="20" rx='2' fill="#2c3e50"/><rect x="45" y="25" width="15" height="14" fill="#1a2533"/><path d="M10 42 L20 55 M50 42 L60 55" stroke="#2c3e50" stroke-width="4"/>`
-            }
-        ];
-        
+                        description: '전설적인 50구경 중기관총입니다. T키를 눌러 거치한 후 사용할 수 있습니다.',
+                        svg: `<rect x="5" y="22" width="54" height="20" rx='2' fill="#2c3e50"/><rect x="45" y="25" width="15" height="14" fill="#1a2533"/><path d="M10 42 L20 55 M50 42 L60 55" stroke="#2c3e50" stroke-width="4"/>`
+                    },
+                    {
+                        id: 'flamethrower',
+                        name: 'M2 Flamethrower',
+                        type: 'weapon',
+                        subType: 'special',
+                        caliber: 'fuel',
+                        color: '#e67e22',
+                        damage: 12, // Per particle hit
+                        fireRate: 0.05, // Very fast fire rate for "streaming" effect
+                        range: 300,
+                        magSize: 100,
+                        reloadTime: 4.0,
+                        weight: 12.0,
+                        description: '근거리의 적을 잿더미로 만드는 화염방사기입니다.',
+                        svg: `<rect x="10" y="25" width="40" height="12" fill="#333"/><rect x="40" y="22" width="15" height="18" fill="#e67e22" rx="2"/><path d="M15 37l5 10h10l-5-10z" fill="#222"/>`
+                    }
+                ];
+                

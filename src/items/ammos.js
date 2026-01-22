@@ -108,5 +108,16 @@ export const ammos = [
         weight: 0.12,
         description: '중기관총용 대구경 탄환입니다.',
         svg: `<rect x="26" y="5" width="12" height="45" rx="1" fill="#f1c40f" /><path d="M26,5 L32,-5 L38,5 Z" fill="#d4ac0d" />`
+    },
+    {
+        id: 'ammo_fuel',
+        name: '액체 연료',
+        type: 'ammo',
+        stackable: true,
+        caliber: 'fuel',
+        color: '#e67e22',
+        weight: 0.05,
+        description: '화염방사기용 가솔린 혼합 연료입니다.',
+        svg: `<rect x="20" y="15" width="24" height="40" rx="4" fill="#e67e22" stroke="#d35400" stroke-width="2"/><rect x="25" y="10" width="14" height="5" fill="#333"/>`
     }
 ];

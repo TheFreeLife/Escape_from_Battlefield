@@ -75,6 +75,7 @@ export default class Inventory {
         this.addItem({ id: 'scope_4x', count: 1 });
         this.addItem({ id: 'laser_sight', count: 1 });
         this.addItem({ id: 'm2hb', count: 1 });
+        this.addItem({ id: 'flamethrower', count: 1 });
 
         // Add matching ammos
         this.addItem({ id: 'ammo_556', count: 200 });
@@ -85,6 +86,7 @@ export default class Inventory {
         this.addItem({ id: 'ammo_12g', count: 40 });
         this.addItem({ id: 'ammo_50ae', count: 30 });
         this.addItem({ id: 'ammo_50bmg', count: 300 });
+        this.addItem({ id: 'ammo_fuel', count: 200 });
         this.addItem({ id: 'ammo_40mm', count: 10 });
         this.addItem({ id: 'ammo_rocket', count: 5 });
 
