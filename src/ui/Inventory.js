@@ -119,14 +119,30 @@ export default class Inventory {
     }
 
     checkCraftingRecipe() {
-        // Convert flat 6 slots to 2x3 grid (2 rows, 3 columns)
-        const grid = [
-            [this.craftingSlots[0]?.id || null, this.craftingSlots[1]?.id || null, this.craftingSlots[2]?.id || null],
-            [this.craftingSlots[3]?.id || null, this.craftingSlots[4]?.id || null, this.craftingSlots[5]?.id || null]
-        ];
+        // 1. Count current items in crafting slots
+        const currentIngredients = {};
+        for (const slot of this.craftingSlots) {
+            if (slot) {
+                currentIngredients[slot.id] = (currentIngredients[slot.id] || 0) + 1;
+            }
+        }
 
+        // 2. Find a matching recipe based on required types and counts
         const match = recipes.find(r => {
-            return JSON.stringify(r.ingredients) === JSON.stringify(grid);
+            // Flatten recipe ingredients and count them
+            const required = {};
+            r.ingredients.forEach(row => {
+                row.forEach(id => {
+                    if (id) required[id] = (required[id] || 0) + 1;
+                });
+            });
+
+            // Compare counts
+            const reqKeys = Object.keys(required);
+            const curKeys = Object.keys(currentIngredients);
+
+            if (reqKeys.length !== curKeys.length) return false;
+            return reqKeys.every(id => currentIngredients[id] === required[id]);
         });
 
         if (match) {

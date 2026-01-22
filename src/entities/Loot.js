@@ -20,14 +20,23 @@ export default class Loot {
         if (screenX < -50 || screenX > camera.width + 50 || screenY < -50 || screenY > camera.height + 50) return;
 
         const itemDef = this.game.assetManager.getData('items')?.find(it => it.id === this.itemId);
-        const color = itemDef ? itemDef.color : '#fff';
+        let color = itemDef ? itemDef.color : '#ffffff';
 
-        // Draw glow
+        // Ensure color is a 6-digit hex for alpha appending
+        if (color.startsWith('#') && color.length === 4) {
+            color = '#' + color[1] + color[1] + color[2] + color[2] + color[3] + color[3];
+        }
+
+        // Draw smoother radial glow
+        ctx.save();
+        const grad = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, this.radius + 10);
+        grad.addColorStop(0, `${color}66`); // Semi-transparent center
+        grad.addColorStop(1, `${color}00`); // Fully transparent edge
+        ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(screenX, screenY, this.radius + 5, 0, Math.PI * 2);
-        ctx.fillStyle = `${color}33`;
+        ctx.arc(screenX, screenY, this.radius + 10, 0, Math.PI * 2);
         ctx.fill();
-        ctx.closePath();
+        ctx.restore();
 
         // Draw item representation
         const img = this.game.assetManager.get(this.itemId);
