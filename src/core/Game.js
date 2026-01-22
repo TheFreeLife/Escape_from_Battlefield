@@ -14,6 +14,7 @@ import Vehicle from '../entities/Vehicle.js';
 import Tank from '../entities/Tank.js';
 import APC from '../entities/APC.js';
 import TransportShip from '../entities/TransportShip.js';
+import TransportPlane from '../entities/TransportPlane.js';
 
 import { allItems } from '../items/index.js';
 
@@ -286,6 +287,7 @@ export default class Game {
         this.vehicles.push(new Tank(this, 700, 300));
         this.vehicles.push(new APC(this, 900, 500));
         this.vehicles.push(new TransportShip(this, 1100, 300));
+        this.vehicles.push(new TransportPlane(this, 1300, 500));
 
         this.isReady = true;
         this.start();
@@ -420,8 +422,12 @@ export default class Game {
         }
 
         // Update Vehicles
-        for (const v of this.vehicles) {
+        for (let i = this.vehicles.length - 1; i >= 0; i--) {
+            const v = this.vehicles[i];
             v.update(dt);
+            if (v.markedForDeletion) {
+                this.vehicles.splice(i, 1);
+            }
         }
     }
 
@@ -959,13 +965,16 @@ export default class Game {
             const dx = v.x - p.x;
             const dy = v.y - p.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < v.interactionRadius) {
+            
+            // Allow a bit more buffer for interaction hints
+            if (dist < v.interactionRadius + 20) {
                 const targetAngle = Math.atan2(dy, dx);
                 let angleDiff = Math.abs(this.getAngleDiff(pAngle, targetAngle));
                 let name = '차량';
                 if (v.type === 'tank') name = '전차';
                 else if (v.type === 'apc') name = '장갑차';
                 else if (v.type === 'transport_ship') name = '운반선';
+                else if (v.type === 'transport_plane') name = '수송기';
                 
                 candidates.push({ type: 'vehicle', entity: v, centerX: v.x, centerY: v.y, name, dist, angleDiff });
             }
@@ -1003,12 +1012,14 @@ export default class Game {
             const dy = p.y - v.y;
             const localX = dx * Math.cos(-v.angle) - dy * Math.sin(-v.angle);
             
-            if (localX > -v.width / 4) {
+            // Allow entry from the front half of the vehicle (localX > -width/2)
+            if (localX > -v.width / 2) {
                 label = `[F] ${best.name} 탑승`;
             } else if (v.hasExternalStorage) {
-                label = v.type === 'transport_ship' ? "[F] 운반선" : "[F] 적재함";
+                label = (v.type === 'transport_ship') ? `[F] ${best.name}` : "[F] 적재함";
             } else {
-                label = `[F] ${best.name} 탑승`; // Fallback for vehicles without storage
+                // If no storage and not in front half, still allow entry but prioritize front
+                label = `[F] ${best.name} 탑승`; 
             }
         }
 

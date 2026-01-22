@@ -125,5 +125,7 @@ export default class APC extends Vehicle {
         ctx.restore();
 
         ctx.restore();
+        
+        this.renderHealthBar(ctx, screenX, screenY);
     }
 }

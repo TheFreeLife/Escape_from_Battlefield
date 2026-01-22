@@ -1,3 +1,6 @@
+import Loot from './Loot.js';
+import Grenade from './Grenade.js';
+
 export default class Vehicle {
     constructor(game, x, y, type = 'truck', moveType = 'land') {
         this.game = game;
@@ -17,7 +20,7 @@ export default class Vehicle {
         this.providesAmmoHUD = false; // Whether this vehicle shows ammo in the bottom-left HUD
         this.acceptedItemTypes = null; // null means any item is accepted
 
-        this.interactionRadius = 100;
+        this.interactionRadius = 150;
         this.isCollidable = true;
         this.weight = 2000;
         this.updateRadius();
@@ -26,10 +29,60 @@ export default class Vehicle {
         this.storageSlots = 10;
         this.storage = new Array(this.storageSlots).fill(null);
         this.isStorageOpen = false;
+
+        // Health system
+        this.maxHealth = 1000;
+        this.health = 1000;
+        this.isDestroyed = false;
+        this.markedForDeletion = false;
+    }
+
+    takeDamage(amount) {
+        if (this.isDestroyed || this.markedForDeletion) return;
+        this.health -= amount;
+        if (this.health <= 0) {
+            this.health = 0;
+            this.destroy();
+        }
+    }
+
+    destroy() {
+        if (this.isDestroyed) return;
+        this.isDestroyed = true;
+        this.speed = 0;
+        
+        if (this.isOccupied) {
+            this.exit(); // Force eject player
+        }
+        
+        // Visual explosion effect
+        const explosion = new Grenade(this.game, this.x, this.y, this.x, this.y, 0);
+        explosion.radius = this.radius * 1.5;
+        explosion.life = 0;
+        this.game.grenades.push(explosion);
+
+        console.log(`${this.type} destroyed!`);
+        
+        // Spawn loot from storage
+        this.spawnWreckLoot();
+
+        // Mark for deletion so it disappears from the world
+        this.markedForDeletion = true;
+    }
+
+    spawnWreckLoot() {
+        this.storage.forEach(item => {
+            if (item) {
+                this.game.loots.push(new Loot(this.game, this.x + (Math.random()-0.5)*40, this.y + (Math.random()-0.5)*40, item.id, item.count));
+            }
+        });
+        this.storage.fill(null);
     }
 
     updateRadius() {
         this.radius = Math.max(this.width, this.height) * 0.5;
+        // Interaction range must be larger than the vehicle's physical radius + player radius
+        this.interactionRadius = this.radius + 100; 
     }
 
     handleInteraction(playerX, playerY) {
@@ -41,18 +94,21 @@ export default class Vehicle {
         const localX = dx * Math.cos(-this.angle) - dy * Math.sin(-this.angle);
         const localY = dx * Math.sin(-this.angle) + dy * Math.cos(-this.angle);
 
-        // Vehicle width is 120. Cabin is at positive local X, Trunk is at negative local X.
-        // We allow entry from the front 3/4 of the vehicle.
-        if (localX > -this.width / 4) {
+        // Vehicle entry logic: Front half for entry, back half for storage (if available)
+        if (localX > -this.width / 2) {
             // Front side -> Cabin
-            if (!this.isOccupied) {
+            if (!this.isOccupied && !this.isDestroyed) {
                 this.enter();
                 return 'ENTERED';
             }
         } else if (this.hasExternalStorage) {
-            // Back side -> Trunk (Only if enabled)
+            // Back side -> Trunk
             this.toggleStorage();
             return 'STORAGE';
+        } else if (!this.isOccupied && !this.isDestroyed) {
+            // Fallback for vehicles without storage: allow entry from anywhere
+            this.enter();
+            return 'ENTERED';
         }
         return null;
     }
@@ -67,6 +123,11 @@ export default class Vehicle {
     }
 
     update(dt) {
+        if (this.isDestroyed) {
+            this.speed = 0;
+            return;
+        }
+
         if (this.isOccupied) {
             this.handleInput(dt);
         } else {
@@ -194,5 +255,30 @@ export default class Vehicle {
         ctx.fillRect(this.width / 2 - 40, this.height / 2 - 10, wheelW, wheelH);
 
         ctx.restore();
+        
+        this.renderHealthBar(ctx, screenX, screenY);
+    }
+
+    renderHealthBar(ctx, x, y) {
+        if (this.health >= this.maxHealth && !this.isDestroyed) return;
+
+        const barW = 100;
+        const barH = 8;
+        const barX = x - barW / 2;
+        const barY = y + this.radius + 15;
+
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(barX, barY, barW, barH);
+
+        // Fill
+        const healthRatio = Math.max(0, this.health / this.maxHealth);
+        ctx.fillStyle = this.isDestroyed ? '#555' : (healthRatio > 0.3 ? '#2ecc71' : '#e74c3c');
+        ctx.fillRect(barX, barY, barW * healthRatio, barH);
+
+        // Border
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barW, barH);
     }
 }

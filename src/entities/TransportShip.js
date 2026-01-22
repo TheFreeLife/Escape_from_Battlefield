@@ -57,5 +57,7 @@ export default class TransportShip extends Vehicle {
         ctx.stroke();
 
         ctx.restore();
+        
+        this.renderHealthBar(ctx, screenX, screenY);
     }
 }

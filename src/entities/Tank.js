@@ -124,6 +124,8 @@ export default class Tank extends Vehicle {
         ctx.restore();
 
         ctx.restore();
+        
+        this.renderHealthBar(ctx, screenX, screenY);
     }
 
     renderTankHUD(ctx) {

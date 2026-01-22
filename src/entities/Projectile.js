@@ -137,6 +137,8 @@ export default class Projectile {
                 if (distSq < minDist * minDist) {
                     if (this.isExplosive) {
                         this.explode();
+                    } else if (vehicle.takeDamage) {
+                        vehicle.takeDamage(this.damage);
                     }
                     this.markedForDeletion = true;
                     return;

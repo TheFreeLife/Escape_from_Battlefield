@@ -72,6 +72,7 @@ export default class MapEditor {
         if (id === 'v_apc') return { w: 2, h: 2 };
         if (id === 'v_truck') return { w: 2, h: 2 };
         if (id === 'v_transport_ship') return { w: 3, h: 2 };
+        if (id === 'v_transport_plane') return { w: 3, h: 3 };
         return { w: 1, h: 1 };
     }
 
@@ -139,7 +140,9 @@ export default class MapEditor {
                         const seaVehicles = [
                             { id: 'v_transport_ship', name: '운반선 (Carrier)', color: '#2c3e50' }
                         ];
-                        const airVehicles = []; // 공중 유닛 추가 시 여기에 정의
+                        const airVehicles = [
+                            { id: 'v_transport_plane', name: '수송기 (Plane)', color: '#7f8c8d' }
+                        ]; 
                         
                         if (landVehicles.length > 0) {
                             addHeader('🚜 지상 이동수단');
@@ -756,6 +759,7 @@ export default class MapEditor {
                             if (cell.unit.id === 'v_tank') vColor = '#1e8449';
                             else if (cell.unit.id === 'v_apc') vColor = '#34495e';
                             else if (cell.unit.id === 'v_transport_ship') vColor = '#2c3e50';
+                            else if (cell.unit.id === 'v_transport_plane') vColor = '#7f8c8d';
         
                             ctx.fillStyle = vColor;
                             ctx.fillRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);

@@ -50,9 +50,30 @@ export default class Grenade {
             const dy = enemy.y - this.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < this.radius) {
-                // Falloff damage? Let's just do full for now or simple lerp
                 const damageMult = 1 - (dist / this.radius);
                 enemy.takeDamage(this.damage * (0.5 + 0.5 * damageMult));
+            }
+        });
+
+        // Damage Player
+        const p = this.game.player;
+        const pdx = p.x - this.x;
+        const pdy = p.y - this.y;
+        const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+        if (pdist < this.radius) {
+            const damageMult = 1 - (pdist / this.radius);
+            p.health -= this.damage * (0.5 + 0.5 * damageMult);
+        }
+
+        // Damage Vehicles
+        this.game.vehicles.forEach(vehicle => {
+            if (vehicle.isDestroyed) return;
+            const vdx = vehicle.x - this.x;
+            const vdy = vehicle.y - this.y;
+            const vdist = Math.sqrt(vdx * vdx + vdy * vdy);
+            if (vdist < this.radius + vehicle.radius) {
+                const damageMult = 1 - (vdist / (this.radius + vehicle.radius));
+                vehicle.takeDamage(this.damage * (0.5 + 0.5 * damageMult));
             }
         });
 
