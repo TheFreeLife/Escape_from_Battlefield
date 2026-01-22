@@ -1,39 +1,56 @@
 [
     {
-        "id": "military_hq",
-        "name": "사령부 본부",
+        "id": "operation_iron_fist",
+        "name": "아이언 피스트 작전",
         "layout": [
-            [["concrete", "steel_wall"], ["concrete", "steel_wall"], ["concrete", "steel_wall"], ["concrete", "steel_wall"], ["concrete", "steel_wall"]],
-            [["concrete", "steel_wall"], ["concrete", null], ["concrete", "tactical_table"], ["concrete", null], ["concrete", "steel_wall"]],
-            [["concrete", "steel_wall"], ["concrete", {"id": "soldier", "command": "GUARD"}], ["concrete", "loot_box", null, null, {"lootTable": [{"id": "m4a1", "chance": 100}]}], ["concrete", {"id": "soldier", "command": "GUARD"}], ["concrete", "steel_wall"]],
-            [["concrete", "steel_wall"], ["concrete", "steel_wall"], ["concrete", "door"], ["concrete", "steel_wall"], ["concrete", "steel_wall"]]
+            [["grass", "fence"], ["grass", "fence"], ["grass", "fence"], ["grass", "fence"], ["grass", "fence"], ["asphalt"], ["grass", "fence"], ["grass", "fence"], ["grass", "fence"], ["grass", "fence"]],
+            [["grass"], ["grass", "camo_net"], ["grass"], ["grass"], ["grass"], ["asphalt", "road_line_dotted"], ["grass"], ["grass"], ["grass", "camo_net"], ["grass"]],
+            [["grass"], ["grass", {"id": "soldier"}], ["grass"], ["concrete"], ["concrete"], ["asphalt", "road_line_dotted"], ["concrete"], ["concrete"], ["grass", {"id": "soldier"}], ["grass"]],
+            [["grass"], ["grass"], ["concrete", "steel_wall"], ["concrete", "door"], ["concrete", "steel_wall"], ["asphalt", "road_line_dotted"], ["concrete", "steel_wall"], ["concrete", "door"], ["concrete", "steel_wall"], ["grass"]],
+            [["asphalt"], ["asphalt", "road_line_dotted"], ["asphalt", "road_line_dotted"], ["asphalt", "road_line_dotted"], ["asphalt", "road_stop_line"], ["asphalt", "crosswalk"], ["asphalt", "road_stop_line"], ["asphalt", "road_line_dotted"], ["asphalt", "road_line_dotted"], ["asphalt"]],
+            [["grass"], ["grass"], ["concrete", "steel_wall"], ["concrete", "loot_box"], ["concrete", "steel_wall"], ["asphalt", "road_line_dotted"], ["concrete", "steel_wall"], ["concrete", "gun_workbench"], ["concrete", "steel_wall"], ["grass"]],
+            [["grass"], ["grass", {"id": "v_apc", "angle": 3.14}], ["grass"], ["concrete"], ["concrete"], ["asphalt", "road_line_dotted"], ["concrete"], ["concrete"], ["grass", {"id": "v_tank", "angle": 0}], ["grass"]],
+            [["grass"], ["grass"], ["grass"], ["grass"], ["grass"], ["asphalt", "road_line_dotted"], ["grass"], ["grass"], ["grass"], ["grass"]],
+            [["grass", "fence"], ["grass", "fence"], ["grass", "fence"], ["grass", "fence"], ["grass", "fence"], ["asphalt"], ["grass", "fence"], ["grass", "fence"], ["grass", "fence"], ["grass", "fence"]]
         ]
     },
     {
-        "id": "checkpoint",
-        "name": "도로 검문소",
+        "id": "forgotten_bay",
+        "name": "포가튼 베이",
         "layout": [
-            [["sidewalk_curb"], ["asphalt", "jersey_barrier"], ["asphalt", "jersey_barrier"], ["sidewalk_curb", null, null, null, {"floorRotation": 180}]],
-            [["sidewalk", "street_light"], ["asphalt", {"id": "soldier", "command": "GUARD"}], ["crosswalk"], ["sidewalk", "trash_can"]],
-            [["sidewalk_curb"], ["asphalt", "oil_barrel"], ["asphalt", "wrecked_car"], ["sidewalk_curb", null, null, null, {"floorRotation": 180}]]
+            [["water"], ["water"], ["water"], ["water"], ["water"], ["water"], ["concrete", "jersey_barrier"], ["concrete"], ["concrete"], ["concrete"]],
+            [["water"], ["water"], ["water"], ["water"], ["water"], ["water"], ["concrete"], ["concrete", "loot_box"], ["concrete", {"id": "soldier"}], ["concrete"]],
+            [["water"], ["water", {"id": "v_transport_ship", "angle": 1.57}], ["water"], ["water"], ["water"], ["water"], ["concrete"], ["concrete"], ["concrete"], ["concrete", "steel_wall"]],
+            [["water"], ["water"], ["water"], ["water"], ["water"], ["water"], ["concrete", "door_open"], ["concrete"], ["concrete"], ["concrete"]],
+            [["water"], ["water"], ["water"], ["water"], ["water"], ["water"], ["concrete"], ["concrete", "gun_workbench"], ["concrete"], ["concrete", "steel_wall"]],
+            [["water"], ["water"], ["water"], ["water"], ["water"], ["water"], ["concrete"], ["concrete"], ["concrete", {"id": "soldier"}], ["concrete"]],
+            [["water"], ["water"], ["water"], ["water"], ["water"], ["water"], ["concrete", "steel_wall"], ["concrete", "steel_wall"], ["concrete", "steel_wall"], ["concrete", "steel_wall"]]
         ]
     },
     {
-        "id": "fuel_depot",
-        "name": "유류 저장소",
+        "id": "thunder_strike_airbase",
+        "name": "썬더 스트라이크 기지",
         "layout": [
-            [["concrete", "fence"], ["concrete", "fence"], ["concrete", "fence"]],
-            [["concrete", "fence"], ["concrete", "fuel_tank"], ["concrete", "fence"]],
-            [["concrete", "fence"], ["concrete", "oil_barrel"], ["concrete", "fence"]]
+            [["grass"], ["grass"], ["grass"], ["grass"], ["grass"], ["grass"], ["grass"], ["grass"], ["grass"], ["grass"], ["grass"], ["grass"]],
+            [["grass"], ["runway_asphalt", "runway_threshold"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["grass"]],
+            [["grass"], ["runway_line_center"], ["runway_line_center"], ["runway_line_center"], ["runway_line_center"], ["runway_line_center"], ["runway_line_center"], ["runway_line_center"], ["runway_line_center"], ["runway_line_center"], ["runway_line_center"], ["grass"]],
+            [["grass"], ["runway_asphalt", {"id": "v_transport_plane"}], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["grass"]],
+            [["grass"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["runway_asphalt"], ["grass"]],
+            [["grass"], ["concrete"], ["concrete"], ["concrete"], ["concrete", "steel_wall"], ["concrete"], ["concrete"], ["concrete"], ["concrete", "steel_wall"], ["concrete"], ["concrete"], ["grass"]],
+            [["grass"], ["concrete", "loot_box"], ["concrete"], ["concrete"], ["concrete"], ["concrete", {"id": "soldier"}], ["concrete"], ["concrete", "gun_workbench"], ["concrete"], ["concrete"], ["concrete"], ["grass"]]
         ]
     },
     {
-        "id": "small_hangar",
-        "name": "소형 격납고",
+        "id": "bloody_desert",
+        "name": "블러디 데저트",
         "layout": [
-            [["runway_asphalt", "hangar"]],
-            [["runway_asphalt", {"id": "v_transport_plane"}]],
-            [["runway_asphalt", "runway_light_white"]]
+            [["sand", "steel_wall"], ["sand", "steel_wall"], ["sand", "steel_wall"], ["sand", "steel_wall"], ["sand", "steel_wall"], ["sand", "steel_wall"], ["sand", "steel_wall"], ["sand", "steel_wall"], ["sand", "steel_wall"]],
+            [["sand", "steel_wall"], ["sand"], ["sand"], ["sand"], ["sand", "tactical_table"], ["sand"], ["sand"], ["sand"], ["sand", "steel_wall"]],
+            [["sand", "steel_wall"], ["sand"], ["sand", "rubble"], ["sand"], ["sand"], ["sand"], ["sand", "rubble"], ["sand"], ["sand", "steel_wall"]],
+            [["sand", "steel_wall"], ["sand"], ["sand"], ["sand", {"id": "v_tank", "angle": 0.78}], ["sand"], ["sand", {"id": "v_tank", "angle": 2.35}], ["sand"], ["sand"], ["sand", "steel_wall"]],
+            [["sand", "steel_wall"], ["sand", "loot_box"], ["sand"], ["sand"], ["sand", "gun_workbench"], ["sand"], ["sand"], ["sand", "loot_box"], ["sand", "steel_wall"]],
+            [["sand", "steel_wall"], ["sand"], ["sand", {"id": "soldier"}], ["sand"], ["sand", "door"], ["sand"], ["sand", {"id": "soldier"}], ["sand"], ["sand", "steel_wall"]],
+            [["sand", "steel_wall"], ["sand", "steel_wall"], ["sand", "steel_wall"], ["sand", "steel_wall"], ["sand", null], ["sand", "steel_wall"], ["sand", "steel_wall"], ["sand", "steel_wall"], ["sand", "steel_wall"]]
         ]
     }
 ]

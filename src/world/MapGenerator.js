@@ -18,54 +18,58 @@ export default class MapGenerator {
         let chunk = tileMap.getChunk(cx, cy);
         if (!chunk) chunk = tileMap.createChunk(cx, cy);
 
-        const map = this.game.activeMap;
-        const mapH = map.length;
-        const mapW = map[0].length;
+        const mapData = this.game.activeMap;
         const startX = cx * CHUNK_SIZE;
         const startY = cy * CHUNK_SIZE;
+
+        const worldW = this.game.mapW;
+        const worldH = this.game.mapH;
 
         for (let ly = 0; ly < CHUNK_SIZE; ly++) {
             for (let lx = 0; lx < CHUNK_SIZE; lx++) {
                 const tx = startX + lx;
                 const ty = startY + ly;
 
-                if (tx >= 0 && tx < mapW && ty >= 0 && ty < mapH) {
-                    const cell = map[ty][tx];
+                if (tx >= 0 && tx < worldW && ty >= 0 && ty < worldH) {
+                    const row = mapData[ty];
+                    const cell = row ? row[tx] : null;
+
                     if (cell) {
-                        const [floorId, blockId, , , metadata] = cell;
-                        // 1. Floor
-                        if (floorId) {
-                            tileMap.setTile(tx, ty, floorId, 'floor', metadata);
-                        } else {
-                            // If floor is missing in data, treat as void block area
-                            tileMap.setTile(tx, ty, 'void', 'block');
-                        }
-                        
-                        // 2. Block
-                        if (blockId && blockId !== 'occupied_space') {
-                            let finalMetadata = metadata ? JSON.parse(JSON.stringify(metadata)) : null;
-                            if (blockId === 'loot_box' && finalMetadata?.lootTable) {
-                                const items = new Array(16).fill(null);
-                                let slotIdx = 0;
-                                finalMetadata.lootTable.forEach(entry => {
-                                    if (slotIdx < 16 && Math.random() * 100 < entry.chance) {
-                                        items[slotIdx++] = { id: entry.id, count: 1 };
-                                    }
-                                });
-                                finalMetadata.items = items;
-                                delete finalMetadata.lootTable; 
-                            }
-                            tileMap.setTile(tx, ty, blockId, 'block', finalMetadata);
+                        this.processCell(tileMap, tx, ty, cell);
+                        if (tileMap.getTile(tx, ty, 'floor') === null) {
+                            tileMap.setTile(tx, ty, 'grass', 'floor');
                         }
                     } else {
-                        // Null cell within bounds -> Void block
-                        tileMap.setTile(tx, ty, 'void', 'block');
+                        tileMap.setTile(tx, ty, 'grass', 'floor');
                     }
                 }
-                // Chunks outside map bounds are left empty (rendering handles the rest)
             }
         }
         chunk.isGenerated = true;
+    }
+
+    processCell(tileMap, tx, ty, cell) {
+        const [floorId, blockId, , , metadata] = cell;
+        
+        if (floorId) tileMap.setTile(tx, ty, floorId, 'floor', metadata);
+
+        if (blockId && blockId !== 'occupied_space') {
+            let finalMetadata = metadata ? JSON.parse(JSON.stringify(metadata)) : null;
+            if (blockId === 'loot_box' && finalMetadata?.lootTable) {
+                const items = new Array(16).fill(null);
+                let slotIdx = 0;
+                finalMetadata.lootTable.forEach(entry => {
+                    if (slotIdx < 16 && Math.random() * 100 < entry.chance) {
+                        items[slotIdx++] = { id: entry.id, count: 1 };
+                    }
+                });
+                finalMetadata.items = items;
+                delete finalMetadata.lootTable; 
+            }
+            tileMap.setTile(tx, ty, blockId, 'block', finalMetadata);
+        } else if (blockId === 'occupied_space') {
+            tileMap.setTile(tx, ty, 'occupied_space', 'block', metadata);
+        }
     }
 
     spawnEntities() {

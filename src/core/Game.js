@@ -139,8 +139,53 @@ export default class Game {
 
         let sx = 0, sy = 0;
         if (this.activeMap) {
-            this.mapW = this.activeMap[0].length;
-            this.mapH = this.activeMap.length;
+            // --- NEW: Calculate EFFECTIVE map boundaries ---
+            let maxTX = 0;
+            let maxTY = 0;
+
+            const tilesDef = this.assetManager.getData('tiles') || [];
+
+            this.activeMap.forEach((row, y) => {
+                row.forEach((cell, x) => {
+                    if (!cell) return;
+                    const [floorId, blockId, unitData] = cell;
+                    
+                    let cellW = 1;
+                    let cellH = 1;
+
+                    // Check Block size
+                    if (blockId && blockId !== 'occupied_space') {
+                        const def = tilesDef.find(t => t.id === blockId);
+                        if (def) {
+                            const rot = cell[4]?.blockRotation || 0;
+                            const isRot = (rot === 90 || rot === 270);
+                            cellW = Math.max(cellW, isRot ? (def.height || 1) : (def.width || 1));
+                            cellH = Math.max(cellH, isRot ? (def.width || 1) : (def.height || 1));
+                        }
+                    }
+
+                    // Check Unit size
+                    if (unitData && unitData.id && unitData.id !== 'occupied_space') {
+                        if (unitData.id.startsWith('v_')) {
+                            // Vehicle sizes are usually 2x2 or 3x2/3x3
+                            let vw = 2, vh = 2;
+                            if (unitData.id === 'v_transport_ship' || unitData.id === 'v_transport_plane') vw = 3;
+                            if (unitData.id === 'v_transport_plane') vh = 3;
+                            
+                            const angle = unitData.angle || 0;
+                            const isRot = (Math.abs(Math.sin(angle)) > 0.7); // Near 90 or 270 deg
+                            cellW = Math.max(cellW, isRot ? vh : vw);
+                            cellH = Math.max(cellH, isRot ? vw : vh);
+                        }
+                    }
+
+                    maxTX = Math.max(maxTX, x + cellW);
+                    maxTY = Math.max(maxTY, y + cellH);
+                });
+            });
+
+            this.mapW = maxTX;
+            this.mapH = maxTY;
             sx = (this.mapW / 2) * 64;
             sy = (this.mapH / 2) * 64;
         }
@@ -151,16 +196,22 @@ export default class Game {
         this.player.isInVehicle = false;
         this.player.isUsingMountedWeapon = false;
 
-        // --- NEW: Spawn all entities once ---
+        // Force all chunks to generate BEFORE spawning entities to ensure tiles are ready
+        if (this.tileMap) {
+            const mapMaxCx = Math.ceil(this.mapW / 16);
+            const mapMaxCy = Math.ceil(this.mapH / 16);
+            for (let cy = 0; cy < mapMaxCy; cy++) {
+                for (let cx = 0; cx < mapMaxCx; cx++) {
+                    this.tileMap.getChunk(cx, cy); 
+                }
+            }
+        }
+
+        // Now spawn entities onto the ready tiles
         if (this.mapGenerator) {
             this.mapGenerator.spawnEntities();
         }
 
-        const range = 16 * 64;
-        const cx = Math.floor(sx / range), cy = Math.floor(sy / range);
-        for (let y = cy - 1; y <= cy + 1; y++) {
-            for (let x = cx - 1; x <= cx + 1; x++) this.tileMap.getChunk(x, y);
-        }
         this.isFirstLoad = false;
     }
 
@@ -256,20 +307,14 @@ export default class Game {
             
             if (tx < 0 || tx >= this.mapW || ty < 0 || ty >= this.mapH) return true;
 
-            // Block Check (includes the new 'void' block)
+            // Block Check (Walls, structures, etc.)
             const block = this.tileMap.getBlockAt(tx, ty);
             if (block?.def?.collidable) return true;
 
-            // Floor check for special types
+            // Floor Layer Special Cases
             const fid = this.tileMap.getTile(tx, ty, 'floor');
-            
             if (moveType === 'land') {
                 if (fid === 'water' && radius > 32) return true;
-            } else if (moveType === 'sea') {
-                if (fid !== 'water') {
-                    // We allow ships on land but very slow (handled in Vehicle.js)
-                    // No physical block here anymore
-                }
             }
         }
         

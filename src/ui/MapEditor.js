@@ -677,10 +677,41 @@ export default class MapEditor {
     getLayoutArray() {
         if (this.tiles.size === 0) return [];
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        this.tiles.forEach((_, key) => {
+        
+        this.tiles.forEach((cell, key) => {
             const [x, y] = key.split(',').map(Number);
-            minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-            minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+            
+            // For each cell, consider the object's full size to find the real boundary
+            let cellW = 1;
+            let cellH = 1;
+
+            // 1. Check Floor Size (usually 1x1, but check def)
+            if (cell.floor && cell.floor !== 'occupied_space') {
+                const s = this.getTileSize(cell.floor);
+                cellW = Math.max(cellW, s.w); cellH = Math.max(cellH, s.h);
+            }
+            // 2. Check Block Size
+            if (cell.block && cell.block !== 'occupied_space') {
+                const s = this.getTileSize(cell.block);
+                const rot = cell.metadata?.blockRotation || 0;
+                const isRot = (rot === 90 || rot === 270);
+                cellW = Math.max(cellW, isRot ? s.h : s.w);
+                cellH = Math.max(cellH, isRot ? s.w : s.h);
+            }
+            // 3. Check Unit Size
+            if (cell.unit && cell.unit.id !== 'occupied_space') {
+                const s = this.getUnitSize(cell.unit.id);
+                // Units in editor metadata might already have angle in radians
+                const rotDeg = (cell.unit.angle || 0) * (180 / Math.PI);
+                const isRot = (rotDeg === 90 || rotDeg === 270);
+                cellW = Math.max(cellW, isRot ? s.h : s.w);
+                cellH = Math.max(cellH, isRot ? s.w : s.h);
+            }
+
+            minX = Math.min(minX, x); 
+            maxX = Math.max(maxX, x + cellW - 1);
+            minY = Math.min(minY, y); 
+            maxY = Math.max(maxY, y + cellH - 1);
         });
 
         const layout = [];

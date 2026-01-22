@@ -1,14 +1,5 @@
 [
     {
-        "id": "void",
-        "name": "공허",
-        "layer": "block",
-        "collidable": true,
-        "blocksVision": false,
-        "color": "#000000",
-        "svg": "<rect x='0' y='0' width='64' height='64' fill='#000000'/>"
-    },
-    {
         "id": "grass",
         "name": "풀밭",
         "layer": "floor",
@@ -145,17 +136,6 @@
         "blocksVision": true,
         "color": "#2c3e50",
         "svg": "<rect x='0' y='0' width='64' height='64' fill='#2c3e50' stroke='#1a2533' stroke-width='4'/><rect x='10' y='10' width='44' height='44' fill='none' stroke='#34495e' stroke-width='2'/><circle cx='10' cy='10' r='2' fill='#7f8c8d'/><circle cx='54' cy='10' r='2' fill='#7f8c8d'/><circle cx='10' cy='54' r='2' fill='#7f8c8d'/><circle cx='54' cy='54' r='2' fill='#7f8c8d'/>"
-    },
-    {
-        "id": "hangar",
-        "name": "대형 격납고",
-        "layer": "block",
-        "width": 4,
-        "height": 4,
-        "collidable": true,
-        "blocksVision": true,
-        "color": "#7f8c8d",
-        "svg": "<rect x='5' y='5' width='246' height='246' fill='#7f8c8d' stroke='#2c3e50' stroke-width='8'/><path d='M5 128h246M128 5v246' stroke='#2c3e50' stroke-width='4'/><rect x='40' y='40' width='176' height='176' fill='#95a5a6' stroke='#2c3e50' stroke-width='4'/><path d='M40 40l176 176M216 40L40 216' stroke='#2c3e50' stroke-width='2' opacity='0.5'/>"
     },
     {
         "id": "fuel_tank",
