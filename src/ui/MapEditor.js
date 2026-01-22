@@ -297,6 +297,7 @@ export default class MapEditor {
         
         // --- 1. ERASER LOGIC ---
         if (tileId === null) {
+            // ... (기존 지우개 로직 동일)
             if (layer === 'items') {
                 cell.item = null;
             } else if (layer === 'units') {
@@ -357,6 +358,24 @@ export default class MapEditor {
 
         // 2. Get size definition for placement
         const size = (layer === 'units') ? this.getUnitSize(tileId) : this.getTileSize(tileId);
+
+        // --- 2.5. OVERLAP CHECK (Cross-layer: Units vs Blocks) ---
+        // Prevents placing units over blocks and blocks over units
+        if (size.w > 1 || size.h > 1 || (layer === 'units' || layer === 'block')) {
+            for (let oy = 0; oy < size.h; oy++) {
+                for (let ox = 0; ox < size.w; ox++) {
+                    const tKey = `${x + ox},${y + oy}`;
+                    const tCell = this.tiles.get(tKey);
+                    if (tCell) {
+                        // 1. If we are placing a UNIT, check if there's already a unit OR a block here
+                        if (layer === 'units' && (tCell.unit !== null || tCell.block !== null)) return;
+                        
+                        // 2. If we are placing a BLOCK, check if there's already a block OR a unit here
+                        if (layer === 'block' && (tCell.block !== null || tCell.unit !== null)) return;
+                    }
+                }
+            }
+        }
 
         // 3. Multi-tile Placement Logic
         if (size.w > 1 || size.h > 1) {
