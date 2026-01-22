@@ -7,18 +7,60 @@
         "svg": "<path d='M0 0h64v64H0z' fill='#4a7c36'/><path d='M10 10l5 5M30 40l8 8M50 20l-5 5' stroke='#3d662b' stroke-width='2'/>"
     },
     {
-        "id": "dirt",
-        "name": "흙바닥",
-        "layer": "floor",
-        "color": "#6b543e",
-        "svg": "<path d='M0 0h64v64H0z' fill='#6b543e'/><circle cx='20' cy='30' r='2' fill='#544131'/><circle cx='45' cy='50' r='3' fill='#544131'/>"
-    },
-    {
         "id": "concrete",
         "name": "콘크리트 바닥",
         "layer": "floor",
         "color": "#7a7a7a",
         "svg": "<path d='M0 0h64v64H0z' fill='#7a7a7a'/><path d='M0 0l64 64M64 0L0 64' stroke='#666' stroke-width='1' opacity='0.3'/>"
+    },
+    {
+        "id": "sidewalk",
+        "name": "보도블록",
+        "layer": "floor",
+        "color": "#bdc3c7",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#bdc3c7'/><path d='M0 32h64M32 0v64' stroke='#95a5a6' stroke-width='2'/>"
+    },
+    {
+        "id": "sidewalk_curb",
+        "name": "인도 (경계석)",
+        "layer": "floor",
+        "color": "#bdc3c7",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#bdc3c7'/><rect x='0' y='54' width='64' height='10' fill='#7f8c8d'/><path d='M0 27h64M32 0v54' stroke='#95a5a6' stroke-width='2'/>"
+    },
+    {
+        "id": "asphalt",
+        "name": "도로 아스팔트",
+        "layer": "floor",
+        "color": "#34495e",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#34495e'/><path d='M10 10l2 2M50 50l2 2' stroke='#2c3e50' stroke-width='4' opacity='0.5'/>"
+    },
+    {
+        "id": "road_line_dotted",
+        "name": "도로 차선 (점선)",
+        "layer": "floor",
+        "color": "#34495e",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#34495e'/><rect x='29' y='10' width='6' height='44' fill='#fff'/>"
+    },
+    {
+        "id": "road_line_solid",
+        "name": "도로 중앙선 (노란색)",
+        "layer": "floor",
+        "color": "#34495e",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#34495e'/><rect x='27' y='0' width='4' height='64' fill='#f1c40f'/><rect x='33' y='0' width='4' height='64' fill='#f1c40f'/>"
+    },
+    {
+        "id": "road_stop_line",
+        "name": "도로 정지선",
+        "layer": "floor",
+        "color": "#34495e",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#34495e'/><rect x='0' y='24' width='64' height='16' fill='#fff'/>"
+    },
+    {
+        "id": "crosswalk",
+        "name": "횡단보도",
+        "layer": "floor",
+        "color": "#34495e",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#34495e'/><rect x='0' y='12' width='64' height='16' fill='#fff'/><rect x='0' y='40' width='64' height='16' fill='#fff'/>"
     },
     {
         "id": "runway_asphalt",
@@ -35,101 +77,101 @@
         "svg": "<rect x='0' y='0' width='64' height='64' fill='#2c3e50'/><rect x='28' y='10' width='8' height='44' fill='#fff'/>"
     },
     {
-        "id": "runway_line_edge",
-        "name": "활주로 외곽선",
-        "layer": "floor",
-        "color": "#2c3e50",
-        "svg": "<rect x='0' y='0' width='64' height='64' fill='#2c3e50'/><rect x='0' y='0' width='10' height='64' fill='#f1c40f'/>"
-    },
-    {
-        "id": "runway_threshold",
-        "name": "활주로 정지선",
-        "layer": "floor",
-        "color": "#2c3e50",
-        "svg": "<rect x='0' y='0' width='64' height='64' fill='#2c3e50'/><rect x='5' y='5' width='6' height='54' fill='#fff'/><rect x='17' y='5' width='6' height='54' fill='#fff'/><rect x='29' y='5' width='6' height='54' fill='#fff'/><rect x='41' y='5' width='6' height='54' fill='#fff'/><rect x='53' y='5' width='6' height='54' fill='#fff'/>"
-    },
-    {
-        "id": "sand",
-        "name": "모래",
-        "layer": "floor",
-        "color": "#d2b48c",
-        "svg": "<path d='M0 0h64v64H0z' fill='#d2b48c'/><circle cx='10' cy='15' r='1' fill='#c2a47c'/><circle cx='40' cy='35' r='1' fill='#c2a47c'/>"
-    },
-    {
-        "id": "snow",
-        "name": "눈",
-        "layer": "floor",
-        "color": "#ffffff",
-        "svg": "<path d='M0 0h64v64H0z' fill='#ffffff'/><circle cx='32' cy='32' r='2' fill='#eee'/>"
-    },
-    {
-        "id": "water",
-        "name": "물",
-        "layer": "floor",
-        "collidable": true,
-        "color": "#3498db",
-        "svg": "<path d='M0 0h64v64H0z' fill='#3498db'/><path d='M10 20q10-10 20 0t20 0' fill='none' stroke='#fff' stroke-width='2' opacity='0.3'/>"
-    },
-    {
-        "id": "wall_concrete",
-        "name": "콘크리트 벽",
+        "id": "wall_brick",
+        "name": "벽돌 벽",
         "layer": "block",
         "collidable": true,
         "blocksVision": true,
-        "color": "#555555",
-        "svg": "<rect x='0' y='0' width='64' height='64' fill='#555' stroke='black' stroke-width='4' /><path d='M0 0l64 64M64 0L0 64' stroke='#444' stroke-width='2'/>"
+        "color": "#a04000",
+        "svg": "<rect x='0' y='0' width='64' height='64' fill='#a04000'/><path d='M0 16h64M0 32h64M0 48h64M16 0v16M48 0v16M32 16v16M16 32v16M48 32v16' stroke='#5e2600' stroke-width='2'/>"
     },
     {
-        "id": "runway_light_white",
-        "name": "활주로 유도등 (백색)",
+        "id": "wrecked_car",
+        "name": "파괴된 차량",
         "layer": "block",
-        "collidable": false,
-        "color": "#fff",
-        "svg": "<circle cx='32' cy='32' r='10' fill='#fff' stroke='#aaa' stroke-width='2'/><circle cx='32' cy='32' r='15' fill='#fff' opacity='0.3'/>"
+        "width": 2,
+        "height": 1,
+        "collidable": true,
+        "blocksVision": false,
+        "color": "#333",
+        "svg": "<rect x='10' y='15' width='108' height='34' rx='10' fill='#333' stroke='#111' stroke-width='3'/><rect x='25' y='20' width='30' height='24' fill='#222' opacity='0.8'/><path d='M10 32h108M40 15v34' stroke='#000' stroke-width='2' opacity='0.5'/><circle cx='30' cy='15' r='5' fill='#555'/><circle cx='90' cy='15' r='5' fill='#555'/>"
     },
     {
-        "id": "runway_light_red",
-        "name": "활주로 정지등 (적색)",
-        "layer": "block",
-        "collidable": false,
-        "color": "#e74c3c",
-        "svg": "<circle cx='32' cy='32' r='10' fill='#e74c3c' stroke='#c0392b' stroke-width='2'/><circle cx='32' cy='32' r='15' fill='#e74c3c' opacity='0.3'/>"
-    },
-    {
-        "id": "wind_sock",
-        "name": "풍향계 (Windsock)",
-        "layer": "block",
-        "collidable": false,
-        "color": "#e67e22",
-        "svg": "<rect x='30' y='30' width='4' height='34' fill='#7f8c8d'/><path d='M32 10 L60 15 L60 25 L32 30 Z' fill='#e67e22' stroke='#d35400' stroke-width='2'/>"
-    },
-    {
-        "id": "sandbag",
-        "name": "모래주머니",
+        "id": "street_light",
+        "name": "가로등",
         "layer": "block",
         "collidable": true,
-        "blocksVision": true,
-        "color": "#c2b280",
-        "svg": "<rect x='5' y='10' width='54' height='20' rx='10' fill='#c2b280' stroke='#a19260' /><rect x='5' y='34' width='54' height='20' rx='10' fill='#c2b280' stroke='#a19260' />"
+        "blocksVision": false,
+        "color": "#f1c40f",
+        "svg": "<rect x='28' y='30' width='8' height='34' fill='#7f8c8d'/><circle cx='32' cy='20' r='12' fill='#f1c40f' opacity='0.8'/><circle cx='32' cy='20' r='18' fill='#f1c40f' opacity='0.2'/>"
     },
     {
-        "id": "fence",
-        "name": "철조망",
+        "id": "trash_can",
+        "name": "쓰레기통",
         "layer": "block",
         "collidable": true,
         "blocksVision": false,
         "color": "#7f8c8d",
-        "svg": "<path d='M0 10h64M0 32h64M0 54h64M10 0v64M32 0v64M54 0v64' stroke='#333' stroke-width='2' />"
+        "svg": "<rect x='20' y='20' width='24' height='34' fill='#7f8c8d' stroke='#333' stroke-width='2'/><path d='M20 28h24M20 36h24M20 44h24' stroke='#333' stroke-width='1'/>"
     },
     {
-        "id": "bush",
-        "name": "수풀",
+        "id": "rubble",
+        "name": "건물 잔해",
         "layer": "block",
-        "collidable": false,
+        "collidable": true,
+        "blocksVision": false,
+        "color": "#7a7a7a",
+        "svg": "<path d='M10 50l10-20 15 15 20-10 10 15z' fill='#7a7a7a' stroke='#555' stroke-width='2'/><circle cx='20' cy='45' r='5' fill='#666'/><circle cx='45' cy='50' r='3' fill='#666'/>"
+    },
+    {
+        "id": "city_tree",
+        "name": "가로수",
+        "layer": "block",
+        "collidable": true,
         "blocksVision": false,
         "isOverlay": true,
         "color": "#27ae60",
-        "svg": "<circle cx='32' cy='32' r='25' fill='#27ae60' /><circle cx='20' cy='20' r='15' fill='#2ecc71' /><circle cx='45' cy='40' r='18' fill='#1e8449' />"
+        "svg": "<rect x='28' y='40' width='8' height='24' fill='#5d4037'/><circle cx='32' cy='25' r='22' fill='#27ae60'/><circle cx='25' cy='20' r='15' fill='#2ecc71' opacity='0.6'/>"
+    },
+    {
+        "id": "hangar",
+        "name": "대형 격납고",
+        "layer": "block",
+        "width": 4,
+        "height": 4,
+        "collidable": true,
+        "blocksVision": true,
+        "color": "#7f8c8d",
+        "svg": "<rect x='5' y='5' width='246' height='246' fill='#7f8c8d' stroke='#2c3e50' stroke-width='8'/><path d='M5 128h246M128 5v246' stroke='#2c3e50' stroke-width='4'/><rect x='40' y='40' width='176' height='176' fill='#95a5a6' stroke='#2c3e50' stroke-width='4'/><path d='M40 40l176 176M216 40L40 216' stroke='#2c3e50' stroke-width='2' opacity='0.5'/>"
+    },
+    {
+        "id": "fuel_tank",
+        "name": "유류 탱크",
+        "layer": "block",
+        "width": 2,
+        "height": 2,
+        "collidable": true,
+        "blocksVision": true,
+        "color": "#ecf0f1",
+        "svg": "<circle cx='64' cy='64' r='60' fill='#ecf0f1' stroke='#bdc3c7' stroke-width='6'/><rect x='24' y='54' width='80' height='20' rx='5' fill='#e74c3c'/><text x='64' y='70' font-family='Arial' font-size='14' font-weight='bold' text-anchor='middle' fill='white'>FUEL</text>"
+    },
+    {
+        "id": "jersey_barrier",
+        "name": "콘크리트 방벽",
+        "layer": "block",
+        "collidable": true,
+        "color": "#bdc3c7",
+        "svg": "<path d='M10 54h44l-10-44h-24z' fill='#bdc3c7' stroke='#7f8c8d' stroke-width='3'/>"
+    },
+    {
+        "id": "oil_barrel",
+        "name": "드럼통",
+        "layer": "block",
+        "collidable": true,
+        "destructible": true,
+        "health": 30,
+        "color": "#c0392b",
+        "svg": "<rect x='12' y='10' width='40' height='44' rx='5' fill='#c0392b' stroke='#922b21' stroke-width='3'/><path d='M12 20h40M12 32h40M12 44h40' stroke='#922b21' stroke-width='2'/>"
     },
     {
         "id": "loot_box",
@@ -140,37 +182,6 @@
         "blocksVision": false,
         "color": "#d35400",
         "svg": "<rect x='8' y='16' width='48' height='40' fill='#a04000' stroke='#5e2600' stroke-width='4'/><rect x='8' y='16' width='48' height='12' fill='#d35400' stroke='#5e2600' stroke-width='2'/><rect x='28' y='24' width='8' height='12' fill='#f1c40f' stroke='#b7950b'/>"
-    },
-    {
-        "id": "door",
-        "name": "문",
-        "layer": "block",
-        "collidable": true,
-        "interactable": true,
-        "blocksVision": false,
-        "color": "#7e5109",
-        "svg": "<rect x='4' y='4' width='56' height='56' fill='#7e5109' stroke='#3e2723' stroke-width='4'/><circle cx='48' cy='32' r='4' fill='#f1c40f'/>"
-    },
-    {
-        "id": "door_open",
-        "name": "열린 문",
-        "layer": "block",
-        "collidable": false,
-        "interactable": true,
-        "blocksVision": false,
-        "color": "#a1887f",
-        "svg": "<rect x='4' y='4' width='12' height='56' fill='#7e5109' stroke='#3e2723' stroke-width='2'/><circle cx='8' cy='32' r='2' fill='#f1c40f'/>"
-    },
-    {
-        "id": "wooden_box",
-        "name": "나무 상자",
-        "layer": "block",
-        "collidable": true,
-        "destructible": true,
-        "blocksVision": true,
-        "health": 20,
-        "color": "#8d6e63",
-        "svg": "<rect x='4' y='4' width='56' height='56' fill='#8d6e63' stroke='#5d4037' stroke-width='4'/><path d='M4 4l56 56M60 4L4 60' stroke='#5d4037' stroke-width='2'/>"
     },
     {
         "id": "gun_workbench",

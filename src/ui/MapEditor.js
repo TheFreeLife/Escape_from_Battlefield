@@ -825,7 +825,18 @@ export default class MapEditor {
                 ctx.rotate(rot);
                 if (this.activeLayer === 'units') {
                     if (this.selectedTileId.startsWith('v_')) {
-                        ctx.fillStyle = '#fff'; ctx.fillRect(-(baseSize.w*ts)/2, -(baseSize.h*ts)/2, baseSize.w*ts, baseSize.h*ts);
+                        // Better vehicle preview with direction indicator
+                        ctx.fillStyle = '#fff'; 
+                        ctx.fillRect(-(baseSize.w*ts)/2, -(baseSize.h*ts)/2, baseSize.w*ts, baseSize.h*ts);
+                        
+                        // Add a "FRONT" indicator (Darker rectangle at the right side of base)
+                        ctx.fillStyle = '#2ecc71'; // Green indicator for front
+                        ctx.fillRect((baseSize.w*ts)/4, -(baseSize.h*ts)/2, (baseSize.w*ts)/4, baseSize.h*ts);
+                        
+                        ctx.fillStyle = '#000';
+                        ctx.font = 'bold 10px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText("FRONT", (baseSize.w*ts)/2 - 15, 5);
                     } else {
                         ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.arc(0, 0, ts * 0.35, 0, Math.PI * 2); ctx.fill();
                     }
