@@ -74,6 +74,7 @@ export default class Inventory {
         this.addItem({ id: 'scope_2x', count: 1 });
         this.addItem({ id: 'scope_4x', count: 1 });
         this.addItem({ id: 'laser_sight', count: 1 });
+        this.addItem({ id: 'm2hb', count: 1 });
 
         // Add matching ammos
         this.addItem({ id: 'ammo_556', count: 200 });
@@ -83,6 +84,7 @@ export default class Inventory {
         this.addItem({ id: 'ammo_338', count: 20 });
         this.addItem({ id: 'ammo_12g', count: 40 });
         this.addItem({ id: 'ammo_50ae', count: 30 });
+        this.addItem({ id: 'ammo_50bmg', count: 300 });
         this.addItem({ id: 'ammo_40mm', count: 10 });
         this.addItem({ id: 'ammo_rocket', count: 5 });
 
@@ -1586,7 +1588,13 @@ export default class Inventory {
     renderAmmoHUD(ctx) {
         const player = this.game.player;
         
-        // 1. If in a vehicle that provides its own Ammo HUD (like a Tank)
+        // 1. If using a Mounted Weapon (Machine Gun)
+        if (player.isUsingMountedWeapon && player.currentMountedWeapon) {
+            this.renderMountedWeaponHUD(ctx, player.currentMountedWeapon);
+            return;
+        }
+
+        // 2. If in a vehicle that provides its own Ammo HUD (like a Tank)
         if (player.isInVehicle && player.currentVehicle.providesAmmoHUD) {
             this.renderVehicleAmmoHUD(ctx, player.currentVehicle);
             return;
@@ -1695,6 +1703,71 @@ export default class Inventory {
             }
         }
 
+        ctx.restore();
+    }
+
+    renderMountedWeaponHUD(ctx, mg) {
+        const margin = 30;
+        const x = margin;
+        const y = this.game.canvas.height - margin;
+
+        ctx.save();
+        // Background Glow
+        const gradient = ctx.createRadialGradient(x + 50, y - 30, 0, x + 50, y - 30, 150);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x - 20, y - 100, 300, 140);
+
+        const itemDef = mg.itemDef;
+        ctx.fillStyle = '#aaa';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(itemDef.name.toUpperCase(), x, y - 45);
+
+        // Calculate total ammo in player inventory
+        let totalBullets = 0;
+        const allSlots = [...this.hotbar, ...this.items];
+        allSlots.forEach(i => {
+            if (i) {
+                const iDef = this.getItemDef(i.id);
+                if (iDef && iDef.type === 'ammo' && iDef.caliber === itemDef.caliber) {
+                    totalBullets += i.count;
+                }
+            }
+        });
+
+        const ammoStr = `${mg.itemData.ammo || 0}`;
+        const totalStr = ` / ${totalBullets} [${itemDef.caliber}]`;
+
+        // Check if currently "reloading" (fireTimer > fireRate means it's likely a reload)
+        const isReloading = mg.fireTimer > itemDef.fireRate;
+
+        if (isReloading) {
+            ctx.font = 'bold 36px Arial';
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillText("RELOADING", x, y);
+
+            const barW = 200;
+            const barH = 8;
+            const barY = y + 15;
+            const progress = 1 - (mg.fireTimer / itemDef.reloadTime);
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(x, barY, barW, barH);
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(x, barY, barW * progress, barH);
+            ctx.strokeStyle = '#fff';
+            ctx.strokeRect(x, barY, barW, barH);
+        } else {
+            ctx.font = 'bold 36px Arial';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(ammoStr, x, y);
+
+            const ammoWidth = ctx.measureText(ammoStr).width;
+            ctx.fillStyle = '#666';
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText(totalStr, x + ammoWidth, y);
+        }
         ctx.restore();
     }
 

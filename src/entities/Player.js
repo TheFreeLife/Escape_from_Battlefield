@@ -36,6 +36,8 @@ export default class Player {
         // Vehicle state
         this.isInVehicle = false;
         this.currentVehicle = null;
+        this.isUsingMountedWeapon = false;
+        this.currentMountedWeapon = null;
 
         this.isStealth = false; // Stealth state
         this.isSwimming = false; // Swimming state
@@ -58,6 +60,11 @@ export default class Player {
 
         // Stealth Check (e.g. In Bush)
         this.checkStealth();
+
+        if (this.isUsingMountedWeapon) {
+            this.isCollidable = false;
+            return;
+        }
 
         if (this.isInVehicle) {
             this.isCollidable = false;

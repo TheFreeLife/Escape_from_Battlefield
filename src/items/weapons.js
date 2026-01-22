@@ -384,7 +384,25 @@ export const weapons = [
         isExplosive: true,
         explodeRadius: 120,
         weight: 2.7,
-        description: '40mm 유탄을 발사하는 유탄발사기입니다.',
-        svg: `<path d="M4,36 L20,36 L25,52 L4,52 Z" fill="#5d4037" /><path d="M20,40 L55,40 L55,45 L20,45 Z" fill="#333" />`
-    }
-];
+                description: '40mm 유탄을 발사하는 유탄발사기입니다.',
+                svg: `<path d="M4,36 L20,36 L25,52 L4,52 Z" fill="#5d4037" /><path d="M20,40 L55,40 L55,45 L20,45 Z" fill="#333" />`
+            },
+            {
+                id: 'm2hb',
+                name: 'M2HB Heavy Machine Gun',
+                type: 'weapon',
+                subType: 'deployable',
+                caliber: '.50 BMG',
+                color: '#2c3e50',
+                damage: 45,
+                fireRate: 0.1,
+                bulletSpeed: 1800,
+                range: 1500,
+                magSize: 100,
+                reloadTime: 3.5,
+                weight: 38.0,
+                description: '전설적인 50구경 중기관총입니다. T키를 눌러 거치한 후 사용할 수 있습니다.',
+                svg: `<rect x="5" y="22" width="54" height="20" rx='2' fill="#2c3e50"/><rect x="45" y="25" width="15" height="14" fill="#1a2533"/><path d="M10 42 L20 55 M50 42 L60 55" stroke="#2c3e50" stroke-width="4"/>`
+            }
+        ];
+        

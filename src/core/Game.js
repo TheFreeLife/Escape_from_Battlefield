@@ -15,6 +15,7 @@ import Tank from '../entities/Tank.js';
 import APC from '../entities/APC.js';
 import TransportShip from '../entities/TransportShip.js';
 import TransportPlane from '../entities/TransportPlane.js';
+import MachineGun from '../entities/MachineGun.js';
 
 import { allItems } from '../items/index.js';
 
@@ -31,6 +32,7 @@ export default class Game {
         this.loots = [];
         this.grenades = [];
         this.vehicles = [];
+        this.machineGuns = [];
         this.zoom = 0.8;
 
         // Minimap Cache (Optimized)
@@ -461,12 +463,71 @@ export default class Game {
                 this.vehicles.splice(i, 1);
             }
         }
+
+        // Update Machine Guns
+        for (let i = this.machineGuns.length - 1; i >= 0; i--) {
+            const mg = this.machineGuns[i];
+            mg.update(dt);
+            if (mg.markedForDeletion) {
+                this.machineGuns.splice(i, 1);
+            }
+        }
+
+        // --- Handle Deployable Installation/Retrieval (T Key) ---
+        if (this.input.isKeyPressed('KeyT') && !this.inventory.isOpen) {
+            if (!this.lastTStateGlobal) {
+                // 1. Try to retrieve nearby MG first
+                const nearbyMGIdx = this.machineGuns.findIndex(mg => {
+                    const dx = mg.x - this.player.x;
+                    const dy = mg.y - this.player.y;
+                    return Math.sqrt(dx*dx + dy*dy) < 60 && !mg.isOccupied;
+                });
+
+                if (nearbyMGIdx !== -1) {
+                    this.retrieveMachineGun(nearbyMGIdx);
+                } else {
+                    // 2. Otherwise try to deploy if holding one
+                    const selectedItem = this.inventory.getSelectedItem();
+                    if (selectedItem && selectedItem.id === 'm2hb' && !this.player.isInVehicle && !this.player.isUsingMountedWeapon) {
+                        this.deployMachineGun(selectedItem);
+                    }
+                }
+                this.lastTStateGlobal = true;
+            }
+        } else {
+            this.lastTStateGlobal = false;
+        }
+    }
+
+    deployMachineGun(item) {
+        const mg = new MachineGun(this, this.player.x, this.player.y, this.player.facingAngle, item);
+        this.machineGuns.push(mg);
+        
+        // Remove from inventory
+        this.inventory.hotbar[this.inventory.selectedSlot] = null;
+        console.log("M2HB Deployed!");
+    }
+
+    retrieveMachineGun(index) {
+        const mg = this.machineGuns[index];
+        // Add back to inventory (if possible)
+        if (this.inventory.addItem({ id: mg.itemData.id, count: 1, ammo: mg.itemData.ammo })) {
+            this.machineGuns.splice(index, 1);
+            console.log("M2HB Retrieved!");
+        } else {
+            console.log("Inventory full! Cannot retrieve.");
+        }
     }
 
     handleInteraction() {
         // 1. If any UI window is open (Inventory, Crafting, Storage), close it
         if (this.inventory && this.inventory.isOpen) {
             this.inventory.toggle(); // This will handle closing everything safely
+            return;
+        }
+
+        if (this.player.isUsingMountedWeapon) {
+            this.player.currentMountedWeapon.exit();
             return;
         }
 
@@ -478,6 +539,18 @@ export default class Game {
         const candidates = [];
         const p = this.player;
         const pAngle = p.facingAngle;
+
+        // 2. Collect candidates: Machine Guns
+        for (const mg of this.machineGuns) {
+            const dx = mg.x - p.x;
+            const dy = mg.y - p.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 80) {
+                const targetAngle = Math.atan2(dy, dx);
+                let angleDiff = Math.abs(this.getAngleDiff(pAngle, targetAngle));
+                candidates.push({ type: 'machine_gun', entity: mg, dist, angleDiff });
+            }
+        }
 
         // 2. Collect candidates: Loot Boxes, Doors, and Multi-tile blocks
         const px = Math.floor(p.x / 64);
@@ -542,7 +615,9 @@ export default class Game {
         const best = candidates[0];
 
         // 6. Execute Interaction
-        if (best.type === 'tile') {
+        if (best.type === 'machine_gun') {
+            best.entity.enter(this.player);
+        } else if (best.type === 'tile') {
             if (best.id === 'gun_workbench') {
                 this.inventory.openCrafting();
             } else if (best.id === 'loot_box') {
@@ -1022,6 +1097,18 @@ export default class Game {
             }
         }
 
+        // 4. Collect Machine Guns
+        for (const mg of this.machineGuns) {
+            const dx = mg.x - p.x;
+            const dy = mg.y - p.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 80) {
+                const targetAngle = Math.atan2(dy, dx);
+                let angleDiff = Math.abs(this.getAngleDiff(pAngle, targetAngle));
+                candidates.push({ type: 'machine_gun', centerX: mg.x, centerY: mg.y, name: 'M2HB 기관총', dist, angleDiff });
+            }
+        }
+
         if (candidates.length === 0) return;
 
         // 4. Select the BEST candidate (closest angle difference)
@@ -1142,6 +1229,13 @@ export default class Game {
         for (const v of this.vehicles) {
             if (this.isVisibleToPlayer(v.x, v.y)) {
                 v.render(this.ctx, this.camera);
+            }
+        }
+
+        // Render Machine Guns
+        for (const mg of this.machineGuns) {
+            if (this.isVisibleToPlayer(mg.x, mg.y)) {
+                mg.render(this.ctx, this.camera);
             }
         }
 

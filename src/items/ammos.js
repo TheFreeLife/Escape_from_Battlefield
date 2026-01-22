@@ -97,5 +97,16 @@ export const ammos = [
         weight: 2.5,
         description: 'RPG-7용 대전차 로켓입니다.',
         svg: `<path d="M30,55 L34,55 L34,25 L30,25 Z" fill="#333" /><path d="M25,25 L39,25 L32,5 Z" fill="#2ecc71" />`
+    },
+    {
+        id: 'ammo_50bmg',
+        name: '.50 BMG',
+        type: 'ammo',
+        stackable: true,
+        caliber: '.50 BMG',
+        color: '#2c3e50',
+        weight: 0.12,
+        description: '중기관총용 대구경 탄환입니다.',
+        svg: `<rect x="26" y="5" width="12" height="45" rx="1" fill="#f1c40f" /><path d="M26,5 L32,-5 L38,5 Z" fill="#d4ac0d" />`
     }
 ];

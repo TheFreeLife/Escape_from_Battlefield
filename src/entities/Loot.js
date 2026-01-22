@@ -49,22 +49,5 @@ export default class Loot {
             ctx.fillText(`x${this.count}`, screenX + 10, screenY + 18);
             ctx.restore();
         }
-
-        // Interaction Hint
-        const player = this.game.player;
-        if (player && !player.isInVehicle) {
-            const dx = player.x - this.x;
-            const dy = player.y - this.y;
-            const distSq = dx * dx + dy * dy;
-            const interactDist = 60;
-            if (distSq < interactDist * interactDist) {
-                ctx.save();
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 12px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(`[F] ${itemDef?.name || 'Item'}`, screenX, screenY - 25);
-                ctx.restore();
-            }
-        }
     }
 }
