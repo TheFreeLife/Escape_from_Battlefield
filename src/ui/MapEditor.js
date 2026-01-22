@@ -389,7 +389,18 @@ export default class MapEditor {
                     const tCell = this.tiles.get(tKey) || { floor: null, block: null, unit: null, item: null, metadata: null };
                     if (ox === 0 && oy === 0) {
                         if (layer === 'units') {
-                            tCell.unit = { id: tileId, w: ew, h: eh, command: 'GUARD', patrolRadius: 250, healthMult: 1.0, damageMult: 1.0, speedMult: 1.0 };
+                            const rotRad = this.currentRotation * (Math.PI / 180);
+                            tCell.unit = { 
+                                id: tileId, 
+                                w: ew, 
+                                h: eh, 
+                                angle: rotRad, // Initial direction
+                                command: 'GUARD', 
+                                patrolRadius: 250, 
+                                healthMult: 1.0, 
+                                damageMult: 1.0, 
+                                speedMult: 1.0 
+                            };
                         } else {
                             tCell[layer] = tileId;
                             if (!tCell.metadata) tCell.metadata = {};
@@ -751,19 +762,41 @@ export default class MapEditor {
             if (cell.unit) {
                 if (cell.unit.id === 'occupied_space' || cell.unit.id === 'v_reserved') return;
                 if (cell.unit.id.startsWith('v_')) {
-                    const size = this.getUnitSize(cell.unit.id);
+                    const baseW = (cell.unit.id === 'v_transport_ship' || cell.unit.id === 'v_transport_plane') ? 3 : 2;
+                    const baseH = (cell.unit.id === 'v_transport_ship') ? 2 : (cell.unit.id === 'v_transport_plane' ? 3 : 2);
+                    
+                    const rotRad = cell.unit.angle || 0;
+                    const isRotated = (rotRad === Math.PI/2 || rotRad === Math.PI * 1.5);
+                    const ew = isRotated ? baseH : baseW;
+                    const eh = isRotated ? baseW : baseH;
+
                     let vColor = '#4b5320';
                     if (cell.unit.id === 'v_tank') vColor = '#1e8449';
                     else if (cell.unit.id === 'v_apc') vColor = '#34495e';
                     else if (cell.unit.id === 'v_transport_ship') vColor = '#2c3e50';
                     else if (cell.unit.id === 'v_transport_plane') vColor = '#7f8c8d';
+                    
+                    ctx.save();
+                    ctx.translate(tx + (ts * ew)/2, ty + (ts * eh)/2);
+                    ctx.rotate(rotRad);
+                    
+                    const drawW = baseW * ts - ts*0.2;
+                    const drawH = baseH * ts - ts*0.2;
+
                     ctx.fillStyle = vColor;
-                    ctx.fillRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);
-                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(tx + ts*0.1, ty + ts*0.1, ts * size.w - ts*0.2, ts * size.h - ts*0.2);
-                    ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(10, ts * 0.3)}px Arial`; ctx.textAlign = 'center';
+                    ctx.fillRect(-drawW/2, -drawH/2, drawW, drawH);
+                    ctx.strokeStyle = '#fff'; 
+                    ctx.lineWidth = 2; 
+                    ctx.strokeRect(-drawW/2, -drawH/2, drawW, drawH);
+                    
+                    ctx.fillStyle = '#fff'; 
+                    ctx.font = `bold ${Math.max(10, ts * 0.3)}px Arial`; 
+                    ctx.textAlign = 'center';
+                    
                     let label = cell.unit.id.replace('v_', '').toUpperCase();
                     if (label === 'TRANSPORT_SHIP') label = 'SHIP';
-                    ctx.fillText(label, tx + (ts * size.w)/2, ty + (ts * size.h)/2 + 5);
+                    ctx.fillText(label, 0, 5);
+                    ctx.restore();
                 } else {
                     const def = enemiesData.find(e => e.id === cell.unit.id);
                     ctx.fillStyle = def ? def.color : '#e74c3c';

@@ -183,15 +183,29 @@ export default class TileMap {
         const rot = (metadata?.blockRotation || 0);
         const isRotated = (rot === 90 || rot === 270);
 
+        const width = isRotated ? (def.height || 1) : (def.width || 1);
+        const height = isRotated ? (def.width || 1) : (def.height || 1);
+
         return {
             id: blockId,
             def,
             anchorX: masterX,
             anchorY: masterY,
             rotation: rot,
-            // Calculate effective width/height for collision
-            width: isRotated ? (def.height || 1) : (def.width || 1),
-            height: isRotated ? (def.width || 1) : (def.height || 1)
+            width, // Effective width
+            height, // Effective height
+            // Helper to get world center
+            getCenterWorld: () => ({
+                x: (masterX + width / 2) * TILE_SIZE,
+                y: (masterY + height / 2) * TILE_SIZE
+            }),
+            // Helper to get world bounds
+            getBoundsWorld: () => ({
+                x1: masterX * TILE_SIZE,
+                y1: masterY * TILE_SIZE,
+                x2: (masterX + width) * TILE_SIZE,
+                y2: (masterY + height) * TILE_SIZE
+            })
         };
     }
 
@@ -204,15 +218,11 @@ export default class TileMap {
         const fDef = this.game.assetManager.getData('tiles')?.find(t => t.id === floorId);
         if (fDef?.collidable) return true;
 
-        // 2. Block Tile Check (Using effective size from getBlockAt)
+        // 2. Block Tile Check (Using refactored helper)
         const block = this.getBlockAt(tx, ty);
         if (block && block.def && block.def.collidable) {
-            const bx1 = block.anchorX * TILE_SIZE;
-            const by1 = block.anchorY * TILE_SIZE;
-            const bx2 = bx1 + block.width * TILE_SIZE;
-            const by2 = by1 + block.height * TILE_SIZE;
-
-            if (worldX >= bx1 && worldX < bx2 && worldY >= by1 && worldY < by2) {
+            const bounds = block.getBoundsWorld();
+            if (worldX >= bounds.x1 && worldX < bounds.x2 && worldY >= bounds.y1 && worldY < bounds.y2) {
                 return true;
             }
         }

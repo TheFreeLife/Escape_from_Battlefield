@@ -177,6 +177,12 @@ export default class MapGenerator {
                             else if (uid === 'v_transport_ship') v = new TransportShip(this.game, centerX, centerY);
                             else if (uid === 'v_transport_plane') v = new TransportPlane(this.game, centerX, centerY);
                             else v = new Vehicle(this.game, centerX, centerY); 
+                            
+                            // Apply rotation from editor
+                            if (unitData.angle !== undefined) {
+                                v.angle = unitData.angle;
+                            }
+                            
                             this.game.vehicles.push(v);
                             console.log(`Spawned ${uid} at center: ${centerX}, ${centerY}`);
                         } else {
