@@ -5,8 +5,6 @@ export default class TileMap {
         this.game = game;
         this.chunks = new Map(); // Key: "x,y", Value: Chunk
         this.generator = null; // Set by Game
-        this.width = 0; // In tiles
-        this.height = 0; // In tiles
     }
 
     setGenerator(generator) {
@@ -242,6 +240,12 @@ export default class TileMap {
         const tx = Math.floor(worldX / TILE_SIZE);
         const ty = Math.floor(worldY / TILE_SIZE);
 
+        // 1. Check Floor Layer (e.g., 'void' tile)
+        const floorId = this.getTile(tx, ty, 'floor');
+        const fDef = this.game.assetManager.getData('tiles')?.find(t => t.id === floorId);
+        if (fDef && fDef.blocksVision) return true;
+
+        // 2. Check Block Layer
         const block = this.getBlockAt(tx, ty);
         if (block && block.def) {
             // Special Case: Closed Door always blocks vision
@@ -296,8 +300,16 @@ export default class TileMap {
         const endCy = Math.floor(endRow / CHUNK_SIZE);
 
         const visibleChunks = [];
+        
+        // Map boundary in chunks
+        const mapMaxCx = this.game.activeMap ? Math.ceil(this.game.mapW / CHUNK_SIZE) : -1;
+        const mapMaxCy = this.game.activeMap ? Math.ceil(this.game.mapH / CHUNK_SIZE) : -1;
+
         for (let cy = startCy; cy <= endCy; cy++) {
+            if (cy < 0 || cy >= mapMaxCy) continue; // Out of vertical map bounds
             for (let cx = startCx; cx <= endCx; cx++) {
+                if (cx < 0 || cx >= mapMaxCx) continue; // Out of horizontal map bounds
+
                 let chunk = this.getChunk(cx, cy);
                 if ((!chunk || !chunk.isGenerated) && this.generator) {
                     this.generator.generateChunk(this, cx, cy);

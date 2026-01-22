@@ -32,122 +32,119 @@ export default class TransportPlane extends Vehicle {
     }
 
     update(dt) {
+        if (this.isDestroyed) {
+            this.speed = 0;
+            return;
+        }
+
         if (this.isOccupied) {
             const input = this.game.input;
             
-            // Handle 'T' key to open control modal
             if (input.isKeyPressed('KeyT')) {
-                if (!this.lastTState) {
-                    this.toggleControlModal();
-                    this.lastTState = true;
-                }
-            } else {
-                this.lastTState = false;
-            }
+                if (!this.lastTState) { this.toggleControlModal(); this.lastTState = true; }
+            } else this.lastTState = false;
 
-            // --- 1. Take Off Sequence Logic ---
             if (this.takeOffSequence) {
-                // Slower, more realistic acceleration during takeoff roll
-                this.speed = Math.min(600, this.speed + 120 * dt); 
+                // Takeoff roll: Higher acceleration
+                this.speed += 150 * dt; 
+                if (this.speed > 600) this.speed = 600;
                 this.takeOffDistance += this.speed * dt;
-
-                // Gain altitude only after rolling for 256 pixels (approx 4 tiles)
+                
                 if (this.takeOffDistance > 256) {
-                    this.altitude += 0.4 * dt; // Faster climb
-                    
-                    if (this.altitude >= 0.7 && this.moveType !== 'air') {
-                        this.moveType = 'air'; // Disable ground collision
-                        console.log("Status: AIRBORNE (Obstacles ignored)");
-                    }
-                    
-                    if (this.altitude >= 1.0) {
-                        this.altitude = 1.0;
-                        this.takeOffSequence = false;
-                        this.isLanded = false;
-                        console.log("Takeoff Complete");
-                    }
+                    this.altitude += 0.4 * dt;
+                    if (this.altitude >= 0.7 && this.moveType !== 'air') this.moveType = 'air';
+                    if (this.altitude >= 1.0) { this.altitude = 1.0; this.takeOffSequence = false; this.isLanded = false; }
                 }
                 this.applyMovement(dt);
-                return;
-            }
-
-            // --- 2. Landing Sequence Logic ---
-            if (this.landingSequence) {
+            } else if (this.landingSequence) {
                 if (this.altitude > 0) {
-                    // Phase A: Approach (Descending)
-                    this.speed = Math.max(150, this.speed - 100 * dt); // Slow down to approach speed
+                    this.speed = Math.max(150, this.speed - 100 * dt);
                     this.altitude -= 0.3 * dt;
-                    
-                    if (this.altitude <= 0.3 && this.moveType !== 'land') {
-                        // Almost on ground, re-enable collision with buildings
-                        this.moveType = 'land';
-                        console.log("TOUCHDOWN - Collision enabled");
-                    }
-                    
-                    if (this.altitude <= 0) {
-                        this.altitude = 0;
-                        this.landingRollDistance = 0; // Start tracking roll distance on ground
-                        console.log("Touchdown complete. Rolling to stop...");
-                    }
+                    if (this.altitude <= 0.3 && this.moveType !== 'land') this.moveType = 'land';
+                    if (this.altitude <= 0) { this.altitude = 0; this.landingRollDistance = 0; }
                 } else {
-                    // Phase B: Landing Roll (Slowing down on ground)
-                    this.speed = Math.max(0, this.speed - 80 * dt); // Brake
+                    this.speed = Math.max(0, this.speed - 120 * dt);
                     this.landingRollDistance += this.speed * dt;
-                    
                     if (this.speed <= 5 || this.landingRollDistance > 256) {
-                        this.speed = 0;
-                        this.landingSequence = false;
-                        this.isLanded = true;
-                        this.maxSpeed = 120;
-                        console.log("Landing Complete");
+                        this.speed = 0; this.landingSequence = false; this.isLanded = true;
                     }
                 }
                 this.applyMovement(dt);
-                return;
-            }
-
-            // --- 3. Standard Flying/Taxiing Modifiers ---
-            if (this.isLanded) {
-                this.maxSpeed = 120;
-                this.acceleration = 40;
             } else {
-                this.maxSpeed = 600;
-                this.acceleration = 150;
+                // Standard flight/taxi
+                if (this.isLanded) { 
+                    this.maxSpeed = 150; 
+                    this.acceleration = 100; // Increased ground acceleration
+                } else { 
+                    this.maxSpeed = 600; 
+                    this.acceleration = 200; 
+                }
+                this.handleTerrainAndInput(dt);
+                this.applyMovement(dt);
             }
         } else {
             this.speed *= this.friction;
+            this.applyMovement(dt);
         }
 
-        super.update(dt);
+        if (this.isOccupied) {
+            this.game.player.x = this.x;
+            this.game.player.y = this.y;
+        }
     }
 
     applyMovement(dt) {
-        // Position update without keyboard input
         const vx = Math.cos(this.angle) * this.speed * dt;
         const vy = Math.sin(this.angle) * this.speed * dt;
 
-        let collided = false;
+        let collidedX = false;
+        let collidedY = false;
+
+        // Helper to check for map boundary specifically
+        const isOutOfBounds = (nx, ny) => {
+            const worldW = this.game.mapW * 64;
+            const worldH = this.game.mapH * 64;
+            return nx < 0 || nx > worldW || ny < 0 || ny > worldH;
+        };
 
         // Check X movement
         if (!this.game.checkCollision(this.x + vx, this.y, this.radius, this, this.moveType)) {
             this.x += vx;
         } else {
-            collided = true;
+            collidedX = true;
         }
 
         // Check Y movement
         if (!this.game.checkCollision(this.x, this.y + vy, this.radius, this, this.moveType)) {
             this.y += vy;
         } else {
-            collided = true;
+            collidedY = true;
         }
 
-        // --- Realistic Crash Logic ---
-        // If the plane hits an obstacle while on ground or during takeoff/landing roll
-        if (collided && (this.isLanded || this.takeOffSequence || this.landingSequence)) {
-            console.log("CRASH DETECTED! Plane destroyed.");
-            this.takeDamage(this.maxHealth); // Instant destruction
-            return;
+        if (collidedX || collidedY) {
+            // Check if this was a boundary collision
+            const boundaryHit = isOutOfBounds(this.x + vx, this.y + vy);
+            
+            if (boundaryHit) {
+                // NEVER explode on map boundary, just stop
+                this.speed = 0;
+            } else {
+                // Regular obstacle collision logic
+                const isMovingFast = Math.abs(this.speed) > 150;
+                const isLowAltitude = this.altitude < 0.7;
+                const isSequencing = this.takeOffSequence || this.landingSequence;
+
+                // Explosion conditions:
+                // 1. High speed impact while on ground (Taxi/Roll)
+                // 2. Any impact during takeoff/landing while below 70% altitude
+                if ((isSequencing && isLowAltitude) || (!this.isLanded && isLowAltitude && isMovingFast)) {
+                    console.log("CRASH! Low altitude impact during critical phase.");
+                    this.takeDamage(this.maxHealth);
+                    return;
+                } else {
+                    this.speed *= 0.5;
+                }
+            }
         }
 
         if (this.isOccupied) {

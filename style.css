@@ -4,7 +4,7 @@ body, html {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background-color: #1a1a1a;
+    background-color: #000;
     font-family: 'Arial', sans-serif;
 }
 
@@ -22,12 +22,12 @@ body, html {
     justify-content: center;
     align-items: center;
     z-index: 100;
-    pointer-events: none; /* Let clicks pass through unless UI is visible */
+    pointer-events: none;
 }
 
 #main-menu {
     pointer-events: auto;
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 0, 0, 0.9);
     padding: 50px 80px;
     border: 2px solid #f1c40f;
     border-radius: 15px;
@@ -47,107 +47,73 @@ body, html {
     letter-spacing: 2px;
 }
 
-#start-btn {
-    padding: 15px 40px;
-    font-size: 24px;
-    font-weight: bold;
-    background-color: #f1c40f;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
 .menu-buttons {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
-#editor-btn {
+#start-btn, #editor-btn {
     padding: 15px 40px;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
-    background-color: #34495e;
-    color: white;
+    cursor: pointer;
     border: none;
     border-radius: 5px;
-    cursor: pointer;
     transition: all 0.2s;
 }
 
-#editor-btn:hover {
-    background-color: #2c3e50;
-    transform: scale(1.05);
-}
+#start-btn { background-color: #f1c40f; color: black; }
+#editor-btn { background-color: #34495e; color: white; }
 
-/* Map Editor UI Container */
+#editor-btn:hover { background-color: #2c3e50; transform: scale(1.05); }
+#start-btn:hover { background-color: #d4ac0d; transform: scale(1.05); }
+
+/* --- Map Editor UI --- */
 #editor-ui {
     position: absolute;
     top: 0;
     right: 0;
-    width: 300px;
+    width: 320px;
     height: 100%;
-    background: rgba(20, 20, 20, 0.9);
+    background: rgba(15, 15, 15, 0.95);
     border-left: 2px solid #f1c40f;
     color: white;
     z-index: 200;
     pointer-events: auto;
 }
 
-/* Layer Selection Group */
-#layer-selection-group {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    margin-bottom: 20px;
-}
-
-.layer-btn {
-    padding: 10px 5px;
-    background: #333;
-    border: 1px solid #555;
-    color: #aaa;
-    font-size: 13px;
-    font-weight: bold;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.layer-btn:hover {
-    background: #444;
-    color: #eee;
-}
-
-.layer-btn.active {
-    background: #f1c40f;
-    border-color: #f1c40f;
-    color: #000;
-    box-shadow: 0 0 10px rgba(241, 196, 15, 0.3);
-}
-
-
 #editor-sidebar {
-    padding: 20px;
     display: flex;
     flex-direction: column;
     height: 100%;
+    padding: 15px;
     box-sizing: border-box;
+    overflow: hidden; /* Sidebar itself shouldn't scroll */
+}
+
+#editor-sidebar h3 {
+    margin: 15px 0 8px 0;
+    font-size: 13px;
+    color: #f1c40f;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 4px;
 }
 
 #tool-palette {
     display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .tool-btn {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     font-size: 20px;
-    background: #333;
-    border: 1px solid #555;
+    background: #222;
+    border: 1px solid #444;
     color: white;
     cursor: pointer;
     border-radius: 4px;
@@ -155,225 +121,122 @@ body, html {
 
 .tool-btn.selected {
     border-color: #f1c40f;
-    background: #444;
-}
-
-.tool-group {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-}
-
-#shape-sub-palette {
-    position: absolute;
-    top: 45px;
-    left: 0;
-    background: #222;
-    border: 1px solid #555;
-    padding: 5px;
-    display: flex;
-    gap: 5px;
-    z-index: 210;
-    border-radius: 4px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-}
-
-.sub-tool-btn {
-    width: 35px;
-    height: 35px;
-    font-size: 16px;
     background: #333;
-    border: 1px solid #444;
-    color: white;
-    cursor: pointer;
-    border-radius: 3px;
+    box-shadow: inset 0 0 5px #f1c40f;
 }
 
-.sub-tool-btn:hover {
-    background: #444;
-}
-
-.sub-tool-btn.selected {
-    border-color: #f1c40f;
-    background: #555;
-}
-
-#tile-palette {
+#layer-selection-group {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin-bottom: 20px;
-    max-height: 40%;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.layer-btn {
+    padding: 8px;
+    background: #222;
+    border: 1px solid #444;
+    color: #888;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.layer-btn.active {
+    background: #f1c40f;
+    color: black;
+    border-color: #f1c40f;
+}
+
+/* Scrollable Tile Palette Area */
+#tile-palette {
+    flex-grow: 1; 
+    display: grid;
+    grid-template-columns: repeat(5, 1fr); /* Increase columns to 5 */
+    gap: 2px; /* Minimal gap */
     overflow-y: auto;
-    padding: 10px;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.6);
+    padding: 2px; /* Minimal padding */
+    border: 1px solid #222;
+    border-radius: 2px;
+    margin-bottom: 10px;
 }
 
 .palette-tile {
-    width: 50px;
-    height: 50px;
-    border: 1px solid #444;
+    width: 100%;
+    aspect-ratio: 1/1;
+    border: 1px solid #222;
+    background-color: #111;
     cursor: pointer;
-    background-size: contain;
+    box-sizing: border-box;
+}
+
+.palette-tile:hover {
+    border-color: #555;
+    background-color: #1a1a1a;
 }
 
 .palette-tile.selected {
     border: 2px solid #f1c40f;
-    box-shadow: 0 0 10px #f1c40f;
+    background-color: #222;
+    z-index: 1; /* Bring selected border to front */
 }
 
+/* Bottom Controls Section */
 #editor-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 15px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
 }
 
 #editor-controls button {
-    padding: 10px;
+    padding: 10px 4px;
+    font-size: 11px;
     font-weight: bold;
     cursor: pointer;
+    border-radius: 4px;
+    border: none;
+    color: white;
 }
 
-#export-btn { background: #27ae60; color: white; border: none; }
-#import-btn { background: #3498db; color: white; border: none; }
-#test-editor-btn { background: #f1c40f; color: black; border: none; }
-#clear-editor-btn { background: #e67e22; color: white; border: none; }
-#exit-editor-btn { background: #c0392b; color: white; border: none; }
+#save-map-btn { grid-column: 1 / -1; font-size: 14px !important; margin-bottom: 4px; }
+#test-editor-btn { grid-column: 1 / -1; margin-bottom: 4px; }
 
 #export-output {
-    flex-grow: 1;
+    height: 120px;
+    min-height: 120px;
     background: #000;
     color: #0f0;
-    font-family: monospace;
-    font-size: 11px;
-    padding: 10px;
-    border: 1px solid #444;
+    font-family: 'Consolas', monospace;
+    font-size: 10px;
+    padding: 8px;
+    border: 1px solid #333;
+    border-radius: 4px;
     resize: none;
 }
 
-.controls-hint {
-    font-size: 14px;
-    color: #aaa;
-    line-height: 1.6;
-}
-
-.hidden {
-    display: none !important;
-}
-
-#unit-settings-modal, #loot-box-settings-modal, #item-settings-modal, #plane-control-modal {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(20, 20, 20, 0.95);
-    border: 2px solid #f1c40f;
-    padding: 20px;
-    z-index: 1000;
-    color: white;
-    border-radius: 10px;
-    box-shadow: 0 0 50px rgba(0,0,0,0.8);
-    min-width: 300px;
-    pointer-events: auto; /* Ensure it receives clicks */
-}
-
-#loot-table-editor {
-    max-height: 300px;
-    overflow-y: auto;
-    margin-bottom: 15px;
-}
-
-.loot-entry-header {
-    display: grid;
-    grid-template-columns: 1fr 80px 30px;
-    gap: 10px;
-    font-weight: bold;
-    margin-bottom: 5px;
-    font-size: 12px;
-}
-
-.loot-entry {
-    display: grid;
-    grid-template-columns: 1fr 80px 30px;
-    gap: 10px;
-    margin-bottom: 5px;
-}
-
-.loot-entry input {
-    width: 100% !important;
-}
-
-.loot-entry select {
-    background: #333;
-    border: 1px solid #555;
-    color: white;
-    padding: 5px;
-    border-radius: 3px;
-    width: 100%;
-}
-
-.remove-entry-btn {
-    background: #c0392b;
-    color: white;
-    border: none;
-    cursor: pointer;
-    border-radius: 3px;
-}
-
-#add-loot-entry-btn {
-    width: 100%;
-    padding: 5px;
-    background: #34495e;
-    color: white;
-    border: 1px dashed #555;
-    cursor: pointer;
-    margin-top: 5px;
-}
-
-
+/* --- Modals --- */
 .modal-content {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
-.modal-content h4 {
-    margin: 0 0 10px 0;
-    color: #f1c40f;
-    text-align: center;
-}
+.hidden { display: none !important; }
 
-.modal-content label {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
-}
-
-.modal-content input, .modal-content select {
-    background: #333;
-    border: 1px solid #555;
+#unit-settings-modal, #loot-box-settings-modal, #item-settings-modal, #plane-control-modal {
+    position: fixed;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(20, 20, 20, 0.98);
+    border: 2px solid #f1c40f;
+    padding: 25px;
+    z-index: 1000;
     color: white;
-    padding: 5px;
-    border-radius: 3px;
-    width: 100px;
+    border-radius: 12px;
+    box-shadow: 0 0 100px rgba(0,0,0,1);
+    min-width: 320px;
+    pointer-events: auto;
 }
 
-.modal-buttons {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
-    gap: 10px;
-}
-
-.modal-buttons button {
-    padding: 8px 15px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-#unit-settings-save { background: #27ae60; color: white; }
-#unit-settings-cancel { background: #7f8c8d; color: white; }
+.controls-hint { font-size: 14px; color: #aaa; line-height: 1.6; }

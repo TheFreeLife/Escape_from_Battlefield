@@ -2,9 +2,9 @@
     {
         "id": "void",
         "name": "공허",
-        "layer": "floor",
+        "layer": "block",
         "collidable": true,
-        "blocksVision": true,
+        "blocksVision": false,
         "color": "#000000",
         "svg": "<rect x='0' y='0' width='64' height='64' fill='#000000'/>"
     },

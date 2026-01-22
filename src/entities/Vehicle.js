@@ -128,7 +128,17 @@ export default class Vehicle {
             return;
         }
 
-        // 1. Terrain Check
+        this.handleTerrainAndInput(dt);
+        this.applyMovement(dt);
+
+        // Update Occupant Position
+        if (this.isOccupied) {
+            this.game.player.x = this.x;
+            this.game.player.y = this.y;
+        }
+    }
+
+    handleTerrainAndInput(dt) {
         const tx = Math.floor(this.x / 64);
         const ty = Math.floor(this.y / 64);
         const floorId = this.game.tileMap.getTile(tx, ty, 'floor');
@@ -136,91 +146,83 @@ export default class Vehicle {
         let terrainMaxSpeed = this.maxSpeed;
         let terrainFriction = this.friction;
 
-        if (this.moveType === 'sea' && floorId !== 'water') {
-            terrainMaxSpeed = 60; // Slightly faster taxi speed
-            terrainFriction = 0.85;
-        } else if (this.moveType === 'land' && floorId === 'water') {
-            terrainMaxSpeed = 30;
-            terrainFriction = 0.7;
+        // Apply terrain penalties
+        if (this.moveType === 'sea') {
+            if (floorId !== 'water') {
+                terrainMaxSpeed = 50; // Sluggish on land
+                terrainFriction = 0.8;
+            }
+        } else if (this.moveType === 'land') {
+            if (floorId === 'water') {
+                terrainMaxSpeed = 30; // Sluggish in water
+                terrainFriction = 0.7;
+            }
         }
 
-        // 2. Input Handling
         if (this.isOccupied) {
             const input = this.game.input;
-            if (input.isKeyPressed('KeyW')) {
-                this.speed = Math.min(terrainMaxSpeed, this.speed + this.acceleration * dt);
-            } else if (input.isKeyPressed('KeyS')) {
-                this.speed = Math.max(-terrainMaxSpeed * 0.5, this.speed - this.acceleration * dt);
+            const moveForward = input.isKeyPressed('KeyW') || input.isKeyPressed('ArrowUp');
+            const moveBackward = input.isKeyPressed('KeyS') || input.isKeyPressed('ArrowDown');
+
+            if (moveForward) {
+                this.speed += this.acceleration * dt;
+                if (this.speed > 0 && this.speed < 5) this.speed = 5;
+            } else if (moveBackward) {
+                this.speed -= this.acceleration * dt;
+                if (this.speed < 0 && this.speed > -5) this.speed = -5;
             } else {
                 this.speed *= terrainFriction;
             }
 
-            // Steering (Allow steering even at very low speeds for ships on land)
-            const minSteerSpeed = (this.moveType === 'sea' && floorId !== 'water') ? 5 : 10;
-            if (Math.abs(this.speed) > minSteerSpeed) {
-                const steerSpeed = 2.5 * (Math.abs(this.speed) / terrainMaxSpeed);
-                if (input.isKeyPressed('KeyA')) this.angle -= steerSpeed * dt;
-                if (input.isKeyPressed('KeyD')) this.angle += steerSpeed * dt;
+            // Hard clamp speed
+            if (this.speed > terrainMaxSpeed) this.speed = terrainMaxSpeed;
+            if (this.speed < -terrainMaxSpeed * 0.5) this.speed = -terrainMaxSpeed * 0.5;
+
+            // Steering
+            if (Math.abs(this.speed) > 1) {
+                const steerSpeed = 2.2 * (Math.abs(this.speed) / terrainMaxSpeed + 0.3);
+                if (input.isKeyPressed('KeyA') || input.isKeyPressed('ArrowLeft')) this.angle -= steerSpeed * dt;
+                if (input.isKeyPressed('KeyD') || input.isKeyPressed('ArrowRight')) this.angle += steerSpeed * dt;
             }
         } else {
             this.speed *= terrainFriction;
         }
 
         if (Math.abs(this.speed) < 1) this.speed = 0;
+    }
 
-        // 3. Collision and Movement
+    applyMovement(dt) {
+        if (this.speed === 0) return;
+
         const vx = Math.cos(this.angle) * this.speed * dt;
         const vy = Math.sin(this.angle) * this.speed * dt;
 
-        // Skip ground collision for sea units on land to allow 'dragging'
-        // But always check for BLOCKS (walls)
         const checkMove = (nx, ny) => {
-            // 1. Check for entity collisions (players, other vehicles)
-            // Using 'air' here is fine for entities as they are usually ground-based
-            if (this.game.checkCollision(nx, ny, this.radius, this, 'air')) return false;
+            // Check if NEW position is colliding
+            const isColliding = this.game.checkCollision(nx, ny, this.radius, this, this.moveType);
             
-            // 2. CRITICAL: Check for physical block collisions (Walls, buildings)
-            // Even if it's a ship on land, it should NEVER pass through a concrete wall.
-            if (this.game.checkTileCollision(nx, ny, this.radius, 'land')) {
-                // If 'land' collision is true, it might be a floor OR a block.
-                // We need to know if it's specifically a BLOCK.
-                const tx = Math.floor(nx / 64);
-                const ty = Math.floor(ny / 64);
-                if (this.game.tileMap.getBlockAt(tx, ty)) return false; // Hit a wall!
+            if (isColliding) {
+                // If NEW position is colliding, check if CURRENT position is ALSO colliding
+                const currentlyStuck = this.game.checkCollision(this.x, this.y, this.radius, this, this.moveType);
+                
+                // If we are ALREADY stuck, allow movement ONLY IF the new position is better or just allow it 
+                // to prevent permanent locking. For now, let's allow a tiny bit of movement.
+                if (currentlyStuck) return true; 
+                return false;
             }
-
-            // 3. Sea unit ground logic
-            if (this.moveType === 'sea') {
-                return true; // Allow moving over any floor (water or land)
-            }
-            
-            // 4. Land unit logic
-            if (this.moveType === 'land') {
-                const tx = Math.floor(nx / 64);
-                const ty = Math.floor(ny / 64);
-                const floor = this.game.tileMap.getTile(tx, ty, 'floor');
-                if (floor === 'water') return false; // Block land vehicles from water
-            }
-            
-            return !this.game.checkTileCollision(nx, ny, this.radius, this.moveType);
+            return true;
         };
 
         if (checkMove(this.x + vx, this.y)) {
             this.x += vx;
         } else {
-            this.speed *= 0.5;
+            this.speed *= 0.7;
         }
 
         if (checkMove(this.x, this.y + vy)) {
             this.y += vy;
         } else {
-            this.speed *= 0.5;
-        }
-
-        // Update Occupant Position
-        if (this.isOccupied) {
-            this.game.player.x = this.x;
-            this.game.player.y = this.y;
+            this.speed *= 0.7;
         }
     }
 

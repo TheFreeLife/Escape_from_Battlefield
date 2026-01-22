@@ -73,7 +73,11 @@ export default class MapEditor {
         document.getElementById('test-editor-btn').addEventListener('click', () => this.testCurrentMap());
         document.getElementById('save-map-btn').addEventListener('click', () => this.saveMap());
         document.getElementById('clear-editor-btn').addEventListener('click', () => {
-            if(confirm("정말 모든 타일을 삭제하시겠습니까?")) this.tiles.clear();
+            if(confirm("정말 모든 타일을 삭제하시겠습니까?")) {
+                this.tiles.clear();
+                const output = document.getElementById('export-output');
+                if (output) output.value = '';
+            }
         });
     }
 
@@ -707,23 +711,37 @@ export default class MapEditor {
                 data.forEach((row, y) => {
                     row.forEach((cell, x) => {
                         const [floor, block, unit, item, metadata] = cell;
-                        if (floor || block || unit || item) {
-                            const size = unit ? this.getUnitSize(unit.id) : { w: 1, h: 1 };
-                            if (size.w > 1 || size.h > 1) {
-                                for (let oy = 0; oy < size.h; oy++) {
-                                    for (let ox = 0; ox < size.w; ox++) {
-                                        const tKey = `${x + ox},${y + oy}`;
-                                        const tCell = this.tiles.get(tKey) || { floor: null, block: null, unit: null, item: null, metadata: null };
-                                        if (ox === 0 && oy === 0) { unit.w = size.w; unit.h = size.h; tCell.unit = unit; }
-                                        else tCell.unit = { id: 'occupied_space', master: `${x},${y}` };
-                                        this.tiles.set(tKey, tCell);
+                        if (!floor && !block && !unit && !item) return;
+
+                        // Helper to get or create cell
+                        const getOrCreateCell = (tx, ty) => {
+                            const key = `${tx},${ty}`;
+                            if (!this.tiles.has(key)) {
+                                this.tiles.set(key, { floor: null, block: null, unit: null, item: null, metadata: null });
+                            }
+                            return this.tiles.get(key);
+                        };
+
+                        // 1. Process Floor, Block, Item (1x1 defaults)
+                        const mainCell = getOrCreateCell(x, y);
+                        mainCell.floor = floor;
+                        mainCell.block = block;
+                        mainCell.item = item;
+                        mainCell.metadata = metadata ? JSON.parse(JSON.stringify(metadata)) : null;
+
+                        // 2. Process Unit (Handle multi-tile units)
+                        if (unit && unit.id !== 'occupied_space') {
+                            const size = this.getUnitSize(unit.id);
+                            for (let oy = 0; oy < size.h; oy++) {
+                                for (let ox = 0; ox < size.w; ox++) {
+                                    const targetCell = getOrCreateCell(x + ox, y + oy);
+                                    if (ox === 0 && oy === 0) {
+                                        unit.w = size.w; unit.h = size.h;
+                                        targetCell.unit = unit;
+                                    } else {
+                                        targetCell.unit = { id: 'occupied_space', master: `${x},${y}` };
                                     }
                                 }
-                            } else {
-                                const existing = this.tiles.get(`${x},${y}`) || { floor: null, block: null, unit: null, item: null, metadata: null };
-                                existing.floor = floor; existing.block = block; existing.metadata = metadata; existing.item = item;
-                                if (!existing.unit || existing.unit.id !== 'occupied_space') existing.unit = unit;
-                                this.tiles.set(`${x},${y}`, existing);
                             }
                         }
                     });

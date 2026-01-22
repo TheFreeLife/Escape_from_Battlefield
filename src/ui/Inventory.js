@@ -432,8 +432,7 @@ export default class Inventory {
             }
         }
 
-        // 3. Equipment & Attachments (Original right-click logic for quick-actions)
-        // Keep original functionality for attachments and medkits
+        // 3. Quick Actions (Original right-click logic for medkits)
         const checkSlots = [
             ...layout.storage.map((r, i) => ({ r, i, type: 'storage' })),
             ...layout.hotbar.map((r, i) => ({ r, i, type: 'hotbar' }))
@@ -445,15 +444,9 @@ export default class Inventory {
                 if (!item) continue;
 
                 const itemDef = this.getItemDef(item.id);
-                if (itemDef) {
-                    if (itemDef.type === 'attachment') {
-                        this.tryAttach(item, slot.type, slot.i);
-                        return;
-                    }
-                    if (itemDef.id === 'medkit') {
-                        this.useItemAt(slot.type, slot.i);
-                        return;
-                    }
+                if (itemDef && itemDef.id === 'medkit') {
+                    this.useItemAt(slot.type, slot.i);
+                    return;
                 }
             }
         }
@@ -496,25 +489,6 @@ export default class Inventory {
             return true;
         }
         return false;
-    }
-
-    tryAttach(attachmentItem, fromType, fromKey) {
-        const weapon = this.getSelectedItem();
-        if (!weapon) return;
-
-        const attachDef = this.getItemDef(attachmentItem.id);
-        if (!attachDef || !weapon.attachments) return;
-
-        const slot = attachDef.slot; // e.g. 'optic'
-        if (slot in weapon.attachments) {
-            const old = weapon.attachments[slot];
-            weapon.attachments[slot] = attachmentItem;
-
-            if (fromType === 'storage') this.items[fromKey] = old;
-            else if (fromType === 'hotbar') this.hotbar[fromKey] = old;
-
-            console.log(`Attached ${attachDef.name} to ${weapon.id}`);
-        }
     }
 
     reloadWeapon() {
