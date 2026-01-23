@@ -131,21 +131,25 @@ export default class TileMap {
         const w = isRail(this.getTile(x - 1, y, 'block')) ? 4 : 0;
         const e = isRail(this.getTile(x + 1, y, 'block')) ? 8 : 0;
 
-        const mask = n | s | w | e;
-        let newId = 'rail_we'; // Default to horizontal
+        let newId = 'rail_we'; // Default
 
-        switch (mask) {
-            case 1: case 2: case 3: newId = 'rail_ns'; break; // N, S, NS
-            case 4: case 8: case 12: newId = 'rail_we'; break; // W, E, WE
-            case 9: newId = 'rail_ne'; break; // N + E
-            case 5: newId = 'rail_nw'; break; // N + W
-            case 10: newId = 'rail_se'; break; // S + E
-            case 6: newId = 'rail_sw'; break; // S + W
-            case 13: newId = 'rail_new'; break; // N + E + W
-            case 14: newId = 'rail_sew'; break; // S + E + W
-            case 11: newId = 'rail_nse'; break; // N + S + E
-            case 7: newId = 'rail_nsw'; break; // N + S + W
-            case 15: newId = 'rail_nswe'; break; // N + S + W + E
+        // Priority Logic: Only allow 2-way connections (No T-junctions or Crossings)
+        if (n && s) {
+            newId = 'rail_ns';
+        } else if (w && e) {
+            newId = 'rail_we';
+        } else if (n && e) {
+            newId = 'rail_ne';
+        } else if (n && w) {
+            newId = 'rail_nw';
+        } else if (s && e) {
+            newId = 'rail_se';
+        } else if (s && w) {
+            newId = 'rail_sw';
+        } else if (n || s) {
+            newId = 'rail_ns';
+        } else if (w || e) {
+            newId = 'rail_we';
         }
 
         // Direct update to avoid recursion
