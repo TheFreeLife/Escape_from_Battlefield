@@ -2,6 +2,8 @@ import Loot from '../entities/Loot.js';
 import Enemy from '../entities/Enemy.js';
 import Vehicle from '../entities/Vehicle.js';
 import Tank from '../entities/Tank.js';
+import APC from '../entities/APC.js';
+import Train from '../entities/Train.js';
 
 export default class DebugMenu {
     constructor(game) {
@@ -105,6 +107,7 @@ export default class DebugMenu {
             if (this.checkBtn(mx, my, 10, actionYStart, btnW, btnH)) this.spawnVehicle('truck');
             if (this.checkBtn(mx, my, 10, actionYStart + 35, btnW, btnH)) this.spawnVehicle('tank');
             if (this.checkBtn(mx, my, 10, actionYStart + 70, btnW, btnH)) this.spawnVehicle('apc');
+            if (this.checkBtn(mx, my, 10, actionYStart + 105, btnW, btnH)) this.spawnVehicle('train');
         } else if (this.activeCategory === 'world') {
             if (this.checkBtn(mx, my, 10, actionYStart, btnW, btnH)) this.game.enemies = [];
             if (this.checkBtn(mx, my, 10, actionYStart + 35, btnW, btnH)) this.game.projectiles = [];
@@ -148,6 +151,7 @@ export default class DebugMenu {
         let v;
         if (type === 'tank') v = new Tank(this.game, p.x + 120, p.y + 120);
         else if (type === 'apc') v = new APC(this.game, p.x + 120, p.y + 120);
+        else if (type === 'train') v = new Train(this.game, p.x + 120, p.y + 120);
         else v = new Vehicle(this.game, p.x + 120, p.y + 120);
         
         this.game.vehicles.push(v);
@@ -223,6 +227,8 @@ export default class DebugMenu {
         } else if (this.activeCategory === 'spawn_vehicle') {
             this.drawBtn(ctx, 10, actionYStart, btnW, btnH, "트럭 소환");
             this.drawBtn(ctx, 10, actionYStart + 35, btnW, btnH, "전차 소환");
+            this.drawBtn(ctx, 10, actionYStart + 70, btnW, btnH, "장갑차 소환");
+            this.drawBtn(ctx, 10, actionYStart + 105, btnW, btnH, "열차 소환");
         } else if (this.activeCategory === 'world') {
             this.drawBtn(ctx, 10, actionYStart, btnW, btnH, "모든 적 제거");
             this.drawBtn(ctx, 10, actionYStart + 35, btnW, btnH, "모든 투사체 제거");

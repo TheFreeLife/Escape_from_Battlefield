@@ -16,6 +16,7 @@ import APC from '../entities/APC.js';
 import TransportShip from '../entities/TransportShip.js';
 import TransportPlane from '../entities/TransportPlane.js';
 import MachineGun from '../entities/MachineGun.js';
+import Train from '../entities/Train.js';
 
 import { allItems } from '../items/index.js';
 
@@ -490,8 +491,21 @@ export default class Game {
         vCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         // 1. Fill the ENTIRE screen with deep black fog
-        vCtx.fillStyle = 'rgba(0, 0, 0, 0.25)'; // Set opacity to 0.25
+        vCtx.fillStyle = 'rgba(0, 0, 0, 0.25)'; // Normal Fog
         vCtx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // 2. Add extra darkness for area OUTSIDE the map
+        const mx = -this.camera.x * this.zoom;
+        const my = -this.camera.y * this.zoom;
+        const mw = this.mapW * 64 * this.zoom;
+        const mh = this.mapH * 64 * this.zoom;
+
+        vCtx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Much darker for outside
+        // Fill outside regions (top, bottom, left, right)
+        vCtx.fillRect(0, 0, this.canvas.width, my); // Top
+        vCtx.fillRect(0, my + mh, this.canvas.width, this.canvas.height - (my + mh)); // Bottom
+        vCtx.fillRect(0, my, mx, mh); // Left
+        vCtx.fillRect(mx + mw, my, this.canvas.width - (mx + mw), mh); // Right
 
         const sX = (this.player.x - this.camera.x) * this.zoom;
         const sY = (this.player.y - this.camera.y) * this.zoom;
@@ -541,8 +555,11 @@ export default class Game {
         
         // 1. Render Floor Tiles
         this.tileMap?.render(this.ctx, this.camera, ['floor']); 
+        
+        // 2. Render Passable Blocks (Rails, Carpets, etc. - Always below units)
+        this.tileMap?.renderPassableBlocks(this.ctx, this.camera);
 
-        // 2. Prepare for Y-Sorting (Blocks + Entities)
+        // 3. Prepare for Y-Sorting (Remaining Blocks + Entities)
         const renderQueue = [];
         
         // Add visible blocks to queue
@@ -567,11 +584,24 @@ export default class Game {
             if (!ent) return;
             const isAirborne = (ent.moveType === 'air') || (ent.altitude > 0);
             if (!isAirborne && this.isVisibleToPlayer(ent.x, ent.y)) {
+                // Determine the visual bottom of the entity for accurate sorting
+                let visualBottom = ent.y;
+                if (ent.type === 'train' || ent.type === 'vehicle' || ent.type === 'tank' || ent.type === 'apc') {
+                    // For vehicles, use half of the actual visual height/width based on angle
+                    const halfH = (ent.height || 64) / 2;
+                    const halfW = (ent.width || 64) / 2;
+                    // Approximate the projection on Y axis
+                    const sin = Math.abs(Math.sin(ent.angle || 0));
+                    const cos = Math.abs(Math.cos(ent.angle || 0));
+                    visualBottom = ent.y + (halfH * cos + halfW * sin);
+                } else {
+                    // For human-sized units, the bottom is at y + radius
+                    visualBottom = ent.y + (ent.radius || 32);
+                }
+
                 renderQueue.push({
                     type: 'entity',
-                    // Sort by feet position. Player and most entities use center (x,y)
-                    // We use y + half-height or radius for better depth.
-                    sortY: ent.y + (ent.radius || 0) * 0.5,
+                    sortY: visualBottom,
                     data: ent
                 });
             }

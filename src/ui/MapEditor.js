@@ -94,6 +94,7 @@ export default class MapEditor {
         if (id === 'v_tank') return { w: 2, h: 2 };
         if (id === 'v_apc') return { w: 2, h: 2 };
         if (id === 'v_truck') return { w: 2, h: 2 };
+        if (id === 'v_train') return { w: 2, h: 1 };
         if (id === 'v_transport_ship') return { w: 3, h: 2 };
         if (id === 'v_transport_plane') return { w: 3, h: 3 };
         return { w: 1, h: 1 };
@@ -158,7 +159,8 @@ export default class MapEditor {
                         const landVehicles = [
                             { id: 'v_truck', name: '군용 트럭', color: '#4b5320' },
                             { id: 'v_tank', name: '전차 (Tank)', color: '#1e8449' },
-                            { id: 'v_apc', name: '장갑차 (APC)', color: '#34495e' }
+                            { id: 'v_apc', name: '장갑차 (APC)', color: '#34495e' },
+                            { id: 'v_train', name: '열차 (Train)', color: '#2c3e50' }
                         ];
                         const seaVehicles = [
                             { id: 'v_transport_ship', name: '운반선 (Carrier)', color: '#2c3e50' }
@@ -422,14 +424,44 @@ export default class MapEditor {
         const ew = isRotated ? baseSize.h : baseSize.w;
         const eh = isRotated ? baseSize.w : baseSize.h;
 
+        // Train Placement Restriction: Only allow on rails
+        if (layer === 'units' && tileId === 'v_train') {
+            for (let oy = 0; oy < eh; oy++) {
+                for (let ox = 0; ox < ew; ox++) {
+                    const targetCell = this.getTileAt(x + ox, y + oy);
+                    const isRail = targetCell.block && (targetCell.block === 'rail' || targetCell.block.startsWith('rail_'));
+                    if (!isRail) {
+                        console.log("Trains can only be placed on rails!");
+                        return;
+                    }
+                }
+            }
+        }
+
         if (ew > 1 || eh > 1 || (layer === 'units' || layer === 'block')) {
             for (let oy = 0; oy < eh; oy++) {
                 for (let ox = 0; ox < ew; ox++) {
                     const tKey = `${x + ox},${y + oy}`;
                     const tCell = this.tiles.get(tKey);
                     if (tCell) {
-                        if (layer === 'units' && (tCell.unit !== null || tCell.block !== null)) return;
-                        if (layer === 'block' && (tCell.block !== null || tCell.unit !== null)) return;
+                        // 1. If placing a unit
+                        if (layer === 'units') {
+                            // Don't overlap with other units
+                            if (tCell.unit !== null) return;
+                            // Only block if existing block is collidable
+                            if (tCell.block !== null) {
+                                const bDef = this.game.assetManager.getData('tiles')?.find(t => t.id === tCell.block);
+                                if (bDef && bDef.collidable !== false) return;
+                            }
+                        }
+                        // 2. If placing a block
+                        if (layer === 'block') {
+                            // Don't overlap with other blocks
+                            if (tCell.block !== null) return;
+                            // Only block if placing a collidable block where a unit exists
+                            const newBDef = this.game.assetManager.getData('tiles')?.find(t => t.id === tileId);
+                            if (tCell.unit !== null && newBDef && newBDef.collidable !== false) return;
+                        }
                     }
                 }
             }
@@ -811,12 +843,17 @@ export default class MapEditor {
         const ts = this.baseTileSize * this.zoom;
         const enemiesData = this.game.assetManager.getData('enemies') || [];
         ctx.fillStyle = '#111'; ctx.fillRect(0, 0, this.game.canvas.width, this.game.canvas.height);
+        
         const startGX = Math.floor(-this.offsetX / ts), endGX = Math.ceil((this.game.canvas.width - this.offsetX) / ts);
         const startGY = Math.floor(-this.offsetY / ts), endGY = Math.ceil((this.game.canvas.height - this.offsetY) / ts);
+        
+        // 0. Grid
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'; ctx.beginPath();
         for (let x = startGX; x <= endGX; x++) { const vx = this.offsetX + x * ts; ctx.moveTo(vx, 0); ctx.lineTo(vx, this.game.canvas.height); }
         for (let y = startGY; y <= endGY; y++) { const vy = this.offsetY + y * ts; ctx.moveTo(0, vy); ctx.lineTo(this.game.canvas.width, vy); }
         ctx.stroke();
+
+        // 1. Render Floor Layer
         this.tiles.forEach((cell, key) => {
             const [gx, gy] = key.split(',').map(Number);
             if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
@@ -832,6 +869,8 @@ export default class MapEditor {
                 ctx.restore();
             }
         });
+
+        // 2. Render Block Layer (including Rails)
         this.tiles.forEach((cell, key) => {
             const [gx, gy] = key.split(',').map(Number);
             if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
@@ -850,6 +889,13 @@ export default class MapEditor {
                 else { ctx.fillStyle = '#555'; ctx.fillRect(-(ts * baseSize.w)/2, -(ts * baseSize.h)/2, ts * baseSize.w, ts * baseSize.h); }
                 ctx.restore();
             }
+        });
+
+        // 3. Render Item Layer
+        this.tiles.forEach((cell, key) => {
+            const [gx, gy] = key.split(',').map(Number);
+            if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
+            const tx = this.offsetX + gx * ts, ty = this.offsetY + gy * ts;
             if (cell.item) {
                 const itemId = (cell.item && typeof cell.item === 'object') ? cell.item.id : cell.item;
                 const itemCount = (cell.item && typeof cell.item === 'object') ? (cell.item.count || 1) : 1;
@@ -865,54 +911,37 @@ export default class MapEditor {
                     ctx.fillText(itemCount, tx + ts - 5, ty + ts - 5); ctx.textAlign = 'left';
                 }
             }
-            if (cell.unit) {
-                if (cell.unit.id === 'occupied_space' || cell.unit.id === 'v_reserved') return;
-                if (cell.unit.id.startsWith('v_')) {
-                    const baseW = (cell.unit.id === 'v_transport_ship' || cell.unit.id === 'v_transport_plane') ? 3 : 2;
-                    const baseH = (cell.unit.id === 'v_transport_ship') ? 2 : (cell.unit.id === 'v_transport_plane' ? 3 : 2);
-                    
-                    const rotRad = cell.unit.angle || 0;
-                    const isRotated = (rotRad === Math.PI/2 || rotRad === Math.PI * 1.5);
-                    const ew = isRotated ? baseH : baseW;
-                    const eh = isRotated ? baseW : baseH;
+        });
 
-                    let vColor = '#4b5320';
-                    if (cell.unit.id === 'v_tank') vColor = '#1e8449';
-                    else if (cell.unit.id === 'v_apc') vColor = '#34495e';
-                    else if (cell.unit.id === 'v_transport_ship') vColor = '#2c3e50';
-                    else if (cell.unit.id === 'v_transport_plane') vColor = '#7f8c8d';
-                    
-                    ctx.save();
-                    ctx.translate(tx + (ts * ew)/2, ty + (ts * eh)/2);
-                    ctx.rotate(rotRad);
-                    
-                    const drawW = baseW * ts - ts*0.2;
-                    const drawH = baseH * ts - ts*0.2;
-
-                    ctx.fillStyle = vColor;
-                    ctx.fillRect(-drawW/2, -drawH/2, drawW, drawH);
-                    ctx.strokeStyle = '#fff'; 
-                    ctx.lineWidth = 2; 
-                    ctx.strokeRect(-drawW/2, -drawH/2, drawW, drawH);
-                    
-                    ctx.fillStyle = '#fff'; 
-                    ctx.font = `bold ${Math.max(10, ts * 0.3)}px Arial`; 
-                    ctx.textAlign = 'center';
-                    
-                    let label = cell.unit.id.replace('v_', '').toUpperCase();
-                    if (label === 'TRANSPORT_SHIP') label = 'SHIP';
-                    ctx.fillText(label, 0, 5);
-                    ctx.restore();
-                } else {
-                    const def = enemiesData.find(e => e.id === cell.unit.id);
-                    ctx.fillStyle = def ? def.color : '#e74c3c';
-                    ctx.beginPath(); ctx.arc(tx + ts/2, ty + ts/2, ts * 0.35, 0, Math.PI * 2); ctx.fill();
-                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-                    ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(8, ts * 0.2)}px Arial`; ctx.textAlign = 'center';
-                    ctx.fillText(cell.unit.command, tx + ts/2, ty + ts * 0.85);
-                }
+        // 4. Render Unit/Vehicle Layer
+        this.tiles.forEach((cell, key) => {
+            const [gx, gy] = key.split(',').map(Number);
+            if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
+            const tx = this.offsetX + gx * ts, ty = this.offsetY + gy * ts;
+            if (cell.unit && cell.unit.id !== 'occupied_space') {
+                const uid = cell.unit.id;
+                const size = this.getUnitSize(uid);
+                const angle = cell.unit.angle || 0;
+                // Simplified editor preview
+                ctx.save();
+                ctx.translate(tx + (size.w * ts) / 2, ty + (size.h * ts) / 2);
+                ctx.rotate(angle);
+                
+                const vehicleColors = { 'v_tank': '#1e8449', 'v_apc': '#34495e', 'v_truck': '#4b5320', 'v_train': '#2c3e50', 'v_transport_ship': '#2c3e50', 'v_transport_plane': '#7f8c8d' };
+                ctx.fillStyle = vehicleColors[uid] || '#e74c3c';
+                ctx.fillRect(-(size.w * ts) / 2 + 2, -(size.h * ts) / 2 + 2, size.w * ts - 4, size.h * ts - 4);
+                
+                // Direction indicator
+                ctx.fillStyle = '#fff';
+                ctx.fillRect((size.w * ts) / 2 - 8, -2, 8, 4);
+                
+                ctx.restore();
+                ctx.fillStyle = '#fff'; ctx.font = `10px Arial`; ctx.textAlign = 'center';
+                ctx.fillText(uid.replace('v_', ''), tx + (size.w * ts) / 2, ty + (size.h * ts) / 2 + 5);
             }
-        });                
+        });
+
+        // 5. Mouse Preview
         const input = this.game.input; const mx = input.mouse.x; const my = input.mouse.y;
         if (mx < this.game.canvas.width - 300) {
             const gx = Math.floor((mx - this.offsetX) / ts); const gy = Math.floor((my - this.offsetY) / ts);
@@ -930,22 +959,10 @@ export default class MapEditor {
                 ctx.translate(tx + (ew * ts)/2, ty + (eh * ts)/2);
                 ctx.rotate(rot);
                 if (this.activeLayer === 'units') {
-                    if (this.selectedTileId.startsWith('v_')) {
-                        // Better vehicle preview with direction indicator
-                        ctx.fillStyle = '#fff'; 
-                        ctx.fillRect(-(baseSize.w*ts)/2, -(baseSize.h*ts)/2, baseSize.w*ts, baseSize.h*ts);
-                        
-                        // Add a "FRONT" indicator (Darker rectangle at the right side of base)
-                        ctx.fillStyle = '#2ecc71'; // Green indicator for front
-                        ctx.fillRect((baseSize.w*ts)/4, -(baseSize.h*ts)/2, (baseSize.w*ts)/4, baseSize.h*ts);
-                        
-                        ctx.fillStyle = '#000';
-                        ctx.font = 'bold 10px Arial';
-                        ctx.textAlign = 'center';
-                        ctx.fillText("FRONT", (baseSize.w*ts)/2 - 15, 5);
-                    } else {
-                        ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.arc(0, 0, ts * 0.35, 0, Math.PI * 2); ctx.fill();
-                    }
+                    ctx.fillStyle = '#fff'; 
+                    ctx.fillRect(-(baseSize.w*ts)/2, -(baseSize.h*ts)/2, baseSize.w*ts, baseSize.h*ts);
+                    ctx.fillStyle = '#2ecc71'; 
+                    ctx.fillRect((baseSize.w*ts)/4, -(baseSize.h*ts)/2, (baseSize.w*ts)/4, baseSize.h*ts);
                 } else {
                     const img = this.game.assetManager.get(this.selectedTileId);
                     if (img) ctx.drawImage(img, -(baseSize.w*ts)/2, -(baseSize.h*ts)/2, baseSize.w * ts, baseSize.h * ts);

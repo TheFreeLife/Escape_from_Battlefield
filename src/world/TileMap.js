@@ -445,12 +445,11 @@ export default class TileMap {
 
                         const block = this.getBlockAt(chunk.cx * CHUNK_SIZE + x, chunk.cy * CHUNK_SIZE + y);
                         if (block) {
+                            // Non-collidable blocks (rails, bushes, carpets, etc.) are handled separately to stay under units
+                            if (block.def.collidable === false) continue;
+
                             let sortY = (block.anchorY + block.height) * TILE_SIZE;
-                            
-                            // Rails should always be on the ground, even under the player
-                            if (block.def.isRail) {
-                                sortY = -999999; // Force to the bottom of the Y-sorting
-                            } else if (block.def.onlyBottomCollision) {
+                            if (block.def.onlyBottomCollision) {
                                 sortY = (block.anchorY + block.height) * TILE_SIZE;
                             }
 
@@ -528,6 +527,41 @@ export default class TileMap {
             ctx.fillRect(-drawW/2, -drawH/2, drawW, drawH);
         }
         ctx.restore();
+    }
+
+    renderPassableBlocks(ctx, camera) {
+        const startCol = Math.floor(camera.x / TILE_SIZE);
+        const endCol = startCol + (camera.width / TILE_SIZE) + 1;
+        const startRow = Math.floor(camera.y / TILE_SIZE);
+        const endRow = startRow + (camera.height / TILE_SIZE) + 1;
+
+        const startCx = Math.floor(startCol / CHUNK_SIZE);
+        const endCx = Math.floor(endCol / CHUNK_SIZE);
+        const startCy = Math.floor(startRow / CHUNK_SIZE);
+        const endCy = Math.floor(endRow / CHUNK_SIZE);
+
+        for (let cy = startCy; cy <= endCy; cy++) {
+            for (let cx = startCx; cx <= endCx; cx++) {
+                const chunk = this.getChunk(cx, cy);
+                if (!chunk) continue;
+                for (let y = 0; y < CHUNK_SIZE; y++) {
+                    for (let x = 0; x < CHUNK_SIZE; x++) {
+                        const blockId = chunk.blocks[y][x];
+                        if (!blockId || blockId === 'occupied_space') continue;
+
+                        const block = this.getBlockAt(chunk.cx * CHUNK_SIZE + x, chunk.cy * CHUNK_SIZE + y);
+                        // Render if it's non-collidable (Rails, Decorations, etc.)
+                        if (block && block.def.collidable === false) {
+                            this.renderBlock(ctx, {
+                                ...block,
+                                worldX: (chunk.cx * CHUNK_SIZE + x) * TILE_SIZE,
+                                worldY: (chunk.cy * CHUNK_SIZE + y) * TILE_SIZE
+                            }, camera);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     renderChunkBlocks(ctx, chunk, camera) {

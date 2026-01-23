@@ -1,5 +1,12 @@
 [
     {
+        "id": "void",
+        "name": "공허",
+        "layer": "floor",
+        "color": "#050505",
+        "svg": "<rect width='64' height='64' fill='#000'/><path d='M0 0h64v64' fill='none' stroke='#111' stroke-width='1'/>"
+    },
+    {
         "id": "grass",
         "name": "풀밭",
         "layer": "floor",
