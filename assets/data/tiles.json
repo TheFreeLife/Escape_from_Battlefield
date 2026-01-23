@@ -270,6 +270,7 @@
         "layer": "block",
         "collidable": true,
         "interactable": true,
+        "rotatable": false,
         "blocksVision": false,
         "color": "#d35400",
         "svg": "<rect x='8' y='16' width='48' height='40' fill='#a04000' stroke='#5e2600' stroke-width='4'/><rect x='8' y='16' width='48' height='12' fill='#d35400' stroke='#5e2600' stroke-width='2'/><rect x='28' y='24' width='8' height='12' fill='#f1c40f' stroke='#b7950b'/>"
@@ -313,8 +314,21 @@
         "height": 3,
         "collidable": true,
         "onlyBottomCollision": true,
+        "rotatable": false,
         "blocksVision": false,
         "color": "#34495e",
         "svg": "<rect x='24' y='160' width='16' height='32' fill='#2c3e50'/><rect x='28' y='40' width='8' height='120' fill='#7f8c8d'/><path d='M20 40 Q32 10 44 40' fill='#f1c40f' stroke='#f39c12' stroke-width='2'/><circle cx='32' cy='45' r='8' fill='#fff' opacity='0.8'/>"
-    }
+    },
+    { "id": "rail", "name": "철로 (자동 연결)", "layer": "block", "collidable": false, "isRail": true, "rotatable": false, "color": "#bdc3c7", "svg": "<rect x='18' y='10' width='28' height='6' fill='#3e2723'/><rect x='18' y='48' width='28' height='6' fill='#3e2723'/><rect x='22' y='0' width='4' height='64' fill='#bdc3c7'/><rect x='42' y='0' width='4' height='64' fill='#bdc3c7'/>" },
+    { "id": "rail_ns", "name": "철로 (북남)", "layer": "block", "collidable": false, "isRail": true, "showInPalette": false, "rotatable": false, "color": "#7f8c8d", "svg": "<rect x='18' y='10' width='28' height='6' fill='#3e2723'/><rect x='18' y='29' width='28' height='6' fill='#3e2723'/><rect x='18' y='48' width='28' height='6' fill='#3e2723'/><rect x='22' y='0' width='4' height='64' fill='#bdc3c7'/><rect x='42' y='0' width='4' height='64' fill='#bdc3c7'/>" },
+    { "id": "rail_we", "name": "철로 (동서)", "layer": "block", "collidable": false, "isRail": true, "showInPalette": false, "rotatable": false, "color": "#7f8c8d", "svg": "<rect x='10' y='18' width='6' height='28' fill='#3e2723'/><rect x='29' y='18' width='6' height='28' fill='#3e2723'/><rect x='48' y='18' width='6' height='28' fill='#3e2723'/><rect x='0' y='22' width='64' height='4' fill='#bdc3c7'/><rect x='0' y='42' width='64' height='4' fill='#bdc3c7'/>" },
+    { "id": "rail_ne", "name": "철로 (북동)", "layer": "block", "collidable": false, "isRail": true, "showInPalette": false, "rotatable": false, "color": "#7f8c8d", "svg": "<path d='M22 0 Q22 42 64 42' fill='none' stroke='#bdc3c7' stroke-width='4'/><path d='M42 0 Q42 22 64 22' fill='none' stroke='#bdc3c7' stroke-width='4'/>" },
+    { "id": "rail_nw", "name": "철로 (북서)", "layer": "block", "collidable": false, "isRail": true, "showInPalette": false, "rotatable": false, "color": "#7f8c8d", "svg": "<path d='M42 0 Q42 42 0 42' fill='none' stroke='#bdc3c7' stroke-width='4'/><path d='M22 0 Q22 22 0 22' fill='none' stroke='#bdc3c7' stroke-width='4'/>" },
+    { "id": "rail_se", "name": "철로 (남동)", "layer": "block", "collidable": false, "isRail": true, "showInPalette": false, "rotatable": false, "color": "#7f8c8d", "svg": "<path d='M22 64 Q22 22 64 22' fill='none' stroke='#bdc3c7' stroke-width='4'/><path d='M42 64 Q42 42 64 42' fill='none' stroke='#bdc3c7' stroke-width='4'/>" },
+    { "id": "rail_sw", "name": "철로 (남서)", "layer": "block", "collidable": false, "isRail": true, "showInPalette": false, "rotatable": false, "color": "#7f8c8d", "svg": "<path d='M42 64 Q42 22 0 22' fill='none' stroke='#bdc3c7' stroke-width='4'/><path d='M22 64 Q22 42 0 42' fill='none' stroke='#bdc3c7' stroke-width='4'/>" },
+    { "id": "rail_new", "name": "철로 (북동서)", "layer": "block", "collidable": false, "isRail": true, "showInPalette": false, "rotatable": false, "color": "#7f8c8d", "svg": "<rect x='0' y='22' width='64' height='4' fill='#bdc3c7'/><rect x='0' y='42' width='64' height='4' fill='#bdc3c7'/><rect x='22' y='0' width='4' height='26' fill='#bdc3c7'/><rect x='42' y='0' width='4' height='46' fill='#bdc3c7'/>" },
+    { "id": "rail_sew", "name": "철로 (남동서)", "layer": "block", "collidable": false, "isRail": true, "showInPalette": false, "rotatable": false, "color": "#7f8c8d", "svg": "<rect x='0' y='22' width='64' height='4' fill='#bdc3c7'/><rect x='0' y='42' width='64' height='4' fill='#bdc3c7'/><rect x='22' y='38' width='4' height='26' fill='#bdc3c7'/><rect x='42' y='18' width='4' height='46' fill='#bdc3c7'/>" },
+    { "id": "rail_nse", "name": "철로 (북남동)", "layer": "block", "collidable": false, "isRail": true, "showInPalette": false, "rotatable": false, "color": "#7f8c8d", "svg": "<rect x='22' y='0' width='4' height='64' fill='#bdc3c7'/><rect x='42' y='0' width='4' height='64' fill='#bdc3c7'/><rect x='42' y='22' width='22' height='4' fill='#bdc3c7'/><rect x='42' y='42' width='22' height='4' fill='#bdc3c7'/>" },
+    { "id": "rail_nsw", "name": "철로 (북남서)", "layer": "block", "collidable": false, "isRail": true, "showInPalette": false, "rotatable": false, "color": "#7f8c8d", "svg": "<rect x='22' y='0' width='4' height='64' fill='#bdc3c7'/><rect x='42' y='0' width='4' height='64' fill='#bdc3c7'/><rect x='0' y='22' width='22' height='4' fill='#bdc3c7'/><rect x='0' y='42' width='22' height='4' fill='#bdc3c7'/>" },
+    { "id": "rail_nswe", "name": "철로 (십자)", "layer": "block", "collidable": false, "isRail": true, "showInPalette": false, "rotatable": false, "color": "#7f8c8d", "svg": "<rect x='22' y='0' width='4' height='64' fill='#bdc3c7'/><rect x='42' y='0' width='4' height='64' fill='#bdc3c7'/><rect x='0' y='22' width='64' height='4' fill='#bdc3c7'/><rect x='0' y='42' width='64' height='4' fill='#bdc3c7'/>" }
 ]

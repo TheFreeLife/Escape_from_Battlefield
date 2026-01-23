@@ -396,7 +396,8 @@ export default class Game {
         }
 
         this.gameTime = (this.gameTime + dt * this.timeScale) % this.dayLength;
-        this.updateDaylight();
+        // updateDaylight removed - keeping ambientLight at 1.0
+        this.ambientLight = 1.0;
 
         if (this.player) {
             this.player.update(dt);
@@ -488,17 +489,19 @@ export default class Game {
         const vCtx = this.vC.getContext('2d');
         vCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Fill fog ONLY within map boundaries
-        vCtx.fillStyle = 'rgba(0, 2, 8, 0.15)'; 
-        const mx = -this.camera.x * this.zoom;
-        const my = -this.camera.y * this.zoom;
-        vCtx.fillRect(mx, my, this.mapW * 64 * this.zoom, this.mapH * 64 * this.zoom);
+        // 1. Fill the ENTIRE screen with deep black fog
+        vCtx.fillStyle = 'rgba(0, 0, 0, 0.25)'; // Set opacity to 0.25
+        vCtx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         const sX = (this.player.x - this.camera.x) * this.zoom;
         const sY = (this.player.y - this.camera.y) * this.zoom;
 
+        // 2. Punch a hole through the fog
         vCtx.globalCompositeOperation = 'destination-out'; 
-        vCtx.fillStyle = 'white'; vCtx.shadowBlur = 30 * this.zoom; vCtx.shadowColor = 'white';
+        vCtx.fillStyle = 'black'; 
+        vCtx.shadowBlur = 50 * this.zoom; // Softer, more atmospheric edge
+        vCtx.shadowColor = 'black';
+        
         const fov = this.inventory?.isAiming ? 0.5 : 0.9, st = 0.015, pA = this.player.facingAngle;
         vCtx.beginPath(); vCtx.moveTo(sX, sY);
         for (let a = pA - fov; a <= pA + fov + st; a += st) {
@@ -517,8 +520,12 @@ export default class Game {
             vCtx.lineTo(sX + cos * dF * this.zoom, sY + sin * dF * this.zoom);
         }
         vCtx.lineTo(sX, sY); vCtx.closePath(); vCtx.fill();
-        vCtx.beginPath(); vCtx.arc(sX, sY, 80 * this.zoom, 0, Math.PI * 2); vCtx.fill();
-        vCtx.globalCompositeOperation = 'source-over'; ctx.drawImage(this.vC, 0, 0);
+        
+        // 3. Add a small ambient light circle around the player
+        vCtx.beginPath(); vCtx.arc(sX, sY, 100 * this.zoom, 0, Math.PI * 2); vCtx.fill();
+        
+        vCtx.globalCompositeOperation = 'source-over'; 
+        ctx.drawImage(this.vC, 0, 0);
     }
 
     render() {
@@ -667,24 +674,9 @@ export default class Game {
             this.inventory.renderHotbar(this.ctx); 
         }
 
-        if (!this.inventory?.isOpen) {
-            this.renderMinimap(); 
-        }
+        this.renderMinimap(); 
                 
-        // --- Daylight Overlay clipped to map ---
-                if (this.ambientLight < 1.0 && this.activeMap) {
-                    this.ctx.save();
-                    const mx = -this.camera.x * this.zoom;
-                    const my = -this.camera.y * this.zoom;
-                    this.ctx.beginPath();
-                    this.ctx.rect(mx, my, this.mapW * 64 * this.zoom, this.mapH * 64 * this.zoom);
-                    this.ctx.clip();
-                    this.ctx.fillStyle = `rgba(0, 5, 20, ${(1 - this.ambientLight) * 0.75})`;
-                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-                    this.ctx.restore();
-                }
-        
-                this.debugMenu?.render(this.ctx);
+        this.debugMenu?.render(this.ctx);
         if (this.debugMenu?.showCollisions) this.debugRender();
 
         this.ctx.fillStyle = '#fff'; this.ctx.font = 'bold 20px Arial'; this.ctx.fillText("Escape from Battlefield", 20, 35);

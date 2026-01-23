@@ -36,7 +36,16 @@ export default class TileMap {
             chunk = this.createChunk(cx, cy);
         }
 
-                // Handle multi-tile block placement/removal
+                // Handle Rail Auto-tiling
+                if (layer === 'block' && (tileId?.startsWith('rail') || tileId === null)) {
+                    this._setSingleTile(x, y, tileId, 'block', metadata);
+                    this.updateRail(x, y);
+                    this.updateRail(x + 1, y);
+                    this.updateRail(x - 1, y);
+                    this.updateRail(x, y + 1);
+                    this.updateRail(x, y - 1);
+                    return;
+                }
 
                 if (layer === 'block') {
 
@@ -109,6 +118,38 @@ export default class TileMap {
         }
 
         this._setSingleTile(x, y, tileId, layer, metadata);
+    }
+
+    updateRail(x, y) {
+        const current = this.getTile(x, y, 'block');
+        if (!current || (!current.startsWith('rail') && current !== 'rail')) return;
+
+        const isRail = (id) => id === 'rail' || (id && id.startsWith('rail'));
+
+        const n = isRail(this.getTile(x, y - 1, 'block')) ? 1 : 0;
+        const s = isRail(this.getTile(x, y + 1, 'block')) ? 2 : 0;
+        const w = isRail(this.getTile(x - 1, y, 'block')) ? 4 : 0;
+        const e = isRail(this.getTile(x + 1, y, 'block')) ? 8 : 0;
+
+        const mask = n | s | w | e;
+        let newId = 'rail_we'; // Default to horizontal
+
+        switch (mask) {
+            case 1: case 2: case 3: newId = 'rail_ns'; break; // N, S, NS
+            case 4: case 8: case 12: newId = 'rail_we'; break; // W, E, WE
+            case 9: newId = 'rail_ne'; break; // N + E
+            case 5: newId = 'rail_nw'; break; // N + W
+            case 10: newId = 'rail_se'; break; // S + E
+            case 6: newId = 'rail_sw'; break; // S + W
+            case 13: newId = 'rail_new'; break; // N + E + W
+            case 14: newId = 'rail_sew'; break; // S + E + W
+            case 11: newId = 'rail_nse'; break; // N + S + E
+            case 7: newId = 'rail_nsw'; break; // N + S + W
+            case 15: newId = 'rail_nswe'; break; // N + S + W + E
+        }
+
+        // Direct update to avoid recursion
+        this._setSingleTile(x, y, newId, 'block', this.getMetadata(x, y));
     }
 
     _setSingleTile(x, y, tileId, layer, metadata) {
@@ -404,12 +445,20 @@ export default class TileMap {
 
                         const block = this.getBlockAt(chunk.cx * CHUNK_SIZE + x, chunk.cy * CHUNK_SIZE + y);
                         if (block) {
+                            let sortY = (block.anchorY + block.height) * TILE_SIZE;
+                            
+                            // Rails should always be on the ground, even under the player
+                            if (block.def.isRail) {
+                                sortY = -999999; // Force to the bottom of the Y-sorting
+                            } else if (block.def.onlyBottomCollision) {
+                                sortY = (block.anchorY + block.height) * TILE_SIZE;
+                            }
+
                             blocks.push({
                                 ...block,
                                 worldX,
                                 worldY,
-                                // For Y-sorting: objects are sorted by their bottom edge
-                                sortY: (block.anchorY + block.height) * TILE_SIZE
+                                sortY
                             });
                         }
                     }

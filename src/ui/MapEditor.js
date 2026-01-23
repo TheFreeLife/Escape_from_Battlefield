@@ -20,6 +20,15 @@ export default class MapEditor {
         window.addEventListener('keydown', (e) => {
             if (this.game.gameState !== 'EDITOR') return;
             if (e.key.toLowerCase() === 'r') {
+                const tiles = this.game.assetManager.getData('tiles') || [];
+                const def = tiles.find(t => t.id === this.selectedTileId);
+                
+                if (def && def.rotatable === false) {
+                    console.log(`Tile ${this.selectedTileId} is not rotatable.`);
+                    this.currentRotation = 0; // Reset to default
+                    return;
+                }
+
                 this.currentRotation = (this.currentRotation + 90) % 360;
                 console.log(`Rotation: ${this.currentRotation}°`);
             }
@@ -224,7 +233,8 @@ export default class MapEditor {
             }
         } else if (this.activeLayer === 'block') {
             const tiles = this.game.assetManager.getData('tiles') || [];
-            const blocks = tiles.filter(t => t.layer === 'block');
+            // Filter: must be in block layer AND not explicitly hidden from palette
+            const blocks = tiles.filter(t => t.layer === 'block' && t.showInPalette !== false);
             
             const structures = blocks.filter(b => b.width > 1 || b.height > 1);
             const props = blocks.filter(b => (b.width || 1) === 1 && (b.height || 1) === 1 && !b.interactable);
@@ -320,6 +330,15 @@ export default class MapEditor {
         document.querySelectorAll('.palette-tile').forEach(el => el.classList.remove('selected'));
         element.classList.add('selected');
         this.selectedTileId = id; 
+        
+        // Auto-reset rotation for non-rotatable tiles
+        const tiles = this.game.assetManager.getData('tiles') || [];
+        const def = tiles.find(t => t.id === id);
+        if (def && def.rotatable === false) {
+            this.currentRotation = 0;
+            console.log(`Rotation reset to 0° for non-rotatable tile: ${id}`);
+        }
+
         if (this.selectedTool === 'eraser') this.selectTool('pen');
     }
 
