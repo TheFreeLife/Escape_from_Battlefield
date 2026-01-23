@@ -317,25 +317,37 @@ export default class Game {
         // Always check tiles first (includes boundary check)
         if (this.checkTileCollision(x, y, radius, moveType)) return true;
 
-        // For air units, we might skip entity-to-entity collision with ground units,
-        // but for now let's keep it simple and check boundaries.
-        // If air, only return true if hit map boundary (handled above)
-        // Let's assume air units only collide with other air units or boundaries.
         if (moveType === 'air') return false;
 
         const ents = [this.player, ...this.enemies, ...this.vehicles];
         for (const ent of ents) {
             if (!ent || ent === ignore || !ent.isCollidable) continue;
             
-            // Skip ground entity collision for air units (already handled by early return if moveType is air)
+            let isColliding = false;
             
-            const dx = x - ent.x, dy = y - ent.y, dSq = dx*dx + dy*dy, mD = radius + ent.radius;
-            if (dSq < mD * mD) {
+            // Case 1: Rectangle (Player) vs Circle (Checking point)
+            if (ent.isRectCollision) {
+                const rectX = ent.x - ent.width / 2;
+                const rectY = ent.y - ent.height / 2;
+                // Find the closest point to the circle within the rectangle
+                const closestX = Math.max(rectX, Math.min(x, rectX + ent.width));
+                const closestY = Math.max(rectY, Math.min(y, rectY + ent.height));
+                const distanceX = x - closestX;
+                const distanceY = y - closestY;
+                isColliding = (distanceX * distanceX + distanceY * distanceY) < (radius * radius);
+            } 
+            // Case 2: Circle vs Circle (Standard)
+            else {
+                const dx = x - ent.x, dy = y - ent.y, dSq = dx*dx + dy*dy, mD = radius + ent.radius;
+                isColliding = (dSq < mD * mD);
+            }
+
+            if (isColliding) {
                 if (ignore && ignore.weight > ent.weight) {
-                    const dist = Math.sqrt(dSq) || 0.1, o = mD - dist, nx = dx/dist, ny = dy/dist;
-                    // Push the other entity
+                    const dx = x - ent.x, dy = y - ent.y, dSq = dx*dx + dy*dy;
+                    const dist = Math.sqrt(dSq) || 0.1, o = (radius + (ent.radius || 24)) - dist, nx = dx/dist, ny = dy/dist;
                     const entMT = ent.moveType || 'land';
-                    if (!this.checkTileCollision(ent.x - nx*o, ent.y - ny*o, ent.radius, entMT)) {
+                    if (!this.checkTileCollision(ent.x - nx*o, ent.y - ny*o, ent.radius || 24, entMT)) {
                         ent.x -= nx*o; ent.y -= ny*o; return false;
                     }
                 }
@@ -650,10 +662,16 @@ export default class Game {
 
         this.ctx.restore();
         this.renderVisionOverlay(this.ctx);
-        if (this.inventory) { this.inventory.render(this.ctx); this.inventory.renderHotbar(this.ctx); }
-                this.renderMinimap(); 
+        if (this.inventory) { 
+            this.inventory.render(this.ctx); 
+            this.inventory.renderHotbar(this.ctx); 
+        }
+
+        if (!this.inventory?.isOpen) {
+            this.renderMinimap(); 
+        }
                 
-                // --- Daylight Overlay clipped to map ---
+        // --- Daylight Overlay clipped to map ---
                 if (this.ambientLight < 1.0 && this.activeMap) {
                     this.ctx.save();
                     const mx = -this.camera.x * this.zoom;
@@ -727,14 +745,19 @@ export default class Game {
             }
         }
 
-        // 3. Entity Collisions (Green Circles)
+        // 3. Entity Collisions (Green Shapes)
         const ents = [this.player, ...this.enemies, ...this.vehicles];
         ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+        ctx.lineWidth = 2;
         ents.forEach(ent => {
             if (!ent) return;
-            ctx.beginPath();
-            ctx.arc(ent.x - cam.x, ent.y - cam.y, ent.radius, 0, Math.PI * 2);
-            ctx.stroke();
+            if (ent.isRectCollision) {
+                ctx.strokeRect(ent.x - ent.width / 2 - cam.x, ent.y - ent.height / 2 - cam.y, ent.width, ent.height);
+            } else {
+                ctx.beginPath();
+                ctx.arc(ent.x - cam.x, ent.y - cam.y, ent.radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
         });
 
         ctx.restore();

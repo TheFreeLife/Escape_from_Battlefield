@@ -7,8 +7,11 @@ export default class Player {
         this.x = x;
         this.y = y;
         this.speed = 250; // Pixels per second (Increased from 200)
-        this.radius = 32; // Half of TILE_SIZE (64)
-        this.color = '#3498db';
+        this.radius = 24; // Used as a fallback and for some systems
+        this.width = 48;  // Rectangular collision width
+        this.height = 48; // Rectangular collision height
+        this.isRectCollision = true;
+        this.color = '#556b2f'; // Military Green (Olive Drab)
         this.fireRate = 0.2; // Seconds between shots
         this.fireTimer = 0;
 
@@ -270,6 +273,11 @@ export default class Player {
             const spread = itemDef.spread || 0;
 
             const baseAngle = Math.atan2(dy, dx);
+            const handYOffset = -this.radius * 2.0;
+            const muzzleDist = 55; // Approx length of the weapon + offset
+
+            const startX = this.x + Math.cos(baseAngle) * muzzleDist;
+            const startY = this.y + Math.sin(baseAngle) * muzzleDist;
 
             // --- Special Weapon Handling: Flamethrower ---
             if (itemDef.caliber === 'fuel') {
@@ -278,12 +286,13 @@ export default class Player {
                     const pdx = Math.cos(finalAngle);
                     const pdy = Math.sin(finalAngle);
                     
-                    const prj = new Projectile(this.game, this.x + pdx * 40, this.y + pdy * 40, pdx, pdy, {
+                    const prj = new Projectile(this.game, startX, startY, pdx, pdy, {
                         owner: this,
                         damage: damage,
                         speed: 400 + Math.random() * 200, // Slower but varying
                         life: 0.5 + Math.random() * 0.3,
-                        isFlame: true
+                        isFlame: true,
+                        altitude: -handYOffset // Set projectile altitude to match hand height
                     });
                     this.game.projectiles.push(prj);
                 }
@@ -294,13 +303,14 @@ export default class Player {
                     const pdx = Math.cos(finalAngle);
                     const pdy = Math.sin(finalAngle);
 
-                    const prj = new Projectile(this.game, this.x, this.y, pdx, pdy, {
+                    const prj = new Projectile(this.game, startX, startY, pdx, pdy, {
                         owner: this,
                         damage: damage,
                         speed: bSpeed,
                         life: life,
                         isExplosive: itemDef.isExplosive,
-                        explodeRadius: itemDef.explodeRadius
+                        explodeRadius: itemDef.explodeRadius,
+                        altitude: -handYOffset // Set projectile altitude to match hand height
                     });
                     this.game.projectiles.push(prj);
                 }
@@ -438,16 +448,46 @@ export default class Player {
         const selectedItem = this.game.inventory.getSelectedItem();
         const itemDef = selectedItem ? this.game.inventory.getItemDef(selectedItem.id) : null;
 
-        // 1. Weapon Rendering (In local space, center is 0,0)
+        // 0. Drop Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, this.radius * 0.9, this.radius * 0.45, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 1. Legs (Basic Military Pants)
+        ctx.fillStyle = '#4b5320'; // Slightly darker army green for pants
+        ctx.beginPath();
+        ctx.roundRect(-this.radius * 0.65, -this.radius * 0.9, this.radius * 0.55, this.radius * 0.9, 4);
+        ctx.roundRect(this.radius * 0.1, -this.radius * 0.9, this.radius * 0.55, this.radius * 0.9, 4);
+        ctx.fill();
+
+        // 2. Torso (Basic Military Shirt)
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.ellipse(0, -this.radius * 2.0, this.radius * 0.9, this.radius * 1.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Add a simple center line/seam for the shirt
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, -this.radius * 0.8);
+        ctx.lineTo(0, -this.radius * 3.2);
+        ctx.stroke();
+
+        // --- HANDS & WEAPON ---
+        const handY = -this.radius * 2.0;
+        
+        // 4. Weapon Rendering (Keep this as it represents held items)
         if (itemDef && itemDef.type === 'weapon' && !this.game.inventory.isOpen) {
             ctx.save();
+            ctx.translate(0, handY); 
             ctx.rotate(angle);
 
             const isMelee = itemDef.subType === 'melee';
             const weaponImg = this.game.assetManager.get(itemDef.id);
             
             let offX = 25;
-            let offY = 15;
+            let offY = 0; 
             let rotOffset = 0;
 
             if (this.fireTimer > 0) {
@@ -472,10 +512,11 @@ export default class Player {
             ctx.restore();
         }
 
-        // 2. Laser Sight (From local center 0,0)
+        // 5. Laser Sight
         if (selectedItem && selectedItem.attachments?.underbarrel?.id === 'laser_sight' && !this.game.inventory.isOpen) {
             const laserLen = 1500; 
             ctx.save();
+            ctx.translate(0, handY);
             ctx.beginPath();
             ctx.moveTo(0, 0);
             ctx.lineTo(Math.cos(angle) * laserLen, Math.sin(angle) * laserLen);
@@ -486,12 +527,13 @@ export default class Player {
             ctx.restore();
         }
 
-        // 3. Punch Visual
+        // 6. Punch Visual
         if (this.punchVisualTimer > 0) {
             const alpha = this.punchVisualTimer / 0.15;
             const punchRange = 100;
             const punchArc = Math.PI * 0.6;
             ctx.save();
+            ctx.translate(0, handY);
             ctx.beginPath();
             const grad = ctx.createRadialGradient(0, 0, this.radius, 0, 0, punchRange);
             grad.addColorStop(0, `rgba(255, 255, 255, 0)`);
@@ -504,13 +546,19 @@ export default class Player {
             ctx.restore();
         }
 
-        // 4. Character Body (at center 0,0)
+        // 7. Head (Basic Human Head)
+        ctx.fillStyle = '#ebbe9b'; // Skin tone
         ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
+        ctx.arc(0, -this.radius * 3.4, this.radius * 0.7, 0, Math.PI * 2);
         ctx.fill();
         
-        // 5. Grenade Landing Preview
+        // Short Hair / Buzz cut look
+        ctx.fillStyle = '#3e2723';
+        ctx.beginPath();
+        ctx.arc(0, -this.radius * 3.5, this.radius * 0.7, Math.PI, 0);
+        ctx.fill();
+
+        // 8. Grenade Landing Preview
         if (this.throwCharge > 0 && itemDef && itemDef.type === 'grenade') {
             const powerRatio = this.throwCharge / this.maxThrowCharge;
             const targetDist = 50 + (powerRatio * (600 - 50));
@@ -518,6 +566,7 @@ export default class Player {
             const ly = Math.sin(angle) * targetDist;
 
             ctx.save();
+            ctx.translate(0, handY);
             ctx.beginPath();
             ctx.arc(lx, ly, 40, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(231, 76, 60, 0.2)';
@@ -529,29 +578,32 @@ export default class Player {
             ctx.restore();
         }
         
-        // Face/Eye
+        // Face (Simple Eyes)
         ctx.save();
+        ctx.translate(0, -this.radius * 3.4);
         ctx.rotate(angle);
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = '#333';
         ctx.beginPath();
-        ctx.arc(this.radius * 0.5, -this.radius * 0.3, 5, 0, Math.PI * 2);
-        ctx.arc(this.radius * 0.5, this.radius * 0.3, 5, 0, Math.PI * 2);
+        ctx.arc(this.radius * 0.4, -this.radius * 0.2, 3, 0, Math.PI * 2);
+        ctx.arc(this.radius * 0.4, this.radius * 0.2, 3, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
 
-        // 6. UI Indicators (Reset translation for global UI elements if needed, or draw locally)
-        this.renderStatusEffects(ctx, 0, 0);
+        // 9. UI Indicators
+        this.renderStatusEffects(ctx, 0, -this.radius * 3.4);
 
         ctx.restore(); 
     }
 
     renderStatusEffects(ctx, screenX, screenY) {
+        // Position relative to head
+        const headTop = screenY - this.radius;
         // Exhausted State Text
         if (this.isExhausted) {
             ctx.fillStyle = '#e74c3c';
             ctx.font = 'bold 14px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText("탈진 상태!", screenX, screenY - this.radius - 10);
+            ctx.fillText("탈진 상태!", screenX, headTop - 10);
             ctx.textAlign = 'left';
         }
 
@@ -559,14 +611,14 @@ export default class Player {
         if (this.game.inventory.isReloading) {
             const progress = 1 - (this.game.inventory.reloadTimer / (this.game.inventory.getSelectedItem()?.reloadTime || 1));
             ctx.beginPath();
-            ctx.arc(screenX, screenY, this.radius + 10, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * progress));
+            ctx.arc(screenX, screenY, this.radius + 15, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * progress));
             ctx.strokeStyle = '#f1c40f';
             ctx.lineWidth = 4;
             ctx.stroke();
             ctx.fillStyle = '#f1c40f';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText("RELOADING...", screenX, screenY - this.radius - 20);
+            ctx.fillText("RELOADING...", screenX, headTop - 25);
             ctx.textAlign = 'left';
         }
 

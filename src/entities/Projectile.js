@@ -24,6 +24,7 @@ export default class Projectile {
             this.isExplosive = config.isExplosive || false;
             this.isFlame = config.isFlame || false;
             this.explodeRadius = config.explodeRadius || 128;
+            this.altitude = config.altitude || 0;
             this.color = config.color || (this.isFlame ? '#ff4500' : '#f1c40f');
         }
         
@@ -166,7 +167,7 @@ export default class Projectile {
 
     render(ctx, camera) {
         const screenX = this.x - camera.x;
-        const screenY = this.y - camera.y;
+        const screenY = this.y - camera.y - this.altitude;
 
         ctx.save();
         if (this.isFlame) {
