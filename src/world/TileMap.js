@@ -167,11 +167,20 @@ export default class TileMap {
         if (directBlockId === 'occupied_space') {
             const metadata = this.getMetadata(tx, ty);
             if (metadata && metadata.blockMaster) {
-                const coords = metadata.blockMaster.split(',');
-                masterX = parseInt(coords[0]);
-                masterY = parseInt(coords[1]);
-                blockId = this.getTile(masterX, masterY, 'block');
-            } else return null;
+                const parts = metadata.blockMaster.split(',');
+                if (parts.length === 2) {
+                    masterX = parseInt(parts[0]);
+                    masterY = parseInt(parts[1]);
+                    blockId = this.getTile(masterX, masterY, 'block');
+                    // Ensure the master block actually exists and is not occupied_space itself
+                    if (!blockId || blockId === 'occupied_space') return null;
+                } else return null;
+            } else {
+                // Critical: If we hit occupied_space but don't know the master, 
+                // we should at least try to find a nearby master if it's a known multi-tile object pattern.
+                // For now, return null as it indicates corrupted map data.
+                return null;
+            }
         }
 
         const def = this.game.assetManager.getData('tiles')?.find(t => t.id === blockId);
@@ -203,7 +212,21 @@ export default class TileMap {
                 y1: masterY * TILE_SIZE,
                 x2: (masterX + width) * TILE_SIZE,
                 y2: (masterY + height) * TILE_SIZE
-            })
+            }),
+            // Helper to get actual physical collision bounds
+            getCollisionBoundsWorld: () => {
+                let x1 = masterX, y1 = masterY, w = width, h = height;
+                if (def.onlyBottomCollision) {
+                    y1 = masterY + height - 1;
+                    h = 1;
+                }
+                return {
+                    x1: x1 * TILE_SIZE,
+                    y1: y1 * TILE_SIZE,
+                    x2: (x1 + w) * TILE_SIZE,
+                    y2: (y1 + h) * TILE_SIZE
+                };
+            }
         };
     }
 
@@ -213,15 +236,24 @@ export default class TileMap {
 
         // 1. Floor Tile Check
         const floorId = this.getTile(tx, ty, 'floor');
-        const fDef = this.game.assetManager.getData('tiles')?.find(t => t.id === floorId);
-        if (fDef?.collidable) return true;
+        if (floorId) {
+            const fDef = this.game.assetManager.getData('tiles')?.find(t => t.id === floorId);
+            if (fDef?.collidable) return true;
+        }
 
-        // 2. Block Tile Check (Using refactored helper)
-        const block = this.getBlockAt(tx, ty);
-        if (block && block.def && block.def.collidable) {
-            const bounds = block.getBoundsWorld();
-            if (worldX >= bounds.x1 && worldX < bounds.x2 && worldY >= bounds.y1 && worldY < bounds.y2) {
-                return true;
+        // 2. Block Collision Check
+        // We check a small area around the point to find any blocks that might overlap it
+        // This is much more robust for multi-tile objects and narrow hitboxes
+        for (let oy = -2; oy <= 2; oy++) {
+            for (let ox = -2; ox <= 2; ox++) {
+                const block = this.getBlockAt(tx + ox, ty + oy);
+                if (block && block.def && block.def.collidable) {
+                    const cb = block.getCollisionBoundsWorld();
+                    // Precise coordinate check against the block's physical collision box
+                    if (worldX >= cb.x1 && worldX < cb.x2 && worldY >= cb.y1 && worldY < cb.y2) {
+                        return true;
+                    }
+                }
             }
         }
 
@@ -248,6 +280,12 @@ export default class TileMap {
         // 2. Check Block Layer
         const block = this.getBlockAt(tx, ty);
         if (block && block.def) {
+            // Special Case: onlyBottomCollision blocks (Restored: now checks the bottom-most tile)
+            if (block.def.onlyBottomCollision) {
+                const collisionY = block.anchorY + block.height - 1;
+                if (ty !== collisionY) return false;
+            }
+
             // Special Case: Closed Door always blocks vision
             if (block.id === 'door') return true;
             // Special Case: Open Door never blocks vision
@@ -288,7 +326,7 @@ export default class TileMap {
         }
     }
 
-    render(ctx, camera) {
+    render(ctx, camera, layers = ['floor', 'block']) {
         const startCol = Math.floor(camera.x / TILE_SIZE);
         const endCol = startCol + (camera.width / TILE_SIZE) + 1;
         const startRow = Math.floor(camera.y / TILE_SIZE);
@@ -320,14 +358,65 @@ export default class TileMap {
         }
 
         // Pass 1: Floor tiles for all visible chunks
-        for (const chunk of visibleChunks) {
-            this.renderChunkFloors(ctx, chunk, camera);
+        if (layers.includes('floor')) {
+            for (const chunk of visibleChunks) {
+                this.renderChunkFloors(ctx, chunk, camera);
+            }
         }
 
         // Pass 2: Block tiles for all visible chunks
-        for (const chunk of visibleChunks) {
-            this.renderChunkBlocks(ctx, chunk, camera);
+        if (layers.includes('block')) {
+            for (const chunk of visibleChunks) {
+                this.renderChunkBlocks(ctx, chunk, camera);
+            }
         }
+    }
+
+    getVisibleBlocks(camera) {
+        const startCol = Math.floor(camera.x / TILE_SIZE);
+        const endCol = startCol + (camera.width / TILE_SIZE) + 1;
+        const startRow = Math.floor(camera.y / TILE_SIZE);
+        const endRow = startRow + (camera.height / TILE_SIZE) + 1;
+
+        const startCx = Math.floor(startCol / CHUNK_SIZE);
+        const endCx = Math.floor(endCol / CHUNK_SIZE);
+        const startCy = Math.floor(startRow / CHUNK_SIZE);
+        const endCy = Math.floor(endRow / CHUNK_SIZE);
+
+        const blocks = [];
+        const mapMaxCx = this.game.activeMap ? Math.ceil(this.game.mapW / CHUNK_SIZE) : -1;
+        const mapMaxCy = this.game.activeMap ? Math.ceil(this.game.mapH / CHUNK_SIZE) : -1;
+
+        for (let cy = startCy; cy <= endCy; cy++) {
+            if (cy < 0 || cy >= mapMaxCy) continue;
+            for (let cx = startCx; cx <= endCx; cx++) {
+                if (cx < 0 || cx >= mapMaxCx) continue;
+                const chunk = this.getChunk(cx, cy);
+                if (!chunk) continue;
+
+                for (let y = 0; y < CHUNK_SIZE; y++) {
+                    for (let x = 0; x < CHUNK_SIZE; x++) {
+                        const blockId = chunk.blocks[y][x];
+                        if (!blockId || blockId === 'occupied_space') continue;
+
+                        const worldX = (chunk.cx * CHUNK_SIZE + x) * TILE_SIZE;
+                        const worldY = (chunk.cy * CHUNK_SIZE + y) * TILE_SIZE;
+
+                        const block = this.getBlockAt(chunk.cx * CHUNK_SIZE + x, chunk.cy * CHUNK_SIZE + y);
+                        if (block) {
+                            blocks.push({
+                                ...block,
+                                worldX,
+                                worldY,
+                                // For Y-sorting: objects are sorted by their bottom edge
+                                sortY: (block.anchorY + block.height) * TILE_SIZE
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        return blocks;
     }
 
     renderChunkFloors(ctx, chunk, camera) {
@@ -360,8 +449,39 @@ export default class TileMap {
         }
     }
 
+    renderBlock(ctx, block, camera) {
+        const img = this.game.assetManager.get(block.id);
+        const def = block.def;
+        
+        const baseW = def?.width || 1;
+        const baseH = def?.height || 1;
+        const rotDeg = block.rotation || 0;
+        const rotRad = rotDeg * (Math.PI / 180);
+        
+        const isRotated = (rotDeg === 90 || rotDeg === 270);
+        const ew = isRotated ? baseH : baseW;
+        const eh = isRotated ? baseW : baseH;
+
+        const screenX = Math.floor(block.worldX - camera.x);
+        const screenY = Math.floor(block.worldY - camera.y);
+        
+        ctx.save();
+        ctx.translate(screenX + (ew * TILE_SIZE)/2, screenY + (eh * TILE_SIZE)/2);
+        ctx.rotate(rotRad);
+        
+        const drawW = baseW * TILE_SIZE;
+        const drawH = baseH * TILE_SIZE;
+        
+        if (img) {
+            ctx.drawImage(img, -drawW/2, -drawH/2, drawW, drawH);
+        } else {
+            ctx.fillStyle = def.color || '#555';
+            ctx.fillRect(-drawW/2, -drawH/2, drawW, drawH);
+        }
+        ctx.restore();
+    }
+
     renderChunkBlocks(ctx, chunk, camera) {
-        const allTiles = this.game.assetManager.getData('tiles');
         for (let y = 0; y < CHUNK_SIZE; y++) {
             for (let x = 0; x < CHUNK_SIZE; x++) {
                 const blockId = chunk.blocks[y][x];
@@ -370,40 +490,9 @@ export default class TileMap {
                 const worldX = (chunk.cx * CHUNK_SIZE + x) * TILE_SIZE;
                 const worldY = (chunk.cy * CHUNK_SIZE + y) * TILE_SIZE;
                 
-                const def = allTiles?.find(t => t.id === blockId);
-                const baseW = def?.width || 1;
-                const baseH = def?.height || 1;
-
-                const metadata = chunk.metadata[y][x];
-                const rotDeg = (metadata?.blockRotation || 0);
-                const rotRad = rotDeg * (Math.PI / 180);
-                
-                // Calculate Effective Size for bounding box
-                const isRotated = (rotDeg === 90 || rotDeg === 270);
-                const ew = isRotated ? baseH : baseW;
-                const eh = isRotated ? baseW : baseH;
-
-                const screenX = Math.floor(worldX - camera.x);
-                const screenY = Math.floor(worldY - camera.y);
-                const img = this.game.assetManager.get(blockId);
-                
-                if (img || def) {
-                    ctx.save();
-                    // Translate to the center of the EFFECTIVE bounding box
-                    ctx.translate(screenX + (ew * TILE_SIZE)/2, screenY + (eh * TILE_SIZE)/2);
-                    ctx.rotate(rotRad);
-                    
-                    // Draw using BASE dimensions, centered
-                    const drawW = baseW * TILE_SIZE;
-                    const drawH = baseH * TILE_SIZE;
-                    
-                    if (img) {
-                        ctx.drawImage(img, -drawW/2, -drawH/2, drawW, drawH);
-                    } else {
-                        ctx.fillStyle = def.color || '#555';
-                        ctx.fillRect(-drawW/2, -drawH/2, drawW, drawH);
-                    }
-                    ctx.restore();
+                const block = this.getBlockAt(chunk.cx * CHUNK_SIZE + x, chunk.cy * CHUNK_SIZE + y);
+                if (block) {
+                    this.renderBlock(ctx, { ...block, worldX, worldY }, camera);
                 }
             }
         }

@@ -11,6 +11,7 @@ export default class DebugMenu {
         
         this.godMode = false;
         this.infStamina = false;
+        this.showCollisions = false;
         
         this.categories = [
             { id: 'player', name: '플레이어', icons: '👤' },
@@ -107,9 +108,10 @@ export default class DebugMenu {
         } else if (this.activeCategory === 'world') {
             if (this.checkBtn(mx, my, 10, actionYStart, btnW, btnH)) this.game.enemies = [];
             if (this.checkBtn(mx, my, 10, actionYStart + 35, btnW, btnH)) this.game.projectiles = [];
+            if (this.checkBtn(mx, my, 10, actionYStart + 70, btnW, btnH)) this.showCollisions = !this.showCollisions;
             
             // Time Controls
-            const timeY = actionYStart + 80;
+            const timeY = actionYStart + 115;
             if (this.checkBtn(mx, my, 10, timeY, btnW, btnH)) this.game.gameTime = 8 * 60; // Morning
             if (this.checkBtn(mx, my, 10, timeY + 35, btnW, btnH)) this.game.gameTime = 12 * 60; // Noon
             if (this.checkBtn(mx, my, 10, timeY + 70, btnW, btnH)) this.game.gameTime = 18 * 60; // Evening
@@ -224,8 +226,9 @@ export default class DebugMenu {
         } else if (this.activeCategory === 'world') {
             this.drawBtn(ctx, 10, actionYStart, btnW, btnH, "모든 적 제거");
             this.drawBtn(ctx, 10, actionYStart + 35, btnW, btnH, "모든 투사체 제거");
+            this.drawBtn(ctx, 10, actionYStart + 70, btnW, btnH, `충돌 박스 표시: ${this.showCollisions ? 'ON' : 'OFF'}`, this.showCollisions);
             
-            const timeY = actionYStart + 80;
+            const timeY = actionYStart + 115;
             this.drawBtn(ctx, 10, timeY, btnW, btnH, "시간: 아침 (08:00)");
             this.drawBtn(ctx, 10, timeY + 35, btnW, btnH, "시간: 낮 (12:00)");
             this.drawBtn(ctx, 10, timeY + 70, btnW, btnH, "시간: 저녁 (18:00)");

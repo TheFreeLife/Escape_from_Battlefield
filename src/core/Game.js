@@ -293,29 +293,21 @@ export default class Game {
         // 2. Air units fly over everything
         if (moveType === 'air') return false;
         
-        // 3. Collision Points
-        const buffer = radius * 0.5;
+        // 3. Collision Points (Check 9 points around the entity radius for better accuracy)
+        const b = radius; // Use full radius for edge detection
         const pts = [
-            { x: x - buffer, y: y - buffer }, { x: x + buffer, y: y - buffer },
-            { x: x - buffer, y: y + buffer }, { x: x + buffer, y: y + buffer },
-            { x, y }
+            { x, y }, // Center
+            { x: x - b, y: y - b }, { x: x + b, y: y - b }, // Corners
+            { x: x - b, y: y + b }, { x: x + b, y: y + b },
+            { x: x - b, y }, { x: x + b, y }, // Sides
+            { x, y: y - b }, { x, y: y + b }
         ];
 
         for (const p of pts) {
-            const tx = Math.floor(p.x / 64);
-            const ty = Math.floor(p.y / 64);
-            
-            if (tx < 0 || tx >= this.mapW || ty < 0 || ty >= this.mapH) return true;
+            if (p.x < 0 || p.x >= worldW || p.y < 0 || p.y >= worldH) return true;
 
-            // Block Check (Walls, structures, etc.)
-            const block = this.tileMap.getBlockAt(tx, ty);
-            if (block?.def?.collidable) return true;
-
-            // Floor Layer Special Cases
-            const fid = this.tileMap.getTile(tx, ty, 'floor');
-            if (moveType === 'land') {
-                if (fid === 'water' && radius > 32) return true;
-            }
+            // Use TileMap's centralized collision check
+            if (this.tileMap.isCollidable(p.x, p.y)) return true;
         }
         
         return false;
@@ -527,25 +519,61 @@ export default class Game {
         
         this.ctx.save(); 
         this.ctx.scale(this.zoom, this.zoom);
-        this.tileMap?.render(this.ctx, this.camera); 
-        this.player?.render(this.ctx, this.camera); 
-        this.tileMap?.renderOverlays(this.ctx, this.camera);
+        
+        // 1. Render Floor Tiles
+        this.tileMap?.render(this.ctx, this.camera, ['floor']); 
 
+        // 2. Prepare for Y-Sorting (Blocks + Entities)
+        const renderQueue = [];
+        
+        // Add visible blocks to queue
+        if (this.tileMap) {
+            const visibleBlocks = this.tileMap.getVisibleBlocks(this.camera);
+            visibleBlocks.forEach(b => {
+                renderQueue.push({
+                    type: 'block',
+                    sortY: b.sortY,
+                    data: b
+                });
+            });
+        }
+
+        // Add entities to queue
         const allEntities = [
-            ...this.enemies, ...this.projectiles, ...this.loots, 
+            this.player, ...this.enemies, ...this.projectiles, ...this.loots, 
             ...this.grenades, ...this.vehicles, ...this.machineGuns
         ];
 
-        // 1. Render Ground Entities
         allEntities.forEach(ent => {
+            if (!ent) return;
             const isAirborne = (ent.moveType === 'air') || (ent.altitude > 0);
             if (!isAirborne && this.isVisibleToPlayer(ent.x, ent.y)) {
-                ent.render(this.ctx, this.camera);
+                renderQueue.push({
+                    type: 'entity',
+                    // Sort by feet position. Player and most entities use center (x,y)
+                    // We use y + half-height or radius for better depth.
+                    sortY: ent.y + (ent.radius || 0) * 0.5,
+                    data: ent
+                });
             }
         });
 
-        // 2. Render Airborne Entities (on top)
+        // 3. Sort and Render Ground Layer
+        renderQueue.sort((a, b) => a.sortY - b.sortY);
+        renderQueue.forEach(item => {
+            if (item.type === 'block') {
+                this.tileMap.renderBlock(this.ctx, item.data, this.camera);
+            } else {
+                item.data.render(this.ctx, this.camera);
+            }
+        });
+
+        // 4. Render Overlays (Tall objects' tops, camo nets, etc.)
+        this.tileMap?.renderOverlays(this.ctx, this.camera);
+
+        // 5. Render Airborne Entities (always on top of ground layer)
         allEntities.forEach(ent => {
+            if (!ent) return;
             const isAirborne = (ent.moveType === 'air') || (ent.altitude > 0);
             if (isAirborne && this.isVisibleToPlayer(ent.x, ent.y)) {
                 ent.render(this.ctx, this.camera);
@@ -639,8 +667,76 @@ export default class Game {
                 }
         
                 this.debugMenu?.render(this.ctx);
-         this.ctx.fillStyle = '#fff'; this.ctx.font = 'bold 20px Arial'; this.ctx.fillText("Escape from Battlefield", 20, 35);
+        if (this.debugMenu?.showCollisions) this.debugRender();
+
+        this.ctx.fillStyle = '#fff'; this.ctx.font = 'bold 20px Arial'; this.ctx.fillText("Escape from Battlefield", 20, 35);
         const tm = `${Math.floor(this.gameTime/60).toString().padStart(2,'0')}:${Math.floor(this.gameTime%60).toString().padStart(2,'0')}`;
         this.ctx.fillStyle = '#f1c40f'; this.ctx.fillText(`🕒 ${tm}`, 20, 65);
+    }
+
+    debugRender() {
+        const ctx = this.ctx;
+        const cam = this.camera;
+        ctx.save();
+        ctx.scale(this.zoom, this.zoom);
+
+        // 1. All Visible Blocks Structure & Collisions
+        if (this.tileMap) {
+            const blocks = this.tileMap.getVisibleBlocks(cam);
+            blocks.forEach(b => {
+                const sx = b.worldX - cam.x;
+                const sy = b.worldY - cam.y;
+                const sw = b.width * 64;
+                const sh = b.height * 64;
+
+                // Purple outline for the whole block area
+                ctx.strokeStyle = 'rgba(155, 89, 182, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(sx, sy, sw, sh);
+                
+                // Red fill for the actual collision area
+                if (b.def.collidable) {
+                    const cb = b.getCollisionBoundsWorld();
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+                    ctx.fillRect(cb.x1 - cam.x, cb.y1 - cam.y, cb.x2 - cb.x1, cb.y2 - cb.y1);
+                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(cb.x1 - cam.x, cb.y1 - cam.y, cb.x2 - cb.x1, cb.y2 - cb.y1);
+                }
+
+                // Show Anchor Point & ID
+                ctx.fillStyle = '#f1c40f';
+                ctx.fillRect(sx + 2, sy + 2, 8, 8);
+                ctx.font = '10px Arial';
+                ctx.fillText(`${b.id}`, sx + 12, sy + 10);
+            });
+        }
+
+        // 2. Extra Floor Collisions (like water)
+        const sX = Math.floor(cam.x / 64), eX = Math.ceil((cam.x + cam.width) / 64);
+        const sY = Math.floor(cam.y / 64), eY = Math.ceil((cam.y + cam.height) / 64);
+
+        for (let y = sY; y <= eY; y++) {
+            for (let x = sX; x <= eX; x++) {
+                const floorId = this.tileMap.getTile(x, y, 'floor');
+                const fDef = this.assetManager.getData('tiles')?.find(t => t.id === floorId);
+                if (fDef?.collidable) {
+                    ctx.fillStyle = 'rgba(52, 152, 219, 0.3)';
+                    ctx.fillRect(x * 64 - cam.x, y * 64 - cam.y, 64, 64);
+                }
+            }
+        }
+
+        // 3. Entity Collisions (Green Circles)
+        const ents = [this.player, ...this.enemies, ...this.vehicles];
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+        ents.forEach(ent => {
+            if (!ent) return;
+            ctx.beginPath();
+            ctx.arc(ent.x - cam.x, ent.y - cam.y, ent.radius, 0, Math.PI * 2);
+            ctx.stroke();
+        });
+
+        ctx.restore();
     }
 }

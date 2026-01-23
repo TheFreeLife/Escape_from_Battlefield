@@ -304,5 +304,17 @@
         "blocksVision": false,
         "color": "#455a64",
         "svg": "<rect x='2' y='10' width='124' height='48' fill='#455a64' stroke='#263238' stroke-width='3'/><rect x='2' y='10' width='124' height='8' fill='#b0bec5'/><rect x='10' y='25' width='50' height='20' fill='#37474f' stroke='#263238'/><circle cx='105' cy='34' r='10' fill='#cfd8dc' stroke='#263238'/><rect x='80' y='22' width='12' height='24' fill='#263238'/>"
+    },
+    {
+        "id": "street_light",
+        "name": "가로등",
+        "layer": "block",
+        "width": 1,
+        "height": 3,
+        "collidable": true,
+        "onlyBottomCollision": true,
+        "blocksVision": false,
+        "color": "#34495e",
+        "svg": "<rect x='24' y='160' width='16' height='32' fill='#2c3e50'/><rect x='28' y='40' width='8' height='120' fill='#7f8c8d'/><path d='M20 40 Q32 10 44 40' fill='#f1c40f' stroke='#f39c12' stroke-width='2'/><circle cx='32' cy='45' r='8' fill='#fff' opacity='0.8'/>"
     }
 ]
