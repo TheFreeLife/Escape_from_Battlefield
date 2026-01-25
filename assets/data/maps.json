@@ -4,8 +4,8 @@
         "name": "아이언 피스트 작전",
         "layout": [
             [["grass", "fence"], ["grass", "fence"], ["grass", "fence"], ["grass", "fence"], ["grass", "fence"], ["asphalt"], ["grass", "fence"], ["grass", "fence"], ["grass", "fence"], ["grass", "fence"]],
-            [["grass"], ["grass", "camo_net"], ["grass"], ["grass"], ["grass"], ["asphalt", "road_line_dotted"], ["grass"], ["grass"], ["grass", "camo_net"], ["grass"]],
-            [["grass"], ["grass", {"id": "soldier"}], ["grass"], ["concrete"], ["concrete"], ["asphalt", "road_line_dotted"], ["concrete"], ["concrete"], ["grass", {"id": "soldier"}], ["grass"]],
+            [["grass"], ["grass", "fuel_tank"], ["grass"], ["grass"], ["grass"], ["asphalt", "road_line_dotted"], ["grass"], ["grass"], ["grass", "camo_net"], ["grass"]],
+            [["grass"], ["grass"], ["grass"], ["concrete"], ["concrete"], ["asphalt", "road_line_dotted"], ["concrete"], ["concrete"], ["grass", {"id": "soldier"}], ["grass"]],
             [["grass"], ["grass"], ["concrete", "steel_wall"], ["concrete", "door"], ["concrete", "steel_wall"], ["asphalt", "road_line_dotted"], ["concrete", "steel_wall"], ["concrete", "door"], ["concrete", "steel_wall"], ["grass"]],
             [["asphalt"], ["asphalt", "road_line_dotted"], ["asphalt", "road_line_dotted"], ["asphalt", "road_line_dotted"], ["asphalt", "road_stop_line"], ["asphalt", "crosswalk"], ["asphalt", "road_stop_line"], ["asphalt", "road_line_dotted"], ["asphalt", "road_line_dotted"], ["asphalt"]],
             [["grass"], ["grass"], ["concrete", "steel_wall"], ["concrete", "loot_box"], ["concrete", "steel_wall"], ["asphalt", "road_line_dotted"], ["concrete", "steel_wall"], ["concrete", "gun_workbench"], ["concrete", "steel_wall"], ["grass"]],

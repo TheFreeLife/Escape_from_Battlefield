@@ -1,4 +1,5 @@
 import Chunk, { CHUNK_SIZE, TILE_SIZE } from './Chunk.js';
+import Grenade from '../entities/Grenade.js';
 
 export default class TileMap {
     constructor(game) {
@@ -265,11 +266,12 @@ export default class TileMap {
                     y1 = masterY + height - 1;
                     h = 1;
                 }
+                // Add a tiny buffer (0.1) to avoid floating point misses
                 return {
-                    x1: x1 * TILE_SIZE,
-                    y1: y1 * TILE_SIZE,
-                    x2: (x1 + w) * TILE_SIZE,
-                    y2: (y1 + h) * TILE_SIZE
+                    x1: x1 * TILE_SIZE - 2,
+                    y1: y1 * TILE_SIZE - 2,
+                    x2: (x1 + w) * TILE_SIZE + 2,
+                    y2: (y1 + h) * TILE_SIZE + 2
                 };
             }
         };
@@ -345,13 +347,31 @@ export default class TileMap {
     }
 
     damageTile(worldX, worldY, amount) {
-        const tx = Math.floor(worldX / TILE_SIZE);
-        const ty = Math.floor(worldY / TILE_SIZE);
+        let tx = Math.floor(worldX / TILE_SIZE);
+        let ty = Math.floor(worldY / TILE_SIZE);
         
-        const block = this.getBlockAt(tx, ty);
-        if (!block || !block.def.destructible) return;
+        let block = this.getBlockAt(tx, ty);
 
-        let metadata = this.getMetadata(block.anchorX, block.anchorY);
+        // Robustness: If no block found at the exact point, check surrounding pixels (8-way)
+        if (!block) {
+            const range = 8; // Check within 8 pixels
+            const offsets = [[range,0], [-range,0], [0,range], [0,-range], [range,range], [-range,-range], [range,-range], [-range,range]];
+            for (const [ox, oy] of offsets) {
+                const b = this.getBlockAt(Math.floor((worldX + ox) / TILE_SIZE), Math.floor((worldY + oy) / TILE_SIZE));
+                if (b && b.def && b.def.destructible) {
+                    block = b;
+                    break;
+                }
+            }
+        }
+
+        if (!block || !block.def || !block.def.destructible) return;
+
+        // CRITICAL: Always use the master (anchor) tile coordinates for health data
+        const ax = block.anchorX;
+        const ay = block.anchorY;
+
+        let metadata = this.getMetadata(ax, ay);
         if (!metadata) {
             metadata = { health: block.def.health || 10 };
         } else if (metadata.health === undefined) {
@@ -361,15 +381,30 @@ export default class TileMap {
         metadata.health -= amount;
         
         if (metadata.health <= 0) {
-            // Remove master and all occupied spaces
-            const { w, h } = { w: block.def.width || 1, h: block.def.height || 1 };
-            for (let oy = 0; oy < h; oy++) {
-                for (let ox = 0; ox < w; ox++) {
-                    this.setTile(block.anchorX + ox, block.anchorY + oy, null, 'block');
+            const isFuelTank = block.id === 'fuel_tank';
+            const center = isFuelTank ? block.getCenterWorld() : null;
+
+            // 1. Remove master and all occupied spaces FIRST to prevent recursion
+            const { width, height } = block;
+            for (let oy = 0; oy < height; oy++) {
+                for (let ox = 0; ox < width; ox++) {
+                    this._setSingleTile(ax + ox, ay + oy, null, 'block');
                 }
             }
+
+            // 2. Trigger explosion AFTER the tile is removed from the map
+            if (isFuelTank && center) {
+                const explosion = new Grenade(this.game, center.x, center.y, center.x, center.y, 0);
+                explosion.radius = 200;
+                explosion.damage = 300;
+                explosion.timer = 0; 
+                if (typeof explosion.explode === 'function') explosion.explode();
+                this.game.grenades.push(explosion);
+                console.log("Fuel tank destroyed and exploded safely!");
+            }
         } else {
-            this.setTile(block.anchorX, block.anchorY, block.id, 'block', metadata);
+            // Ensure we update the metadata at the master tile
+            this._setSingleTile(ax, ay, block.id, 'block', metadata);
         }
     }
 
@@ -532,6 +567,42 @@ export default class TileMap {
             ctx.fillStyle = def.color || '#555';
             ctx.fillRect(-drawW/2, -drawH/2, drawW, drawH);
         }
+        ctx.restore();
+
+        // Render health bar for destructible tiles (Vehicle style)
+        if (def && def.destructible) {
+            const metadata = this.getMetadata(block.anchorX, block.anchorY);
+            const maxHealth = def.health || 10;
+            
+            // Show bar only if damaged
+            if (metadata && metadata.health !== undefined && metadata.health < maxHealth) {
+                this.renderTileHealthBar(ctx, screenX + (ew * TILE_SIZE) / 2, screenY - 15, ew * TILE_SIZE, metadata.health, maxHealth);
+            }
+        }
+    }
+
+    renderTileHealthBar(ctx, x, y, width, health, maxHealth) {
+        const barW = Math.min(width * 0.9, 100);
+        const barH = 10;
+        const barX = Math.floor(x - barW / 2);
+        const barY = Math.floor(y);
+
+        ctx.save();
+        // White border for high visibility
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
+        
+        // Black background
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+
+        // Fill
+        const healthRatio = Math.max(0, health / maxHealth);
+        if (healthRatio > 0.5) ctx.fillStyle = '#2ecc71';
+        else if (healthRatio > 0.2) ctx.fillStyle = '#f1c40f';
+        else ctx.fillStyle = '#e74c3c';
+        
+        ctx.fillRect(barX, barY, barW * healthRatio, barH);
         ctx.restore();
     }
 

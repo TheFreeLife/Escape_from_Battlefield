@@ -66,10 +66,15 @@ export default class Projectile {
                 const checkX = oldX + (this.dx * dist * (i / steps));
                 const checkY = oldY + (this.dy * dist * (i / steps));
                 
+                const tx = Math.floor(checkX / 64);
+                const ty = Math.floor(checkY / 64);
+
+                // Only hit if it's a physical collision (bottom part for 2.5D objects)
                 if (this.game.tileMap.isCollidable(checkX, checkY)) {
                     const floorId = this.game.tileMap.getTileAtWorldPos(checkX, checkY, 'floor');
-                    const block = this.game.tileMap.getBlockAt(Math.floor(checkX/64), Math.floor(checkY/64));
+                    const block = this.game.tileMap.getBlockAt(tx, ty);
                     
+                    // Don't hit water unless it's a block
                     if (block || floorId !== 'water') {
                         hitWall = true;
                         hitX = checkX;
@@ -85,6 +90,7 @@ export default class Projectile {
                 if (this.isExplosive) {
                     this.explode();
                 } else if (!this.isFlame) {
+                    // Use the exact hit coordinates
                     this.game.tileMap.damageTile(this.x, this.y, this.damage);
                 }
                 this.markedForDeletion = true;
@@ -94,7 +100,7 @@ export default class Projectile {
 
         // 2. Collision with Player
         const player = this.game.player;
-        if (player && this.owner !== player) {
+        if (player) {
             const dx = player.x - this.x;
             const dy = player.y - this.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -102,10 +108,14 @@ export default class Projectile {
             if (dist < (player.radius || 20) + this.radius) {
                 if (this.isExplosive) {
                     this.explode();
-                } else {
+                    this.markedForDeletion = true;
+                } else if (this.isFlame) {
+                    // Constant fire damage
+                    player.health -= this.damage * dt * 60; // Scale to per-second-like feel
+                } else if (this.owner !== player) {
                     player.health -= this.damage;
+                    this.markedForDeletion = true;
                 }
-                this.markedForDeletion = true;
                 return;
             }
         }

@@ -62,7 +62,14 @@ export default class Grenade {
         const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
         if (pdist < this.radius) {
             const damageMult = 1 - (pdist / this.radius);
-            p.health -= this.damage * (0.5 + 0.5 * damageMult);
+            const finalDamage = this.damage * (0.5 + 0.5 * damageMult);
+            
+            if (p.isInVehicle) {
+                // If in vehicle, player takes 30% of the explosion damage directly
+                p.health -= finalDamage * 0.3;
+            } else {
+                p.health -= finalDamage;
+            }
         }
 
         // Damage Vehicles
