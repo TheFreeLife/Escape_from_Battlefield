@@ -628,7 +628,7 @@ export default class MapEditor {
         
         const itemId = (typeof cell.item === 'string') ? cell.item : cell.item.id;
         const itemCount = (typeof cell.item === 'string') ? 1 : (cell.item.count || 1);
-        const itemTag = (typeof cell.item === 'object') ? (cell.item.tag || '') : '';
+        const itemTag = (typeof cell.item === 'object') ? (cell.item.tag || itemId) : itemId;
         
         const itemDef = this.game.assetManager.getData('items')?.find(it => it.id === itemId);
         const isWeapon = itemDef?.type === 'weapon';
@@ -643,7 +643,8 @@ export default class MapEditor {
         const countInput = document.getElementById('item-count-input');
         const tagInput = document.getElementById('item-tag');
         const itemId = (typeof cell.item === 'string') ? cell.item : cell.item.id;
-        cell.item = { id: itemId, count: parseInt(countInput.value) || 1, tag: tagInput.value.trim() };
+        const tagVal = tagInput.value.trim();
+        cell.item = { id: itemId, count: parseInt(countInput.value) || 1, tag: tagVal || itemId };
         this.closeItemSettings();
     }
 
@@ -662,7 +663,9 @@ export default class MapEditor {
         const def = tiles.find(t => t.id === cell.block);
         const modal = document.getElementById('block-settings-modal');
         
-        document.getElementById('block-tag').value = cell.metadata?.tag || '';
+        // Pre-fill tag with ID if empty
+        document.getElementById('block-tag').value = cell.metadata?.tag || cell.block;
+
         
         // Dynamic content based on block properties
         let extraInfo = '';
@@ -681,7 +684,8 @@ export default class MapEditor {
         if (!this.editingBlockPos) return;
         const cell = this.getTileAt(this.editingBlockPos.x, this.editingBlockPos.y);
         if (!cell.metadata) cell.metadata = {};
-        cell.metadata.tag = document.getElementById('block-tag').value.trim();
+        const tagVal = document.getElementById('block-tag').value.trim();
+        cell.metadata.tag = tagVal || cell.block; // Default to block ID
         this.closeBlockSettings();
     }
 
@@ -709,8 +713,8 @@ export default class MapEditor {
         const modal = document.getElementById('unit-settings-modal');
         modal.classList.remove('hidden');
         
-        // Update values
-        document.getElementById('unit-tag').value = cell.unit.tag || '';
+        // Pre-fill tag with current tag or ID as default
+        document.getElementById('unit-tag').value = cell.unit.tag || cell.unit.id;
         document.getElementById('unit-command').value = cell.unit.command || 'GUARD';
         document.getElementById('unit-patrol-radius').value = cell.unit.patrolRadius || 250;
         document.getElementById('unit-health-mult').value = cell.unit.healthMult || 1.0;
@@ -732,7 +736,8 @@ export default class MapEditor {
         if (!this.editingUnitPos) return;
         const cell = this.getTileAt(this.editingUnitPos.x, this.editingUnitPos.y);
         if (cell.unit) {
-            cell.unit.tag = document.getElementById('unit-tag').value.trim();
+            const tagVal = document.getElementById('unit-tag').value.trim();
+            cell.unit.tag = tagVal || cell.unit.id; // Default to unit ID
             cell.unit.command = document.getElementById('unit-command').value;
             cell.unit.patrolRadius = parseInt(document.getElementById('unit-patrol-radius').value);
             cell.unit.healthMult = parseFloat(document.getElementById('unit-health-mult').value);
