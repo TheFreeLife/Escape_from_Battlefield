@@ -270,91 +270,231 @@ body, html {
 #map-logic-modal {
     position: fixed;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: rgba(20, 20, 20, 0.98);
+    background: rgba(15, 15, 15, 0.98);
     border: 2px solid #9b59b6;
-    padding: 30px;
+    padding: 25px;
     z-index: 1100;
     color: white;
-    border-radius: 12px;
+    border-radius: 15px;
     box-shadow: 0 0 100px rgba(0,0,0,1);
+    width: 90vw;
+    height: 85vh;
+    max-width: 1400px;
+    display: flex;
+    flex-direction: column;
     pointer-events: auto;
+    box-sizing: border-box;
+}
+
+#map-logic-modal h3 {
+    margin: 0 0 15px 0;
+    color: #9b59b6;
+    font-size: 24px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+    flex-shrink: 0;
+}
+
+#map-logic-modal .modal-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0; /* Clear default modal gap */
 }
 
 .logic-editor-layout {
     display: grid;
-    grid-template-columns: 250px 1fr;
+    grid-template-columns: 350px 1fr;
     gap: 20px;
-    height: 500px;
-    margin: 20px 0;
+    flex: 1; /* Stretch to fill all available space */
+    min-height: 0; /* Essential for flex-scrolling */
+    margin: 15px 0;
+    overflow: hidden;
 }
 
-.logic-sidebar {
-    background: #111;
-    padding: 15px;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-}
-
-.logic-main-panel {
-    background: #1a1a1a;
-    padding: 20px;
-    border-radius: 8px;
+.logic-sidebar, .logic-main-panel {
+    height: 100%;
     overflow-y: auto;
+    box-sizing: border-box;
 }
 
 #event-list {
     flex-grow: 1;
     overflow-y: auto;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .event-item {
-    padding: 10px;
-    background: #222;
+    padding: 15px;
+    background: #1a1a1a;
     border: 1px solid #333;
-    margin-bottom: 5px;
     cursor: pointer;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: bold;
+    transition: all 0.2s;
+    color: #888;
+    border-left: 4px solid transparent;
+}
+
+.event-item:hover { 
+    background: #222; 
+    border-color: #555; 
+    color: #ccc;
+}
+
+.event-item.active { 
+    border-color: #f1c40f; 
+    background: #2c1a33; 
+    box-shadow: inset 0 0 15px rgba(155, 89, 182, 0.3);
+    border-left: 6px solid #f1c40f;
+    color: #f1c40f;
+}
+
+.logic-main-panel {
+    background: #111;
+    padding: 25px;
+    border-radius: 10px;
+    border: 1px solid #222;
+    overflow-y: auto;
+    display: block;
+}
+
+.logic-section {
+    background: #1a1a1a;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    border: 1px solid #333;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.logic-section h5 { margin: 0 0 15px 0; color: #9b59b6; text-transform: uppercase; font-size: 14px; letter-spacing: 1px; }
+
+#event-name {
+    font-size: 20px;
+    padding: 10px;
+    background: #000;
+    border: 1px solid #444;
+    color: white;
+    width: 100%;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+#event-trigger-type, .action-type-select, select, input {
+    background: #222;
+    color: white;
+    border: 1px solid #444;
+    padding: 8px 12px;
     border-radius: 4px;
     font-size: 14px;
 }
 
-.event-item:hover { background: #333; }
-.event-item.active { border-color: #9b59b6; background: #2c1a33; }
-
-.logic-section {
-    background: #222;
-    padding: 15px;
-    margin-bottom: 15px;
-    border-radius: 6px;
+.action-item {
+    border-left: 4px solid #3498db !important;
+    position: relative;
+    padding: 15px 20px !important;
 }
 
-.logic-section h5 { margin: 0 0 10px 0; color: #9b59b6; text-transform: uppercase; font-size: 12px; }
+.action-params {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+}
+
+.action-params label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #bbb;
+    white-space: nowrap;
+}
+
+.action-params input[type="number"] { width: 60px; }
+.action-params input[type="text"] { flex-grow: 1; min-width: 200px; }
+.action-params select { min-width: 120px; }
 
 #add-event-btn, #add-action-btn {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     background: #9b59b6;
     border: none;
     color: white;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
 }
+
+#add-event-btn:hover, #add-action-btn:hover { background: #8e44ad; }
 
 .modal-buttons {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
+    gap: 15px;
+    padding-top: 20px;
+    border-top: 1px solid #333;
+    flex-shrink: 0;
+    background: inherit;
 }
 
 .modal-buttons button {
-    padding: 10px 20px;
+    padding: 12px 30px;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
     color: white;
     font-weight: bold;
+    font-size: 15px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
-#logic-settings-close { background: #7f8c8d; }
+#logic-settings-save {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.2);
+}
+
+#logic-settings-save:hover {
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+}
+
+#logic-settings-close {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+    border: 1px solid #444;
+}
+
+#logic-settings-close:hover {
+    background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
+    transform: translateY(-2px);
+    color: #fff;
+}
+
+#delete-event-btn {
+    padding: 12px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid #e74c3c;
+    background: #111; /* Strong contrast background */
+    color: #fff; /* Solid white text for best visibility */
+    transition: all 0.2s;
+    margin-top: 25px;
+    width: 100%;
+}
+
+#delete-event-btn:hover {
+    background: #e74c3c;
+    color: #fff;
+    box-shadow: 0 0 15px rgba(231, 76, 60, 0.4);
+}

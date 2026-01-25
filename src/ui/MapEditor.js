@@ -762,7 +762,10 @@ export default class MapEditor {
             const div = document.createElement('div');
             div.className = `event-item ${this.selectedEventIndex === index ? 'active' : ''}`;
             div.innerText = evt.name || `이벤트 #${index + 1}`;
-            div.onclick = () => this.selectEvent(index);
+            div.addEventListener('click', () => {
+                console.log("Event selected:", index);
+                this.selectEvent(index);
+            });
             list.appendChild(div);
         });
     }
