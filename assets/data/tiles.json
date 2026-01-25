@@ -154,6 +154,7 @@
         "onlyBottomCollision": true,
         "destructible": true,
         "health": 1000,
+        "rotatable": false,
         "blocksVision": true,
         "color": "#ecf0f1",
         "svg": "<g><rect x='4' y='120' width='120' height='68' rx='10' fill='#bdc3c7'/><rect x='4' y='40' width='120' height='100' fill='#ecf0f1'/><ellipse cx='64' cy='40' rx='60' ry='25' fill='#fff' stroke='#bdc3c7' stroke-width='2'/><ellipse cx='64' cy='140' rx='60' ry='25' fill='#ecf0f1' stroke='#bdc3c7' stroke-width='2'/><rect x='24' y='80' width='80' height='25' rx='5' fill='#e74c3c'/><text x='64' y='98' font-family='Arial' font-size='16' font-weight='bold' text-anchor='middle' fill='white'>FUEL</text><path d='M4 40v100 M124 40v100' stroke='#bdc3c7' stroke-width='2'/></g>"
@@ -173,12 +174,14 @@
         "id": "tactical_table",
         "name": "전술 지도 테이블",
         "layer": "block",
-        "width": 2,
-        "height": 1,
+        "width": 3,
+        "height": 2,
         "collidable": true,
+        "onlyBottomCollision": true,
+        "rotatable": false,
         "blocksVision": false,
         "color": "#2ecc71",
-        "svg": "<rect x='5' y='10' width='118' height='44' fill='#34495e' stroke='#2c3e50' stroke-width='4'/><rect x='15' y='15' width='98' height='34' fill='#27ae60' opacity='0.8'/><circle cx='40' cy='30' r='3' fill='red'/><circle cx='80' cy='35' r='3' fill='blue'/><path d='M15 15l98 34' stroke='#fff' stroke-width='1' opacity='0.3'/>"
+        "svg": "<g><rect x='10' y='100' width='12' height='20' fill='#2c3e50'/><rect x='170' y='100' width='12' height='20' fill='#2c3e50'/><rect x='10' y='40' width='12' height='20' fill='#34495e'/><rect x='170' y='40' width='12' height='20' fill='#34495e'/><rect x='4' y='10' width='184' height='90' rx='4' fill='#3e2723' stroke='#2c1b0e' stroke-width='4'/><rect x='12' y='18' width='168' height='74' fill='#27ae60'/><path d='M12 36h168M12 54h168M12 72h168M40 18v74M68 18v74M96 18v74M124 18v74M152 18v74' stroke='#1e8449' stroke-width='1' opacity='0.5'/><circle cx='40' cy='40' r='6' fill='#e74c3c'/><circle cx='50' cy='45' r='4' fill='#e74c3c' opacity='0.6'/><rect x='130' y='60' width='10' height='10' fill='#3498db'/><path d='M30 30l30 30M140 80l25-25' stroke='#fff' stroke-width='2' opacity='0.4'/><rect x='155' y='25' width='20' height='12' rx='2' fill='#95a5a6'/><circle cx='165' cy='31' r='3' fill='#f1c40f'/><text x='96' y='85' font-family='Arial' font-size='10' fill='#1e8449' opacity='0.8'>CLASSIFIED</text></g>"
     },
     {
         "id": "jersey_barrier",
@@ -231,9 +234,13 @@
         "id": "wind_sock",
         "name": "풍향계 (Windsock)",
         "layer": "block",
-        "collidable": false,
+        "width": 1,
+        "height": 3,
+        "collidable": true,
+        "onlyBottomCollision": true,
+        "rotatable": false,
         "color": "#e67e22",
-        "svg": "<rect x='30' y='30' width='4' height='34' fill='#7f8c8d'/><path d='M32 10 L60 15 L60 25 L32 30 Z' fill='#e67e22' stroke='#d35400' stroke-width='2'/>"
+        "svg": "<g transform='translate(-32, 0)'><rect x='56' y='160' width='16' height='32' fill='#2c3e50'/><rect x='60' y='20' width='8' height='140' fill='#bdc3c7'/><path d='M64 20 L120 35 L120 65 L64 80 Z' fill='#e67e22' stroke='#d35400' stroke-width='3'/><path d='M80 25v50M100 30v40' stroke='white' stroke-width='2' opacity='0.5'/><circle cx='64' cy='20' r='4' fill='#7f8c8d'/></g>"
     },
     {
         "id": "wrecked_car",
@@ -268,11 +275,15 @@
         "id": "city_tree",
         "name": "가로수",
         "layer": "block",
+        "width": 2,
+        "height": 3,
         "collidable": true,
+        "onlyBottomCollision": true,
+        "rotatable": false,
         "blocksVision": false,
         "isOverlay": true,
         "color": "#27ae60",
-        "svg": "<rect x='28' y='40' width='8' height='24' fill='#5d4037'/><circle cx='32' cy='25' r='22' fill='#27ae60'/><circle cx='25' cy='20' r='15' fill='#2ecc71' opacity='0.6'/>"
+        "svg": "<g><rect x='56' y='140' width='16' height='40' fill='#5d4037'/><circle cx='64' cy='70' r='60' fill='#27ae60'/><circle cx='40' cy='50' r='40' fill='#2ecc71' opacity='0.6'/><circle cx='80' cy='60' r='35' fill='#1e8449' opacity='0.4'/></g>"
     },
     {
         "id": "loot_box",
