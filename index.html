@@ -8,6 +8,7 @@
 </head>
 <body>
     <div id="ui-layer">
+        <div id="game-notifications" class="hidden"></div>
         <div id="main-menu">
             <h1>Escape from Battlefield</h1>
             <div class="menu-buttons">
@@ -47,9 +48,10 @@
 
         <div id="editor-ui" class="hidden">
             <!-- Unit Settings Modal -->
-            <div id="unit-settings-modal" class="hidden">
+            <div id="unit-settings-modal" class="modal hidden">
                 <div class="modal-content">
                     <h4>유닛 설정</h4>
+                    <label>식별명(Tag): <input type="text" id="unit-tag" placeholder="예: boss_01, guard_door"></label>
                     <label>상태: 
                         <select id="unit-command">
                             <option value="GUARD">경계 (Guard)</option>
@@ -70,7 +72,7 @@
             </div>
 
             <!-- Loot Box Settings Modal -->
-            <div id="loot-box-settings-modal" class="hidden">
+            <div id="loot-box-settings-modal" class="modal hidden">
                 <div class="modal-content">
                     <h4>전리품 상자 설정</h4>
                     <div id="loot-table-editor">
@@ -91,14 +93,89 @@
             </div>
 
             <!-- Item Settings Modal -->
-            <div id="item-settings-modal" class="hidden">
+            <div id="item-settings-modal" class="modal hidden">
                 <div class="modal-content">
                     <h4>아이템 설정</h4>
+                    <label>식별명(Tag): <input type="text" id="item-tag" placeholder="예: quest_item"></label>
                     <label>수량: <input type="number" id="item-count-input" value="1" min="1" max="999"></label>
                     <div class="modal-buttons">
                         <button id="item-settings-save">저장</button>
                         <button id="item-settings-cancel">취소</button>
                         <button id="item-settings-delete" style="background-color: #e74c3c;">삭제</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generic Block Settings Modal -->
+            <div id="block-settings-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h4>🧱 블록 설정</h4>
+                    <label>식별명(Tag): <input type="text" id="block-tag" placeholder="예: entrance_door, target_tank"></label>
+                    <p style="font-size: 11px; color: #aaa;">이 식별명은 이벤트 로직에서 대상을 지정할 때 사용됩니다.</p>
+                    <div class="modal-buttons">
+                        <button id="block-settings-save" style="background-color: #27ae60;">저장</button>
+                        <button id="block-settings-cancel">취소</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Settings Modal -->
+            <div id="location-settings-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h4>📍 로케이션 설정</h4>
+                    <label>영역 이름: <input type="text" id="location-name" placeholder="예: 무기고, 탈출구"></label>
+                    <div class="modal-buttons">
+                        <button id="location-settings-save" style="background-color: #27ae60;">저장</button>
+                        <button id="location-settings-cancel">취소</button>
+                        <button id="location-settings-delete" style="background-color: #e74c3c;">영역 삭제</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map Logic / Event Editor Modal -->
+            <div id="map-logic-modal" class="modal hidden">
+                <div class="modal-content" style="width: 80%; max-width: 900px;">
+                    <h3>🗺️ 맵 시스템 및 이벤트 설계</h3>
+                    <div class="logic-editor-layout">
+                        <div class="logic-sidebar">
+                            <h4>이벤트 목록</h4>
+                            <div id="event-list">
+                                <!-- Events will be listed here -->
+                            </div>
+                            <button id="add-event-btn">+ 새 이벤트 추가</button>
+                        </div>
+                        <div class="logic-main-panel">
+                            <div id="event-editor-details" class="hidden">
+                                <h4>이벤트 편집</h4>
+                                <label>이벤트 이름: <input type="text" id="event-name" placeholder="예: 적 기습"></label>
+                                
+                                <div class="logic-section">
+                                    <h5>Trigger (발생 조건)</h5>
+                                    <select id="event-trigger-type">
+                                        <option value="ON_START">게임 시작 시</option>
+                                        <option value="ON_ENTER_AREA">영역 진입 시</option>
+                                        <option value="ON_ALL_ENEMIES_DEAD">모든 적 처치 시</option>
+                                        <option value="ON_VARIABLE_MATCH">변수 조건 충족 시</option>
+                                    </select>
+                                    <div id="trigger-params"></div>
+                                </div>
+
+                                <div class="logic-section">
+                                    <h5>Actions (실행 동작)</h5>
+                                    <div id="event-actions-list"></div>
+                                    <button id="add-action-btn">+ 동작 추가</button>
+                                </div>
+
+                                <button id="delete-event-btn" style="background-color: #e74c3c; width: 100%; margin-top: 20px;">이 이벤트 삭제</button>
+                            </div>
+                            <div id="logic-empty-state">
+                                <p>이벤트를 선택하거나 새로 만드세요.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-buttons">
+                        <button id="logic-settings-save" style="background-color: #27ae60;">전체 시스템 저장</button>
+                        <button id="logic-settings-close">닫기</button>
                     </div>
                 </div>
             </div>
@@ -124,6 +201,8 @@
                     <button class="layer-btn" data-layer="block">Block</button>
                     <button class="layer-btn" data-layer="units">Units</button>
                     <button class="layer-btn" data-layer="items">Items</button>
+                    <button class="layer-btn" data-layer="location" style="background-color: #e67e22; color: white;">Location</button>
+                    <button class="layer-btn" data-layer="logic" style="background-color: #9b59b6; color: white;">Logic</button>
                 </div>
                 <h3>Tile Palette</h3>
                 <div id="tile-palette"></div>

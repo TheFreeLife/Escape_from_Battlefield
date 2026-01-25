@@ -48,6 +48,10 @@ export default class Game {
         this.deltaTime = 1 / 60;
         this.gameState = 'MENU';
         this.activeMap = null;
+        this.activeLogic = { variables: {}, events: [] };
+        this.activeLocations = [];
+        this.processedEvents = new Set(); // Track one-time events
+        
         this.isTestMode = false;
         this.isFirstLoad = false;
 
@@ -115,8 +119,18 @@ export default class Game {
         document.getElementById('map-selection-menu').classList.add('hidden');
     }
 
-    startTestMode(layout) {
-        this.activeMap = layout;
+    startTestMode(rawData) {
+        if (Array.isArray(rawData)) {
+            this.activeMap = rawData;
+            this.activeLogic = { variables: {}, events: [] };
+            this.activeLocations = [];
+        } else {
+            this.activeMap = rawData.layout;
+            this.activeLogic = rawData.logic || { variables: {}, events: [] };
+            this.activeLocations = rawData.locations || [];
+        }
+        
+        this.processedEvents.clear();
         this.isTestMode = true;
         this.gameState = 'PLAYING';
         document.getElementById('editor-ui').classList.add('hidden');
@@ -125,8 +139,21 @@ export default class Game {
     }
 
     startGame(mapName, isDefault = false) {
-        this.activeMap = isDefault ? this.defaultMaps[mapName] : this.customMaps[mapName];
-        if (!this.activeMap) return;
+        const rawData = isDefault ? this.defaultMaps[mapName] : this.customMaps[mapName];
+        if (!rawData) return;
+
+        // Support both old (just array) and new (object with layout/logic) formats
+        if (Array.isArray(rawData)) {
+            this.activeMap = rawData;
+            this.activeLogic = { variables: {}, events: [] };
+            this.activeLocations = [];
+        } else {
+            this.activeMap = rawData.layout;
+            this.activeLogic = rawData.logic || { variables: {}, events: [] };
+            this.activeLocations = rawData.locations || [];
+        }
+
+        this.processedEvents.clear();
         this.isTestMode = false;
         this.gameState = 'PLAYING';
         document.getElementById('map-selection-menu').classList.add('hidden');
@@ -417,6 +444,7 @@ export default class Game {
             this.player.update(dt);
             this.camera.x = this.player.x - this.camera.width / 2;
             this.camera.y = this.player.y - this.camera.height / 2;
+            this.processEvents(); // Process map logic
         }
 
         [this.projectiles, this.enemies, this.loots, this.grenades, this.vehicles, this.machineGuns].forEach(l => {
@@ -466,6 +494,81 @@ export default class Game {
         const d = Math.sqrt(dSq), st = 20, sts = d / st;
         for (let i = 1; i < sts; i++) if (this.tileMap.blocksVision(this.player.x + (dx/sts)*i, this.player.y + (dy/sts)*i)) return false;
         return true;
+    }
+
+    // --- MAP LOGIC SYSTEM ---
+    processEvents() {
+        if (!this.activeLogic || !this.activeLogic.events) return;
+
+        this.activeLogic.events.forEach((evt, index) => {
+            // Skip already processed non-repeatable events (for now all are one-time)
+            if (this.processedEvents.has(index)) return;
+
+            let triggered = false;
+            const type = evt.trigger.type;
+            const params = evt.trigger.params;
+
+            if (type === 'ON_START') {
+                triggered = true;
+            } else if (type === 'ON_ENTER_AREA') {
+                const loc = this.activeLocations.find(l => l.id === params.locationId);
+                if (loc) {
+                    const px = this.player.x / 64;
+                    const py = this.player.y / 64;
+                    if (px >= loc.x && px < loc.x + loc.w && py >= loc.y && py < loc.y + loc.h) {
+                        triggered = true;
+                    }
+                }
+            }
+
+            if (triggered) {
+                console.log(`Event triggered: ${evt.name}`);
+                evt.actions.forEach(action => this.executeAction(action));
+                this.processedEvents.add(index); // Mark as done
+            }
+        });
+    }
+
+    executeAction(action) {
+        const type = action.type;
+        const params = action.params;
+
+        // Boundary Check for spawn actions (Tile based)
+        if (type === 'SPAWN_UNIT' || type === 'SPAWN_ITEM') {
+            if (params.x < 0 || params.x >= this.mapW || params.y < 0 || params.y >= this.mapH) {
+                console.warn(`Action ignored: Spawn tile (${params.x}, ${params.y}) is outside the map bounds.`);
+                return;
+            }
+        }
+
+        if (type === 'SPAWN_UNIT') {
+            const worldX = (params.x + 0.5) * 64;
+            const worldY = (params.y + 0.5) * 64;
+            this.enemies.push(new Enemy(this, worldX, worldY, params.unitId));
+            console.log(`Action: Spawned ${params.unitId} at tile ${params.x}, ${params.y}`);
+        } else if (type === 'SPAWN_ITEM') {
+            const worldX = (params.x + 0.5) * 64;
+            const worldY = (params.y + 0.5) * 64;
+            this.loots.push(new Loot(this, worldX, worldY, params.itemId, params.count || 1));
+            console.log(`Action: Spawned ${params.itemId} (x${params.count}) at tile ${params.x}, ${params.y}`);
+        } else if (type === 'SHOW_MESSAGE') {
+            this.showNotification(params.text);
+        }
+    }
+
+    showNotification(text, duration = 3000) {
+        const container = document.getElementById('game-notifications');
+        if (!container) return;
+
+        container.innerText = text;
+        container.classList.remove('hidden');
+
+        // Clear existing timeout if any
+        if (this.notificationTimeout) clearTimeout(this.notificationTimeout);
+
+        this.notificationTimeout = setTimeout(() => {
+            container.classList.add('hidden');
+        }, duration);
     }
 
     updateMinimapCache() {

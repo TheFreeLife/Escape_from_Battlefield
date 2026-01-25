@@ -240,3 +240,121 @@ body, html {
 }
 
 .controls-hint { font-size: 14px; color: #aaa; line-height: 1.6; }
+
+/* --- In-game Notifications --- */
+#game-notifications {
+    position: fixed;
+    top: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    color: #f1c40f;
+    padding: 15px 40px;
+    border: 2px solid #f1c40f;
+    border-radius: 8px;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(241, 196, 15, 0.3);
+    pointer-events: none;
+    z-index: 2000;
+    animation: notify-bounce 0.5s ease-out;
+}
+
+@keyframes notify-bounce {
+    0% { top: 10%; opacity: 0; }
+    100% { top: 15%; opacity: 1; }
+}
+
+/* --- Logic Editor --- */
+#map-logic-modal {
+    position: fixed;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(20, 20, 20, 0.98);
+    border: 2px solid #9b59b6;
+    padding: 30px;
+    z-index: 1100;
+    color: white;
+    border-radius: 12px;
+    box-shadow: 0 0 100px rgba(0,0,0,1);
+    pointer-events: auto;
+}
+
+.logic-editor-layout {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 20px;
+    height: 500px;
+    margin: 20px 0;
+}
+
+.logic-sidebar {
+    background: #111;
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+.logic-main-panel {
+    background: #1a1a1a;
+    padding: 20px;
+    border-radius: 8px;
+    overflow-y: auto;
+}
+
+#event-list {
+    flex-grow: 1;
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+
+.event-item {
+    padding: 10px;
+    background: #222;
+    border: 1px solid #333;
+    margin-bottom: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.event-item:hover { background: #333; }
+.event-item.active { border-color: #9b59b6; background: #2c1a33; }
+
+.logic-section {
+    background: #222;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+}
+
+.logic-section h5 { margin: 0 0 10px 0; color: #9b59b6; text-transform: uppercase; font-size: 12px; }
+
+#add-event-btn, #add-action-btn {
+    width: 100%;
+    padding: 10px;
+    background: #9b59b6;
+    border: none;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.modal-buttons button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    color: white;
+    font-weight: bold;
+}
+
+#logic-settings-close { background: #7f8c8d; }

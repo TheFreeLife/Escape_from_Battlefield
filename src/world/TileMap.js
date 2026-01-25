@@ -218,13 +218,10 @@ export default class TileMap {
                     masterX = parseInt(parts[0]);
                     masterY = parseInt(parts[1]);
                     blockId = this.getTile(masterX, masterY, 'block');
-                    // Ensure the master block actually exists and is not occupied_space itself
+                    // CRITICAL: Ensure the master block actually exists and is NOT occupied_space or null
                     if (!blockId || blockId === 'occupied_space') return null;
                 } else return null;
             } else {
-                // Critical: If we hit occupied_space but don't know the master, 
-                // we should at least try to find a nearby master if it's a known multi-tile object pattern.
-                // For now, return null as it indicates corrupted map data.
                 return null;
             }
         }
@@ -400,7 +397,7 @@ export default class TileMap {
         // 1. 맵에서 블록 제거 (무한 루프 방지를 위해 우선 수행)
         for (let oy = 0; oy < block.height; oy++) {
             for (let ox = 0; ox < block.width; ox++) {
-                this._setSingleTile(ax + ox, ay + oy, null, 'block');
+                this._setSingleTile(ax + ox, ay + oy, null, 'block', null);
             }
         }
 

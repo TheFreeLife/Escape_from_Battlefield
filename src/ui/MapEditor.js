@@ -13,6 +13,13 @@ export default class MapEditor {
         this.currentRotation = 0; // 0, 90, 180, 270 degrees
         this.rectStart = null;
         this.isDrawing = false;
+        this.mapLogic = {
+            variables: {},
+            events: []
+        };
+        this.locations = []; // [{id, name, x, y, w, h}]
+        this.selectedEventIndex = -1;
+        this.editingLocationIndex = -1;
         this.init();
     }
 
@@ -57,6 +64,10 @@ export default class MapEditor {
 
         document.querySelectorAll('.layer-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                if (btn.dataset.layer === 'logic') {
+                    this.openLogicModal();
+                    return;
+                }
                 document.querySelectorAll('.layer-btn').forEach(el => el.classList.remove('active'));
                 btn.classList.add('active');
                 this.activeLayer = btn.dataset.layer;
@@ -71,10 +82,27 @@ export default class MapEditor {
         document.getElementById('loot-settings-save').addEventListener('click', () => this.saveLootSettings());
         document.getElementById('loot-settings-cancel').addEventListener('click', () => this.closeLootSettings());
 
+        // Map Logic Modal Events
+        document.getElementById('logic-settings-close').addEventListener('click', () => this.closeLogicModal());
+        document.getElementById('add-event-btn').addEventListener('click', () => this.addNewEvent());
+        document.getElementById('logic-settings-save').addEventListener('click', () => this.saveLogicData());
+        document.getElementById('event-trigger-type').addEventListener('change', (e) => this.renderTriggerParams(e.target.value));
+        document.getElementById('delete-event-btn').addEventListener('click', () => this.deleteSelectedEvent());
+        document.getElementById('add-action-btn').addEventListener('click', () => this.addNewAction());
+
+        // Location Settings
+        document.getElementById('location-settings-save').addEventListener('click', () => this.saveLocationSettings());
+        document.getElementById('location-settings-cancel').addEventListener('click', () => this.closeLocationSettings());
+        document.getElementById('location-settings-delete').addEventListener('click', () => this.deleteLocation());
+
         // Item Settings
         document.getElementById('item-settings-save').addEventListener('click', () => this.saveItemSettings());
         document.getElementById('item-settings-cancel').addEventListener('click', () => this.closeItemSettings());
         document.getElementById('item-settings-delete').addEventListener('click', () => this.deleteItem());
+
+        // Generic Block Settings
+        document.getElementById('block-settings-save').addEventListener('click', () => this.saveBlockSettings());
+        document.getElementById('block-settings-cancel').addEventListener('click', () => this.closeBlockSettings());
 
         this.updatePaletteFilter();
         document.getElementById('export-btn').addEventListener('click', () => this.exportArray());
@@ -583,27 +611,55 @@ export default class MapEditor {
         this.editingItemPos = { x: gx, y: gy };
         const modal = document.getElementById('item-settings-modal');
         const countInput = document.getElementById('item-count-input');
+        const tagInput = document.getElementById('item-tag');
         modal.classList.remove('hidden');
+        
         const itemId = (typeof cell.item === 'string') ? cell.item : cell.item.id;
         const itemCount = (typeof cell.item === 'string') ? 1 : (cell.item.count || 1);
+        const itemTag = (typeof cell.item === 'object') ? (cell.item.tag || '') : '';
+        
         const itemDef = this.game.assetManager.getData('items')?.find(it => it.id === itemId);
         const isWeapon = itemDef?.type === 'weapon';
         countInput.value = isWeapon ? 1 : itemCount;
         countInput.disabled = isWeapon; 
+        if (tagInput) tagInput.value = itemTag;
     }
 
     saveItemSettings() {
         if (!this.editingItemPos) return;
         const cell = this.getTileAt(this.editingItemPos.x, this.editingItemPos.y);
         const countInput = document.getElementById('item-count-input');
+        const tagInput = document.getElementById('item-tag');
         const itemId = (typeof cell.item === 'string') ? cell.item : cell.item.id;
-        cell.item = { id: itemId, count: parseInt(countInput.value) || 1 };
+        cell.item = { id: itemId, count: parseInt(countInput.value) || 1, tag: tagInput.value.trim() };
         this.closeItemSettings();
     }
 
     closeItemSettings() {
         document.getElementById('item-settings-modal').classList.add('hidden');
         this.editingItemPos = null;
+    }
+
+    // --- GENERIC BLOCK SETTINGS ---
+    openBlockSettings(gx, gy) {
+        const cell = this.getTileAt(gx, gy);
+        if (!cell.block || cell.block === 'occupied_space') return;
+        this.editingBlockPos = { x: gx, y: gy };
+        document.getElementById('block-tag').value = cell.metadata?.tag || '';
+        document.getElementById('block-settings-modal').classList.remove('hidden');
+    }
+
+    saveBlockSettings() {
+        if (!this.editingBlockPos) return;
+        const cell = this.getTileAt(this.editingBlockPos.x, this.editingBlockPos.y);
+        if (!cell.metadata) cell.metadata = {};
+        cell.metadata.tag = document.getElementById('block-tag').value.trim();
+        this.closeBlockSettings();
+    }
+
+    closeBlockSettings() {
+        document.getElementById('block-settings-modal').classList.add('hidden');
+        this.editingBlockPos = null;
     }
 
     deleteItem() {
@@ -621,6 +677,7 @@ export default class MapEditor {
         if (!cell.unit) return;
         this.editingUnitPos = { x: gx, y: gy };
         document.getElementById('unit-settings-modal').classList.remove('hidden');
+        document.getElementById('unit-tag').value = cell.unit.tag || '';
         document.getElementById('unit-command').value = cell.unit.command || 'GUARD';
         document.getElementById('unit-patrol-radius').value = cell.unit.patrolRadius || 250;
         document.getElementById('unit-health-mult').value = cell.unit.healthMult || 1.0;
@@ -632,6 +689,7 @@ export default class MapEditor {
         if (!this.editingUnitPos) return;
         const cell = this.getTileAt(this.editingUnitPos.x, this.editingUnitPos.y);
         if (cell.unit) {
+            cell.unit.tag = document.getElementById('unit-tag').value.trim();
             cell.unit.command = document.getElementById('unit-command').value;
             cell.unit.patrolRadius = parseInt(document.getElementById('unit-patrol-radius').value);
             cell.unit.healthMult = parseFloat(document.getElementById('unit-health-mult').value);
@@ -644,30 +702,285 @@ export default class MapEditor {
     closeUnitSettings() { document.getElementById('unit-settings-modal').classList.add('hidden'); this.editingUnitPos = null; }
     deleteUnit() { if (!this.editingUnitPos) return; this.setTileAt(this.editingUnitPos.x, this.editingUnitPos.y, null, 'units'); this.closeUnitSettings(); }
 
+    // --- MAP LOGIC SYSTEM ---
+    openLogicModal() {
+        document.getElementById('map-logic-modal').classList.remove('hidden');
+        this.renderEventList();
+    }
+
+    closeLogicModal() {
+        document.getElementById('map-logic-modal').classList.add('hidden');
+    }
+
+    renderEventList() {
+        const list = document.getElementById('event-list');
+        list.innerHTML = '';
+        this.mapLogic.events.forEach((evt, index) => {
+            const div = document.createElement('div');
+            div.className = `event-item ${this.selectedEventIndex === index ? 'active' : ''}`;
+            div.innerText = evt.name || `이벤트 #${index + 1}`;
+            div.onclick = () => this.selectEvent(index);
+            list.appendChild(div);
+        });
+    }
+
+    addNewEvent() {
+        const newEvent = {
+            name: "새 이벤트",
+            trigger: { type: "ON_START", params: {} },
+            conditions: [],
+            actions: []
+        };
+        this.mapLogic.events.push(newEvent);
+        this.selectedEventIndex = this.mapLogic.events.length - 1;
+        this.renderEventList();
+        this.renderEventEditor();
+    }
+
+    deleteSelectedEvent() {
+        if (this.selectedEventIndex === -1) return;
+        if (confirm("정말 이 이벤트를 삭제하시겠습니까?")) {
+            this.mapLogic.events.splice(this.selectedEventIndex, 1);
+            this.selectedEventIndex = -1;
+            this.renderEventList();
+            this.renderEventEditor();
+        }
+    }
+
+    selectEvent(index) {
+        this.selectedEventIndex = index;
+        this.renderEventList();
+        this.renderEventEditor();
+    }
+
+    renderEventEditor() {
+        const details = document.getElementById('event-editor-details');
+        const empty = document.getElementById('logic-empty-state');
+        
+        if (this.selectedEventIndex === -1) {
+            details.classList.add('hidden');
+            empty.classList.remove('hidden');
+            return;
+        }
+
+        details.classList.remove('hidden');
+        empty.classList.add('hidden');
+
+        const evt = this.mapLogic.events[this.selectedEventIndex];
+        document.getElementById('event-name').value = evt.name;
+        document.getElementById('event-trigger-type').value = evt.trigger.type;
+        this.renderTriggerParams(evt.trigger.type, evt.trigger.params);
+        this.renderEventActions();
+    }
+
+    renderTriggerParams(type, currentParams = {}) {
+        // ... (previous logic for ON_ENTER_AREA)
+        const container = document.getElementById('trigger-params');
+        container.innerHTML = '';
+        container.style.marginTop = '10px';
+
+        if (type === 'ON_ENTER_AREA') {
+            const label = document.createElement('label');
+            label.innerText = '대상 영역 선택: ';
+            const select = document.createElement('select');
+            select.id = 'param-trigger-location-id';
+            
+            if (this.locations.length === 0) {
+                const opt = document.createElement('option');
+                opt.innerText = '-- 먼저 Location을 만드세요 --';
+                select.appendChild(opt);
+            } else {
+                this.locations.forEach(loc => {
+                    const opt = document.createElement('option');
+                    opt.value = loc.id;
+                    opt.innerText = loc.name;
+                    if (currentParams.locationId === loc.id) opt.selected = true;
+                    select.appendChild(opt);
+                });
+            }
+            container.appendChild(label);
+            container.appendChild(select);
+        }
+    }
+
+    addNewAction() {
+        if (this.selectedEventIndex === -1) return;
+        const newAction = {
+            type: "SPAWN_UNIT",
+            params: { unitId: "soldier", x: 0, y: 0 }
+        };
+        this.mapLogic.events[this.selectedEventIndex].actions.push(newAction);
+        this.renderEventActions();
+    }
+
+    renderEventActions() {
+        const container = document.getElementById('event-actions-list');
+        container.innerHTML = '';
+        const evt = this.mapLogic.events[this.selectedEventIndex];
+
+        evt.actions.forEach((action, index) => {
+            const div = document.createElement('div');
+            div.className = 'logic-section action-item';
+            div.style.borderLeft = '3px solid #3498db';
+            
+            let html = `
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <select class="action-type-select" data-index="${index}">
+                        <option value="SPAWN_UNIT" ${action.type === 'SPAWN_UNIT' ? 'selected' : ''}>유닛 소환</option>
+                        <option value="SPAWN_ITEM" ${action.type === 'SPAWN_ITEM' ? 'selected' : ''}>아이템 소환</option>
+                        <option value="SHOW_MESSAGE" ${action.type === 'SHOW_MESSAGE' ? 'selected' : ''}>메시지 표시</option>
+                    </select>
+                    <button class="remove-action-btn" data-index="${index}" style="background:#e74c3c; padding:2px 8px;">×</button>
+                </div>
+                <div class="action-params" data-index="${index}">
+            `;
+
+            if (action.type === 'SPAWN_UNIT') {
+                const enemies = this.game.assetManager.getData('enemies') || [];
+                let enemyOptions = enemies.map(e => `<option value="${e.id}" ${action.params.unitId === e.id ? 'selected' : ''}>${e.name}</option>`).join('');
+                html += `
+                    <label>유닛: <select class="param-unit-id">${enemyOptions}</select></label><br>
+                    <label>타일 X: <input type="number" class="param-x" value="${action.params.x || 0}" style="width:60px;"></label>
+                    <label> Y: <input type="number" class="param-y" value="${action.params.y || 0}" style="width:60px;"></label>
+                `;
+            } else if (action.type === 'SPAWN_ITEM') {
+                const items = this.game.assetManager.getData('items') || [];
+                let itemOptions = items.map(i => `<option value="${i.id}" ${action.params.itemId === i.id ? 'selected' : ''}>${i.name}</option>`).join('');
+                html += `
+                    <label>아이템: <select class="param-item-id">${itemOptions}</select></label><br>
+                    <label>수량: <input type="number" class="param-count" value="${action.params.count || 1}" style="width:50px;"></label><br>
+                    <label>타일 X: <input type="number" class="param-x" value="${action.params.x || 0}" style="width:60px;"></label>
+                    <label> Y: <input type="number" class="param-y" value="${action.params.y || 0}" style="width:60px;"></label>
+                `;
+            } else if (action.type === 'SHOW_MESSAGE') {
+                html += `<label>내용: <input type="text" class="param-text" value="${action.params.text || ''}" style="width:100%;"></label>`;
+            }
+
+            html += `</div>`;
+            div.innerHTML = html;
+
+            // Listeners
+            div.querySelector('.action-type-select').onchange = (e) => {
+                action.type = e.target.value;
+                this.renderEventActions();
+            };
+            div.querySelector('.remove-action-btn').onclick = () => {
+                evt.actions.splice(index, 1);
+                this.renderEventActions();
+            };
+
+            container.appendChild(div);
+        });
+    }
+
+    saveLogicData() {
+        if (this.selectedEventIndex === -1) return;
+        const evt = this.mapLogic.events[this.selectedEventIndex];
+        evt.name = document.getElementById('event-name').value;
+        evt.trigger.type = document.getElementById('event-trigger-type').value;
+        
+        // Save Trigger Params
+        evt.trigger.params = {};
+        if (evt.trigger.type === 'ON_ENTER_AREA') {
+            const locSelect = document.getElementById('param-trigger-location-id');
+            if (locSelect) evt.trigger.params.locationId = locSelect.value;
+        }
+
+        // Save Actions Params
+        const actionDivs = document.querySelectorAll('.action-item');
+        evt.actions = [];
+        actionDivs.forEach(div => {
+            const type = div.querySelector('.action-type-select').value;
+            const params = {};
+            if (type === 'SPAWN_UNIT') {
+                params.unitId = div.querySelector('.param-unit-id').value;
+                params.x = parseInt(div.querySelector('.param-x').value);
+                params.y = parseInt(div.querySelector('.param-y').value);
+            } else if (type === 'SPAWN_ITEM') {
+                params.itemId = div.querySelector('.param-item-id').value;
+                params.count = parseInt(div.querySelector('.param-count').value) || 1;
+                params.x = parseInt(div.querySelector('.param-x').value);
+                params.y = parseInt(div.querySelector('.param-y').value);
+            } else if (type === 'SHOW_MESSAGE') {
+                params.text = div.querySelector('.param-text').value;
+            }
+            evt.actions.push({ type, params });
+        });
+
+        alert("이벤트 데이터가 임시 저장되었습니다.");
+        this.renderEventList();
+    }
+
+    // --- LOCATION SETTINGS ---
+    addNewLocation(x, y, w, h) {
+        const newLoc = {
+            id: 'loc_' + Date.now(),
+            name: '새 구역 ' + (this.locations.length + 1),
+            x, y, w, h
+        };
+        this.locations.push(newLoc);
+    }
+
+    openLocationSettings(index) {
+        this.editingLocationIndex = index;
+        const loc = this.locations[index];
+        document.getElementById('location-name').value = loc.name;
+        document.getElementById('location-settings-modal').classList.remove('hidden');
+    }
+
+    saveLocationSettings() {
+        if (this.editingLocationIndex !== -1) {
+            this.locations[this.editingLocationIndex].name = document.getElementById('location-name').value;
+        }
+        this.closeLocationSettings();
+    }
+
+    closeLocationSettings() {
+        document.getElementById('location-settings-modal').classList.add('hidden');
+        this.editingLocationIndex = -1;
+    }
+
+    deleteLocation() {
+        if (this.editingLocationIndex !== -1) {
+            this.locations.splice(this.editingLocationIndex, 1);
+        }
+        this.closeLocationSettings();
+    }
+
     update(dt) {
         if (this.game.gameState !== 'EDITOR') return;
-        const unitModal = document.getElementById('unit-settings-modal');
-        const lootModal = document.getElementById('loot-box-settings-modal');
-        const itemModal = document.getElementById('item-settings-modal');
-        const isModalOpen = (unitModal && !unitModal.classList.contains('hidden')) || (lootModal && !lootModal.classList.contains('hidden')) || (itemModal && !itemModal.classList.contains('hidden'));
+        
+        // Block all interaction if ANY modal is open
+        const visibleModals = document.querySelectorAll('.modal:not(.hidden)');
+        const isModalOpen = visibleModals.length > 0;
+        
         const input = this.game.input; 
         const mx = input.mouse.x; 
         const my = input.mouse.y;
         const ts = this.baseTileSize * this.zoom;
         const gx = Math.floor((mx - this.offsetX) / ts); 
         const gy = Math.floor((my - this.offsetY) / ts);
+        
         let isOverUI = mx > this.game.canvas.width - 300;
         if (isModalOpen) isOverUI = true; 
+        
         if (input.mouse.rightDown && !isOverUI) {
             const dx = mx - this.lastMousePos.x; const dy = my - this.lastMousePos.y;
             this.offsetX += dx; this.offsetY += dy;
             this.rightClickMoveDist = (this.rightClickMoveDist || 0) + Math.sqrt(dx*dx + dy*dy);
         } else if (this.lastRightDown && !input.mouse.rightDown && !isOverUI && !isModalOpen) {
             if ((this.rightClickMoveDist || 0) < 5) {
-                const cell = this.getTileAt(gx, gy);
-                if (cell.unit && !cell.unit.id.startsWith('v_')) this.openUnitSettings(gx, gy);
-                else if (cell.block === 'loot_box') this.openLootSettings(gx, gy);
-                else if (cell.item) this.openItemSettings(gx, gy);
+                // Check if clicked a location area
+                const locIdx = this.locations.findIndex(loc => gx >= loc.x && gx < loc.x + loc.w && gy >= loc.y && gy < loc.y + loc.h);
+                if (locIdx !== -1) {
+                    this.openLocationSettings(locIdx);
+                } else {
+                    const cell = this.getTileAt(gx, gy);
+                    if (cell.unit && !cell.unit.id.startsWith('v_')) this.openUnitSettings(gx, gy);
+                    else if (cell.block === 'loot_box') this.openLootSettings(gx, gy);
+                    else if (cell.block && cell.block !== 'occupied_space') this.openBlockSettings(gx, gy);
+                    else if (cell.item) this.openItemSettings(gx, gy);
+                }
             }
             this.rightClickMoveDist = 0;
         }
@@ -688,6 +1001,28 @@ export default class MapEditor {
     handleToolAction(gx, gy, phase) {
         const tileId = this.selectedTool === 'eraser' ? null : this.selectedTileId;
         const layer = this.activeLayer;
+
+        // --- LOCATION LAYER HANDLING ---
+        if (layer === 'location') {
+            if (this.selectedTool === 'pen' || this.selectedTool === 'rect') {
+                if (phase === 'start') {
+                    this.rectStart = { x: gx, y: gy };
+                } else if (phase === 'end' && this.rectStart) {
+                    const x = Math.min(this.rectStart.x, gx);
+                    const y = Math.min(this.rectStart.y, gy);
+                    const w = Math.abs(gx - this.rectStart.x) + 1;
+                    const h = Math.abs(gy - this.rectStart.y) + 1;
+                    
+                    this.addNewLocation(x, y, w, h);
+                    this.rectStart = null;
+                }
+            } else if (this.selectedTool === 'eraser' && phase === 'start') {
+                const idx = this.locations.findIndex(loc => gx >= loc.x && gx < loc.x + loc.w && gy >= loc.y && gy < loc.y + loc.h);
+                if (idx !== -1) this.locations.splice(idx, 1);
+            }
+            return;
+        }
+
         switch (this.selectedTool) {
             case 'pen': case 'eraser': this.setTileAt(gx, gy, tileId, layer, phase); break;
             case 'fill': if (phase === 'start') this.floodFill(gx, gy, this.getTileAt(gx, gy)[layer], tileId, layer); break;
@@ -732,31 +1067,29 @@ export default class MapEditor {
         const name = prompt("맵 이름을 입력하세요:", "새로운 맵");
         if (!name) return;
 
-        const layout = this.getLayoutArray();
+        const mapData = this.getLayoutArray();
         const saved = localStorage.getItem('efb_custom_maps');
         const customMaps = saved ? JSON.parse(saved) : {};
-        customMaps[name] = layout;
+        customMaps[name] = mapData;
         localStorage.setItem('efb_custom_maps', JSON.stringify(customMaps));
         alert(`'${name}' 맵이 저장되었습니다.`);
     }
 
     getLayoutArray() {
-        if (this.tiles.size === 0) return [];
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        if (this.tiles.size === 0) return { layout: [], logic: this.mapLogic, locations: this.locations };
         
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
+        
+        // 1. Find the absolute bounds including negative coordinates
         this.tiles.forEach((cell, key) => {
             const [x, y] = key.split(',').map(Number);
-            
-            // For each cell, consider the object's full size to find the real boundary
-            let cellW = 1;
-            let cellH = 1;
+            let cellW = 1, cellH = 1;
 
-            // 1. Check Floor Size (usually 1x1, but check def)
             if (cell.floor && cell.floor !== 'occupied_space') {
                 const s = this.getTileSize(cell.floor);
                 cellW = Math.max(cellW, s.w); cellH = Math.max(cellH, s.h);
             }
-            // 2. Check Block Size
             if (cell.block && cell.block !== 'occupied_space') {
                 const s = this.getTileSize(cell.block);
                 const rot = cell.metadata?.blockRotation || 0;
@@ -764,38 +1097,68 @@ export default class MapEditor {
                 cellW = Math.max(cellW, isRot ? s.h : s.w);
                 cellH = Math.max(cellH, isRot ? s.w : s.h);
             }
-            // 3. Check Unit Size
             if (cell.unit && cell.unit.id !== 'occupied_space') {
                 const s = this.getUnitSize(cell.unit.id);
-                // Units in editor metadata might already have angle in radians
                 const rotDeg = (cell.unit.angle || 0) * (180 / Math.PI);
                 const isRot = (rotDeg === 90 || rotDeg === 270);
                 cellW = Math.max(cellW, isRot ? s.h : s.w);
                 cellH = Math.max(cellH, isRot ? s.w : s.h);
             }
 
-            minX = Math.min(minX, x); 
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
             maxX = Math.max(maxX, x + cellW - 1);
-            minY = Math.min(minY, y); 
             maxY = Math.max(maxY, y + cellH - 1);
         });
 
+        // Calculate shift amounts to bring (minX, minY) to (0,0)
+        const shiftX = -minX;
+        const shiftY = -minY;
+
+        // 2. Map Layout Generation (Shifted)
         const layout = [];
-        for(let y = minY; y <= maxY; y++) {
+        for (let y = minY; y <= maxY; y++) {
             const row = [];
-            for(let x = minX; x <= maxX; x++) {
+            for (let x = minX; x <= maxX; x++) {
                 const c = this.getTileAt(x, y);
                 row.push([c.floor, c.block, (c.unit && (c.unit.id === 'occupied_space' || c.unit.id === 'v_reserved')) ? null : c.unit, c.item, c.metadata]);
             }
             layout.push(row);
         }
-        return layout;
+
+        // 3. Clone and Shift Logic/Events
+        const shiftedLogic = JSON.parse(JSON.stringify(this.mapLogic));
+        shiftedLogic.events.forEach(evt => {
+            // Shift trigger area if any
+            if (evt.trigger.type === 'ON_ENTER_AREA' && evt.trigger.params.locationId) {
+                // Locations are shifted separately, so we just keep the ID
+            }
+            // Shift coordinate-based actions (SPAWN_UNIT, SPAWN_ITEM)
+            evt.actions.forEach(action => {
+                if (action.params.x !== undefined) action.params.x += shiftX;
+                if (action.params.y !== undefined) action.params.y += shiftY;
+            });
+        });
+
+        // 4. Clone and Shift Locations
+        const shiftedLocations = this.locations.map(loc => ({
+            ...loc,
+            x: loc.x + shiftX,
+            y: loc.y + shiftY
+        }));
+        
+        return {
+            layout: layout,
+            logic: shiftedLogic,
+            locations: shiftedLocations,
+            editorOffset: { x: shiftX, y: shiftY } // Store for proper re-importing
+        };
     }
 
     exportArray() {
-        const layout = this.getLayoutArray();
-        if (layout.length === 0) { alert("배치된 타일이 없습니다."); return; }
-        document.getElementById('export-output').value = JSON.stringify(layout).replace(/]]],\[\[/g, ']],\n    [[').replace('[[[', '[\n    [[') .replace(']]]', ']]\n]');
+        const data = this.getLayoutArray();
+        if (data.layout.length === 0) { alert("배치된 타일이 없습니다."); return; }
+        document.getElementById('export-output').value = JSON.stringify(data);
     }
 
     importArray() {
@@ -803,40 +1166,60 @@ export default class MapEditor {
         if (!input) return;
         try {
             const data = JSON.parse(input);
+            const layout = data.layout || data; 
+            const offset = data.editorOffset || { x: 0, y: 0 };
+            
+            // Restore logic and locations with inverse offset
+            this.mapLogic = data.logic || { variables: {}, events: [] };
+            this.mapLogic.events.forEach(evt => {
+                evt.actions.forEach(action => {
+                    if (action.params.x !== undefined) action.params.x -= offset.x;
+                    if (action.params.y !== undefined) action.params.y -= offset.y;
+                });
+            });
+
+            this.locations = data.locations || [];
+            this.locations.forEach(loc => {
+                loc.x -= offset.x;
+                loc.y -= offset.y;
+            });
+
             if (confirm("현재 작업 중인 타일들이 모두 삭제됩니다. 계속하시겠습니까?")) {
                 this.tiles.clear();
-                data.forEach((row, y) => {
+                layout.forEach((row, y) => {
                     row.forEach((cell, x) => {
                         const [floor, block, unit, item, metadata] = cell;
                         if (!floor && !block && !unit && !item) return;
 
+                        // Place at original editor position
+                        const tx = x - offset.x;
+                        const ty = y - offset.y;
+
                         // Helper to get or create cell
-                        const getOrCreateCell = (tx, ty) => {
-                            const key = `${tx},${ty}`;
+                        const getOrCreateCell = (gx, gy) => {
+                            const key = `${gx},${gy}`;
                             if (!this.tiles.has(key)) {
                                 this.tiles.set(key, { floor: null, block: null, unit: null, item: null, metadata: null });
                             }
                             return this.tiles.get(key);
                         };
 
-                        // 1. Process Floor, Block, Item (1x1 defaults)
-                        const mainCell = getOrCreateCell(x, y);
+                        const mainCell = getOrCreateCell(tx, ty);
                         mainCell.floor = floor;
                         mainCell.block = block;
                         mainCell.item = item;
                         mainCell.metadata = metadata ? JSON.parse(JSON.stringify(metadata)) : null;
 
-                        // 2. Process Unit (Handle multi-tile units)
                         if (unit && unit.id !== 'occupied_space') {
                             const size = this.getUnitSize(unit.id);
                             for (let oy = 0; oy < size.h; oy++) {
                                 for (let ox = 0; ox < size.w; ox++) {
-                                    const targetCell = getOrCreateCell(x + ox, y + oy);
+                                    const targetCell = getOrCreateCell(tx + ox, ty + oy);
                                     if (ox === 0 && oy === 0) {
                                         unit.w = size.w; unit.h = size.h;
                                         targetCell.unit = unit;
                                     } else {
-                                        targetCell.unit = { id: 'occupied_space', master: `${x},${y}` };
+                                        targetCell.unit = { id: 'occupied_space', master: `${tx},${ty}` };
                                     }
                                 }
                             }
@@ -867,6 +1250,23 @@ export default class MapEditor {
         for (let x = startGX; x <= endGX; x++) { const vx = this.offsetX + x * ts; ctx.moveTo(vx, 0); ctx.lineTo(vx, this.game.canvas.height); }
         for (let y = startGY; y <= endGY; y++) { const vy = this.offsetY + y * ts; ctx.moveTo(0, vy); ctx.lineTo(this.game.canvas.width, vy); }
         ctx.stroke();
+
+        // 0.1 Origin Axes (0,0 Lines)
+        ctx.strokeStyle = 'rgba(231, 76, 60, 0.5)'; // Soft red for axis
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        // Y-axis (Vertical line at X=0)
+        if (0 >= startGX && 0 <= endGX) {
+            const vx = this.offsetX + 0 * ts;
+            ctx.moveTo(vx, 0); ctx.lineTo(vx, this.game.canvas.height);
+        }
+        // X-axis (Horizontal line at Y=0)
+        if (0 >= startGY && 0 <= endGY) {
+            const vy = this.offsetY + 0 * ts;
+            ctx.moveTo(0, vy); ctx.lineTo(this.game.canvas.width, vy);
+        }
+        ctx.stroke();
+        ctx.lineWidth = 1;
 
         // 1. Render Floor Layer
         this.tiles.forEach((cell, key) => {
@@ -928,7 +1328,26 @@ export default class MapEditor {
             }
         });
 
-        // 4. Render Unit/Vehicle Layer
+        // 4. Render Location Areas (Blue semi-transparent rects)
+        this.locations.forEach(loc => {
+            const lx = this.offsetX + loc.x * ts;
+            const ly = this.offsetY + loc.y * ts;
+            const lw = loc.w * ts;
+            const lh = loc.h * ts;
+            
+            ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
+            ctx.fillRect(lx, ly, lw, lh);
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(lx, ly, lw, lh);
+            
+            // Draw Name Tag
+            ctx.fillStyle = '#3498db';
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(loc.name, lx + 5, ly + 15);
+        });
+
+        // 5. Render Unit/Vehicle Layer
         this.tiles.forEach((cell, key) => {
             const [gx, gy] = key.split(',').map(Number);
             if (gx < startGX || gx > endGX || gy < startGY || gy > endGY) return;
@@ -956,12 +1375,50 @@ export default class MapEditor {
             }
         });
 
-        // 5. Mouse Preview
+        // 5. Mouse Preview & Drag Preview
         const input = this.game.input; const mx = input.mouse.x; const my = input.mouse.y;
+        const gx = Math.floor((mx - this.offsetX) / ts); const gy = Math.floor((my - this.offsetY) / ts);
+
+        // Display current tile coordinates in top-left
         if (mx < this.game.canvas.width - 300) {
-            const gx = Math.floor((mx - this.offsetX) / ts); const gy = Math.floor((my - this.offsetY) / ts);
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillRect(10, 10, 120, 30);
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(10, 10, 120, 30);
+            ctx.fillStyle = '#f1c40f';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(`X: ${gx}, Y: ${gy}`, 25, 30);
+            ctx.restore();
+        }
+
+        if (mx < this.game.canvas.width - 300) {
             const tx = this.offsetX + gx * ts; const ty = this.offsetY + gy * ts;
             ctx.save(); ctx.globalAlpha = 0.5;
+
+            // --- LOCATION DRAG PREVIEW ---
+            if (this.activeLayer === 'location' && this.isDrawing && this.rectStart) {
+                const x1 = Math.min(this.rectStart.x, gx);
+                const y1 = Math.min(this.rectStart.y, gy);
+                const w = Math.abs(gx - this.rectStart.x) + 1;
+                const h = Math.abs(gy - this.rectStart.y) + 1;
+                
+                const lx = this.offsetX + x1 * ts;
+                const ly = this.offsetY + y1 * ts;
+                const lw = w * ts;
+                const lh = h * ts;
+
+                ctx.fillStyle = 'rgba(52, 152, 219, 0.3)';
+                ctx.fillRect(lx, ly, lw, lh);
+                ctx.strokeStyle = '#3498db';
+                ctx.setLineDash([5, 5]); // Dashed line for preview
+                ctx.lineWidth = 2;
+                ctx.strokeRect(lx, ly, lw, lh);
+                ctx.restore();
+                return; // Skip standard preview when dragging location
+            }
+
             if (this.selectedTool === 'eraser') {
                 ctx.fillStyle = 'rgba(231, 76, 60, 0.3)'; ctx.fillRect(tx, ty, ts, ts);
                 ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 2; ctx.strokeRect(tx, ty, ts, ts);
