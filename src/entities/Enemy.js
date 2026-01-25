@@ -58,6 +58,7 @@ export default class Enemy {
 
         this.isCollidable = true;
         this.weight = 100;
+        this.moveType = 'amphibious';
         console.log(`Enemy ${enemyId} spawned with command: ${this.command} at ${x}, ${y}`);
     }
 
@@ -230,10 +231,10 @@ export default class Enemy {
         const vdx = tx - this.x;
         const vdy = ty - this.y;
 
-        if (!this.game.checkCollision(this.x + vdx, this.y, this.radius, this)) {
+        if (!this.game.checkCollision(this.x + vdx, this.y, this.radius, this, this.moveType)) {
             this.x += vdx;
         }
-        if (!this.game.checkCollision(this.x, this.y + vdy, this.radius, this)) {
+        if (!this.game.checkCollision(this.x, this.y + vdy, this.radius, this, this.moveType)) {
             this.y += vdy;
         }
     }
@@ -258,7 +259,7 @@ export default class Enemy {
                 const pushY = ny * overlap;
 
                 // Important: Only check tiles when separating overlapped units
-                if (!this.game.checkTileCollision(this.x + pushX, this.y + pushY, this.radius)) {
+                if (!this.game.checkTileCollision(this.x + pushX, this.y + pushY, this.radius, this.moveType)) {
                     this.x += pushX;
                     this.y += pushY;
                 }
@@ -281,7 +282,7 @@ export default class Enemy {
 
                 const pushX = nx * overlap;
                 const pushY = ny * overlap;
-                if (!this.game.checkTileCollision(this.x + pushX, this.y + pushY, this.radius)) {
+                if (!this.game.checkTileCollision(this.x + pushX, this.y + pushY, this.radius, this.moveType)) {
                     this.x += pushX;
                     this.y += pushY;
                 }

@@ -354,7 +354,7 @@ export default class Game {
             if (p.x < 0 || p.x >= worldW || p.y < 0 || p.y >= worldH) return true;
 
             // Use TileMap's centralized collision check
-            if (this.tileMap.isCollidable(p.x, p.y)) return true;
+            if (this.tileMap.isCollidable(p.x, p.y, moveType)) return true;
         }
         
         return false;

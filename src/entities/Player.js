@@ -46,6 +46,7 @@ export default class Player {
         this.isSwimming = false; // Swimming state
         this.isCollidable = true;
         this.weight = 100;
+        this.moveType = 'amphibious';
     }
 
     update(dt) {
@@ -142,10 +143,10 @@ export default class Player {
         const nextX = this.x + dx * currentSpeed * dt;
         const nextY = this.y + dy * currentSpeed * dt;
 
-        if (!this.game.checkCollision(nextX, this.y, this.radius, this)) {
+        if (!this.game.checkCollision(nextX, this.y, this.radius, this, this.moveType)) {
             this.x = nextX;
         }
-        if (!this.game.checkCollision(this.x, nextY, this.radius, this)) {
+        if (!this.game.checkCollision(this.x, nextY, this.radius, this, this.moveType)) {
             this.y = nextY;
         }
 
@@ -189,7 +190,7 @@ export default class Player {
                 const ny = edy / dist;
                 const pushX = nx * overlap;
                 const pushY = ny * overlap;
-                if (!this.game.checkCollision(this.x + pushX, this.y + pushY, this.radius, this)) {
+                if (!this.game.checkCollision(this.x + pushX, this.y + pushY, this.radius, this, this.moveType)) {
                     this.x += pushX;
                     this.y += pushY;
                 }

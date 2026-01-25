@@ -49,7 +49,7 @@ export default class MapGenerator {
         
         if (floorId) tileMap.setTile(tx, ty, floorId, 'floor', metadata);
 
-        if (blockId && blockId !== 'occupied_space') {
+        if (blockId && typeof blockId === 'string' && blockId !== 'occupied_space') {
             let finalMetadata = metadata ? JSON.parse(JSON.stringify(metadata)) : null;
             if (blockId === 'loot_box' && finalMetadata?.lootTable) {
                 const items = new Array(16).fill(null);
@@ -81,7 +81,14 @@ export default class MapGenerator {
                 const cell = map[y][x];
                 if (!cell) continue;
 
-                const [, , unitData, itemId] = cell;
+                // Support both [floor, unit, ...] and [floor, block, unit, ...] formats
+                let unitData = cell[2];
+                let itemId = cell[3];
+                
+                if (cell[1] && typeof cell[1] === 'object' && cell[1].id) {
+                    unitData = cell[1];
+                    itemId = cell[2]; // Shift item index if unit is at index 1
+                }
 
                 if (unitData && unitData.id && unitData.id !== 'occupied_space') {
                     const uid = unitData.id;

@@ -49,7 +49,7 @@ export default class Train extends Vehicle {
         const ty = Math.floor(this.y / TILE_SIZE);
         const railId = this.game.tileMap.getTile(tx, ty, 'block');
 
-        if (!railId || !railId.startsWith('rail')) {
+        if (!railId || typeof railId !== 'string' || !railId.startsWith('rail')) {
             this.speed = 0;
             return;
         }
@@ -109,7 +109,7 @@ export default class Train extends Vehicle {
                 
                 // Pre-check derailment
                 const nextRail = this.game.tileMap.getTile(ntx, nty, 'block');
-                if (!nextRail || !nextRail.startsWith('rail')) {
+                if (!nextRail || typeof nextRail !== 'string' || !nextRail.startsWith('rail')) {
                     this.x = centerX; this.y = centerY; this.speed = 0;
                 }
             }
@@ -178,7 +178,7 @@ export default class Train extends Vehicle {
         
         if (ntx !== tx || nty !== ty) {
             const nextRail = this.game.tileMap.getTile(ntx, nty, 'block');
-            if (!nextRail || !nextRail.startsWith('rail')) {
+            if (!nextRail || typeof nextRail !== 'string' || !nextRail.startsWith('rail')) {
                 // If moving into non-rail, snap to center and stop
                 const distToCenter = Math.sqrt((this.x - centerX)**2 + (this.y - centerY)**2);
                 if (distToCenter < 15) {

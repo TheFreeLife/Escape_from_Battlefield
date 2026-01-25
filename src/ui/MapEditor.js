@@ -492,7 +492,7 @@ export default class MapEditor {
             for (let oy = 0; oy < eh; oy++) {
                 for (let ox = 0; ox < ew; ox++) {
                     const targetCell = this.getTileAt(x + ox, y + oy);
-                    const isRail = targetCell.block && (targetCell.block === 'rail' || targetCell.block.startsWith('rail_'));
+                    const isRail = targetCell.block && (typeof targetCell.block === 'string') && (targetCell.block === 'rail' || targetCell.block.startsWith('rail_'));
                     if (!isRail) {
                         console.log("Trains can only be placed on rails!");
                         return;

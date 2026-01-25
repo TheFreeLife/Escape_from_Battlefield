@@ -65,15 +65,11 @@ export default class Projectile {
                 const checkX = oldX + (this.dx * dist * (i / steps));
                 const checkY = oldY + (this.dy * dist * (i / steps));
                 
-                // Only register a hit if it hits a physical collision area
-                if (this.game.tileMap.isCollidable(checkX, checkY)) {
-                    const floorId = this.game.tileMap.getTileAtWorldPos(checkX, checkY, 'floor');
-                    // Block collision takes priority, but we also check for non-water collidables
-                    if (floorId !== 'water') {
-                        hitWall = true;
-                        hitPos = { x: checkX, y: checkY };
-                        break;
-                    }
+                // Projectiles pass over water, so we check collision as an 'amphibious' entity (only blocks/void hit)
+                if (this.game.tileMap.isCollidable(checkX, checkY, 'amphibious')) {
+                    hitWall = true;
+                    hitPos = { x: checkX, y: checkY };
+                    break;
                 }
             }
 

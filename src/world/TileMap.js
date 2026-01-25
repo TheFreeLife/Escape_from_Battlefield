@@ -37,17 +37,16 @@ export default class TileMap {
             chunk = this.createChunk(cx, cy);
         }
 
-                // Handle Rail Auto-tiling
-                if (layer === 'block' && (tileId?.startsWith('rail') || tileId === null)) {
-                    this._setSingleTile(x, y, tileId, 'block', metadata);
-                    this.updateRail(x, y);
-                    this.updateRail(x + 1, y);
-                    this.updateRail(x - 1, y);
-                    this.updateRail(x, y + 1);
-                    this.updateRail(x, y - 1);
-                    return;
-                }
-
+                        // Handle Rail Auto-tiling
+                        if (layer === 'block' && (typeof tileId === 'string' && tileId.startsWith('rail') || tileId === null)) {
+                            this._setSingleTile(x, y, tileId, 'block', metadata);
+                            this.updateRail(x, y);
+                            this.updateRail(x + 1, y);
+                            this.updateRail(x - 1, y);
+                            this.updateRail(x, y + 1);
+                            this.updateRail(x, y - 1);
+                            return;
+                        }
                 if (layer === 'block') {
 
                     const oldBlock = this.getBlockAt(x, y);
@@ -123,9 +122,9 @@ export default class TileMap {
 
     updateRail(x, y) {
         const current = this.getTile(x, y, 'block');
-        if (!current || (!current.startsWith('rail') && current !== 'rail')) return;
+        if (!current || (typeof current !== 'string') || (!current.startsWith('rail') && current !== 'rail')) return;
 
-        const isRail = (id) => id === 'rail' || (id && id.startsWith('rail'));
+        const isRail = (id) => typeof id === 'string' && (id === 'rail' || id.startsWith('rail'));
 
         const n = isRail(this.getTile(x, y - 1, 'block')) ? 1 : 0;
         const s = isRail(this.getTile(x, y + 1, 'block')) ? 2 : 0;
@@ -274,7 +273,7 @@ export default class TileMap {
         };
     }
 
-    isCollidable(worldX, worldY) {
+    isCollidable(worldX, worldY, moveType = 'land') {
         const tx = Math.floor(worldX / TILE_SIZE);
         const ty = Math.floor(worldY / TILE_SIZE);
 
@@ -282,7 +281,18 @@ export default class TileMap {
         const floorId = this.getTile(tx, ty, 'floor');
         if (floorId) {
             const fDef = this.game.assetManager.getData('tiles')?.find(t => t.id === floorId);
-            if (fDef?.collidable) return true;
+            
+            // Special handling for water
+            if (floorId === 'water') {
+                if (moveType === 'land') return true; // Pure land units cannot enter water
+                if (moveType === 'sea' || moveType === 'amphibious') return false; // Sea and Amphibious can enter
+            }
+
+            // Sea units cannot enter any non-water floor
+            if (moveType === 'sea' && floorId !== 'water') return true;
+
+            // Generic collidable floor (e.g. 'void')
+            if (fDef?.collidable && floorId !== 'water') return true;
         }
 
         // 2. Block Collision Check
