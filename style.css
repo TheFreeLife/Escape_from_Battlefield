@@ -225,7 +225,7 @@ body, html {
 
 .hidden { display: none !important; }
 
-#unit-settings-modal, #loot-box-settings-modal, #item-settings-modal, #plane-control-modal {
+#unit-settings-modal, #loot-box-settings-modal, #item-settings-modal, #plane-control-modal, #location-settings-modal, #block-settings-modal {
     position: fixed;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
     background: rgba(20, 20, 20, 0.98);

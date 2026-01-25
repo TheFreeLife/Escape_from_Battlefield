@@ -64,6 +64,10 @@ export default class MapEditor {
 
         document.querySelectorAll('.layer-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                // Deselect current tile when changing layers
+                this.selectedTileId = null;
+                document.querySelectorAll('.palette-tile').forEach(el => el.classList.remove('selected'));
+
                 if (btn.dataset.layer === 'logic') {
                     this.openLogicModal();
                     return;
@@ -357,19 +361,27 @@ export default class MapEditor {
     }
 
     selectTile(id, element) {
-        document.querySelectorAll('.palette-tile').forEach(el => el.classList.remove('selected'));
-        element.classList.add('selected');
-        this.selectedTileId = id; 
+        const isAlreadySelected = (this.selectedTileId === id);
         
-        // Auto-reset rotation for non-rotatable tiles
-        const tiles = this.game.assetManager.getData('tiles') || [];
-        const def = tiles.find(t => t.id === id);
-        if (def && def.rotatable === false) {
-            this.currentRotation = 0;
-            console.log(`Rotation reset to 0° for non-rotatable tile: ${id}`);
+        document.querySelectorAll('.palette-tile').forEach(el => el.classList.remove('selected'));
+        
+        if (isAlreadySelected) {
+            // Deselect
+            this.selectedTileId = null;
+            console.log("Tile deselected");
+        } else {
+            // Select new
+            element.classList.add('selected');
+            this.selectedTileId = id; 
+            
+            // Auto-reset rotation for non-rotatable tiles
+            const tiles = this.game.assetManager.getData('tiles') || [];
+            const def = tiles.find(t => t.id === id);
+            if (def && def.rotatable === false) {
+                this.currentRotation = 0;
+            }
+            if (this.selectedTool === 'eraser') this.selectTool('pen');
         }
-
-        if (this.selectedTool === 'eraser') this.selectTool('pen');
     }
 
     isCellEmpty(cell) {
@@ -645,8 +657,24 @@ export default class MapEditor {
         const cell = this.getTileAt(gx, gy);
         if (!cell.block || cell.block === 'occupied_space') return;
         this.editingBlockPos = { x: gx, y: gy };
+        
+        const tiles = this.game.assetManager.getData('tiles') || [];
+        const def = tiles.find(t => t.id === cell.block);
+        const modal = document.getElementById('block-settings-modal');
+        
         document.getElementById('block-tag').value = cell.metadata?.tag || '';
-        document.getElementById('block-settings-modal').classList.remove('hidden');
+        
+        // Dynamic content based on block properties
+        let extraInfo = '';
+        if (def.destructible) extraInfo += `<li>내구도: ${def.health || 10}</li>`;
+        if (def.interactable) extraInfo += `<li>상호작용 가능 (${def.name})</li>`;
+        if (def.onlyBottomCollision) extraInfo += `<li>2.5D (하단 충돌)</li>`;
+        
+        const infoPara = modal.querySelector('p');
+        infoPara.innerHTML = extraInfo ? `<ul style="margin:5px 0; padding-left:20px; font-size:11px; color:#f1c40f;">${extraInfo}</ul>` : '일반 장애물 블록입니다.';
+        
+        modal.querySelector('h4').innerText = `🧱 ${def.name || '블록'} 설정`;
+        modal.classList.remove('hidden');
     }
 
     saveBlockSettings() {
@@ -676,13 +704,28 @@ export default class MapEditor {
         const cell = this.getTileAt(gx, gy);
         if (!cell.unit) return;
         this.editingUnitPos = { x: gx, y: gy };
-        document.getElementById('unit-settings-modal').classList.remove('hidden');
+        
+        const isVehicle = cell.unit.id.startsWith('v_');
+        const modal = document.getElementById('unit-settings-modal');
+        modal.classList.remove('hidden');
+        
+        // Update values
         document.getElementById('unit-tag').value = cell.unit.tag || '';
         document.getElementById('unit-command').value = cell.unit.command || 'GUARD';
         document.getElementById('unit-patrol-radius').value = cell.unit.patrolRadius || 250;
         document.getElementById('unit-health-mult').value = cell.unit.healthMult || 1.0;
         document.getElementById('unit-damage-mult').value = cell.unit.damageMult || 1.0;
         document.getElementById('unit-speed-mult').value = cell.unit.speedMult || 1.0;
+
+        // Toggle visibility based on type
+        const aiFields = ['unit-command', 'unit-patrol-radius'].map(id => document.getElementById(id).parentElement);
+        aiFields.forEach(el => el.style.display = isVehicle ? 'none' : 'block');
+        
+        const combatFields = ['unit-damage-mult', 'unit-speed-mult'].map(id => document.getElementById(id).parentElement);
+        combatFields.forEach(el => el.style.display = isVehicle ? 'none' : 'block');
+
+        // Update modal title
+        modal.querySelector('h4').innerText = isVehicle ? '🚜 이동수단 설정' : '👥 유닛 설정';
     }
 
     saveUnitSettings() {
@@ -976,7 +1019,7 @@ export default class MapEditor {
                     this.openLocationSettings(locIdx);
                 } else {
                     const cell = this.getTileAt(gx, gy);
-                    if (cell.unit && !cell.unit.id.startsWith('v_')) this.openUnitSettings(gx, gy);
+                    if (cell.unit) this.openUnitSettings(gx, gy);
                     else if (cell.block === 'loot_box') this.openLootSettings(gx, gy);
                     else if (cell.block && cell.block !== 'occupied_space') this.openBlockSettings(gx, gy);
                     else if (cell.item) this.openItemSettings(gx, gy);
