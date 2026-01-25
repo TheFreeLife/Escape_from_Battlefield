@@ -101,6 +101,7 @@ export default class MapGenerator {
                     } else if (uid.startsWith('v_')) {
                         const v = new Vehicle(this.game, centerX, centerY, uid.replace('v_', ''));
                         if (unitData.angle !== undefined) v.angle = unitData.angle;
+                        if (unitData.tag) v.tag = unitData.tag; // Ensure vehicles also get tags
                         this.game.vehicles.push(v);
                     } else {
                         this.game.enemies.push(new Enemy(this.game, centerX, centerY, uid, unitData));

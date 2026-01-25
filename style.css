@@ -450,34 +450,49 @@ body, html {
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    color: white;
+    color: #fff; /* Explicit white text for all modal buttons */
     font-weight: bold;
     font-size: 15px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-transform: uppercase;
     letter-spacing: 1px;
+    background: #34495e; /* Default dark background */
 }
 
-#logic-settings-save {
-    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.2);
+/* Success/Save actions */
+#unit-settings-save, #loot-settings-save, #item-settings-save, #block-settings-save, #location-settings-save, #logic-settings-save {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%) !important;
+    color: #fff !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
-#logic-settings-save:hover {
-    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+#unit-settings-save:hover, #loot-settings-save:hover, #item-settings-save:hover, #block-settings-save:hover, #location-settings-save:hover, #logic-settings-save:hover {
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
 }
 
-#logic-settings-close {
-    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
-    border: 1px solid #444;
+/* Cancel/Close actions */
+#unit-settings-cancel, #loot-settings-cancel, #item-settings-cancel, #block-settings-cancel, #location-settings-cancel, #logic-settings-close {
+    background: #444 !important;
+    color: #eee !important;
+    border: 1px solid #666 !important;
 }
 
-#logic-settings-close:hover {
-    background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
+#unit-settings-cancel:hover, #loot-settings-cancel:hover, #item-settings-cancel:hover, #block-settings-cancel:hover, #location-settings-cancel:hover, #logic-settings-close:hover {
+    background: #555 !important;
     transform: translateY(-2px);
-    color: #fff;
+}
+
+/* Delete actions */
+#unit-settings-delete, #item-settings-delete, #location-settings-delete {
+    background: #c0392b !important;
+    color: #fff !important;
+}
+
+#unit-settings-delete:hover, #item-settings-delete:hover, #location-settings-delete:hover {
+    background: #e74c3c !important;
+    transform: translateY(-2px);
 }
 
 #delete-event-btn {

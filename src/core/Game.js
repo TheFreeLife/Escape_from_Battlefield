@@ -544,13 +544,28 @@ export default class Game {
         if (type === 'SPAWN_UNIT') {
             const worldX = (params.x + 0.5) * 64;
             const worldY = (params.y + 0.5) * 64;
-            this.enemies.push(new Enemy(this, worldX, worldY, params.unitId));
-            console.log(`Action: Spawned ${params.unitId} at tile ${params.x}, ${params.y}`);
+            const newEnemy = new Enemy(this, worldX, worldY, params.unitId, { tag: params.unitTag });
+            this.enemies.push(newEnemy);
+            console.log(`Action: Spawned ${params.unitId} with tag '${params.unitTag}' at tile ${params.x}, ${params.y}`);
         } else if (type === 'SPAWN_ITEM') {
             const worldX = (params.x + 0.5) * 64;
             const worldY = (params.y + 0.5) * 64;
             this.loots.push(new Loot(this, worldX, worldY, params.itemId, params.count || 1));
             console.log(`Action: Spawned ${params.itemId} (x${params.count}) at tile ${params.x}, ${params.y}`);
+        } else if (type === 'MOVE_UNIT') {
+            const loc = this.activeLocations.find(l => l.id === params.locationId);
+            if (!loc) return;
+            const targetX = (loc.x + loc.w / 2) * 64;
+            const targetY = (loc.y + loc.h / 2) * 64;
+
+            this.enemies.forEach(enemy => {
+                if (enemy.tag === params.tag) {
+                    // Update enemy command and target to move to the location
+                    enemy.command = 'MOVE';
+                    enemy.targetPos = { x: targetX, y: targetY };
+                    console.log(`Action: Moving unit with tag '${params.tag}' to ${loc.name}`);
+                }
+            });
         } else if (type === 'SHOW_MESSAGE') {
             this.showNotification(params.text);
         }

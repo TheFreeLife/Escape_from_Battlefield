@@ -874,6 +874,7 @@ export default class MapEditor {
                     <select class="action-type-select" data-index="${index}">
                         <option value="SPAWN_UNIT" ${action.type === 'SPAWN_UNIT' ? 'selected' : ''}>유닛 소환</option>
                         <option value="SPAWN_ITEM" ${action.type === 'SPAWN_ITEM' ? 'selected' : ''}>아이템 소환</option>
+                        <option value="MOVE_UNIT" ${action.type === 'MOVE_UNIT' ? 'selected' : ''}>유닛 이동</option>
                         <option value="SHOW_MESSAGE" ${action.type === 'SHOW_MESSAGE' ? 'selected' : ''}>메시지 표시</option>
                     </select>
                     <button class="remove-action-btn" data-index="${index}" style="background:#e74c3c; padding:2px 8px;">×</button>
@@ -885,7 +886,8 @@ export default class MapEditor {
                 const enemies = this.game.assetManager.getData('enemies') || [];
                 let enemyOptions = enemies.map(e => `<option value="${e.id}" ${action.params.unitId === e.id ? 'selected' : ''}>${e.name}</option>`).join('');
                 html += `
-                    <label>유닛: <select class="param-unit-id">${enemyOptions}</select></label><br>
+                    <label>유닛: <select class="param-unit-id">${enemyOptions}</select></label>
+                    <label>소환 태그: <input type="text" class="param-unit-tag" value="${action.params.unitTag || ''}" placeholder="예: reinforcements_01" style="width:100px;"></label><br>
                     <label>타일 X: <input type="number" class="param-x" value="${action.params.x || 0}" style="width:60px;"></label>
                     <label> Y: <input type="number" class="param-y" value="${action.params.y || 0}" style="width:60px;"></label>
                 `;
@@ -897,6 +899,12 @@ export default class MapEditor {
                     <label>수량: <input type="number" class="param-count" value="${action.params.count || 1}" style="width:50px;"></label><br>
                     <label>타일 X: <input type="number" class="param-x" value="${action.params.x || 0}" style="width:60px;"></label>
                     <label> Y: <input type="number" class="param-y" value="${action.params.y || 0}" style="width:60px;"></label>
+                `;
+            } else if (action.type === 'MOVE_UNIT') {
+                const locOptions = this.locations.map(l => `<option value="${l.id}" ${action.params.locationId === l.id ? 'selected' : ''}>${l.name}</option>`).join('');
+                html += `
+                    <label>유닛 태그: <input type="text" class="param-tag" value="${action.params.tag || ''}" placeholder="예: guard_01"></label>
+                    <label>목적지: <select class="param-location-id">${locOptions || '<option>-- Location 없음 --</option>'}</select></label>
                 `;
             } else if (action.type === 'SHOW_MESSAGE') {
                 html += `<label>내용: <input type="text" class="param-text" value="${action.params.text || ''}" style="width:100%;"></label>`;
@@ -940,6 +948,7 @@ export default class MapEditor {
             const params = {};
             if (type === 'SPAWN_UNIT') {
                 params.unitId = div.querySelector('.param-unit-id').value;
+                params.unitTag = div.querySelector('.param-unit-tag').value.trim();
                 params.x = parseInt(div.querySelector('.param-x').value);
                 params.y = parseInt(div.querySelector('.param-y').value);
             } else if (type === 'SPAWN_ITEM') {
@@ -947,6 +956,9 @@ export default class MapEditor {
                 params.count = parseInt(div.querySelector('.param-count').value) || 1;
                 params.x = parseInt(div.querySelector('.param-x').value);
                 params.y = parseInt(div.querySelector('.param-y').value);
+            } else if (type === 'MOVE_UNIT') {
+                params.tag = div.querySelector('.param-tag').value.trim();
+                params.locationId = div.querySelector('.param-location-id').value;
             } else if (type === 'SHOW_MESSAGE') {
                 params.text = div.querySelector('.param-text').value;
             }

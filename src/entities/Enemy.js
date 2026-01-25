@@ -21,6 +21,7 @@ export default class Enemy {
         this.maxHealth = data.health * (config?.healthMult || 1.0);
         this.health = this.maxHealth;
         this.attackDamage = data.damage * (config?.damageMult || 1.0);
+        this.tag = config?.tag || null; // Add unique identifier
 
         this.isDead = false;
         this.attackCooldown = enemyId === 'soldier' ? 0.8 : 1.0;
@@ -97,6 +98,8 @@ export default class Enemy {
                 } else {
                     this.handleChase(dt, player, dist);
                 }
+            } else if (this.command === 'MOVE' && this.targetPos) {
+                this.handleMoveCommand(dt);
             } else if (this.command === 'PATROL') {
                 this.handlePatrol(dt);
             } else if (this.command === 'GUARD') {
@@ -105,6 +108,24 @@ export default class Enemy {
         }
 
         this.handleSeparation(dt);
+    }
+
+    handleMoveCommand(dt) {
+        const dx = this.targetPos.x - this.x;
+        const dy = this.targetPos.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < 10) {
+            // Arrived at destination
+            this.command = 'GUARD'; // Switch to guarding the new spot
+            this.spawnX = this.x;   // Update home position
+            this.spawnY = this.y;
+            this.targetPos = null;
+            console.log(`Enemy with tag ${this.tag} arrived at destination.`);
+        } else {
+            // Move at full speed towards target
+            this.moveTowards(this.x + (dx / dist) * this.speed * dt, this.y + (dy / dist) * this.speed * dt);
+        }
     }
 
     handleRangedChase(dt, player, dist) {
