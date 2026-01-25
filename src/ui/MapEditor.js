@@ -98,6 +98,7 @@ export default class MapEditor {
         document.getElementById('add-event-btn').addEventListener('click', () => this.addNewEvent());
         document.getElementById('logic-settings-save').addEventListener('click', () => this.saveLogicData());
         document.getElementById('event-trigger-type').addEventListener('change', (e) => this.renderTriggerParams(e.target.value));
+        document.getElementById('event-playback-type').addEventListener('change', (e) => this.renderPlaybackParams(e.target.value));
         document.getElementById('delete-event-btn').addEventListener('click', () => this.deleteSelectedEvent());
         document.getElementById('add-action-btn').addEventListener('click', () => this.addNewAction());
 
@@ -785,6 +786,7 @@ export default class MapEditor {
     addNewEvent() {
         const newEvent = {
             name: "새 이벤트",
+            playback: { type: "ONCE", params: {} },
             trigger: { type: "ON_START", params: {} },
             conditions: [],
             actions: []
@@ -793,6 +795,24 @@ export default class MapEditor {
         this.selectedEventIndex = this.mapLogic.events.length - 1;
         this.renderEventList();
         this.renderEventEditor();
+    }
+
+    renderPlaybackParams(type, currentParams = {}) {
+        const container = document.getElementById('playback-params');
+        container.innerHTML = '';
+        container.style.marginTop = '10px';
+
+        if (type === 'REPEATING') {
+            const label = document.createElement('label');
+            label.innerText = '반복 주기 (초): ';
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.id = 'param-playback-interval';
+            input.value = currentParams.interval || 5;
+            input.style.width = '60px';
+            container.appendChild(label);
+            container.appendChild(input);
+        }
     }
 
     deleteSelectedEvent() {
@@ -826,6 +846,8 @@ export default class MapEditor {
 
         const evt = this.mapLogic.events[this.selectedEventIndex];
         document.getElementById('event-name').value = evt.name;
+        document.getElementById('event-playback-type').value = evt.playback?.type || 'ONCE';
+        this.renderPlaybackParams(evt.playback?.type || 'ONCE', evt.playback?.params || {});
         document.getElementById('event-trigger-type').value = evt.trigger.type;
         this.renderTriggerParams(evt.trigger.type, evt.trigger.params);
         this.renderEventActions();
@@ -899,6 +921,7 @@ export default class MapEditor {
                 let enemyOptions = enemies.map(e => `<option value="${e.id}" ${action.params.unitId === e.id ? 'selected' : ''}>${e.name}</option>`).join('');
                 html += `
                     <label>유닛: <select class="param-unit-id">${enemyOptions}</select></label>
+                    <label>수량: <input type="number" class="param-count" value="${action.params.count || 1}" min="1" max="50" style="width:50px;"></label><br>
                     <label>소환 태그: <input type="text" class="param-unit-tag" value="${action.params.unitTag || ''}" placeholder="예: reinforcements_01" style="width:100px;"></label><br>
                     <label>타일 X: <input type="number" class="param-x" value="${action.params.x || 0}" style="width:60px;"></label>
                     <label> Y: <input type="number" class="param-y" value="${action.params.y || 0}" style="width:60px;"></label>
@@ -943,6 +966,15 @@ export default class MapEditor {
         if (this.selectedEventIndex === -1) return;
         const evt = this.mapLogic.events[this.selectedEventIndex];
         evt.name = document.getElementById('event-name').value;
+
+        // Save Playback Data
+        const pbType = document.getElementById('event-playback-type').value;
+        const pbParams = {};
+        if (pbType === 'REPEATING') {
+            pbParams.interval = parseFloat(document.getElementById('param-playback-interval').value) || 5;
+        }
+        evt.playback = { type: pbType, params: pbParams };
+
         evt.trigger.type = document.getElementById('event-trigger-type').value;
         
         // Save Trigger Params
@@ -961,6 +993,7 @@ export default class MapEditor {
             if (type === 'SPAWN_UNIT') {
                 params.unitId = div.querySelector('.param-unit-id').value;
                 params.unitTag = div.querySelector('.param-unit-tag').value.trim();
+                params.count = parseInt(div.querySelector('.param-count').value) || 1;
                 params.x = parseInt(div.querySelector('.param-x').value);
                 params.y = parseInt(div.querySelector('.param-y').value);
             } else if (type === 'SPAWN_ITEM') {

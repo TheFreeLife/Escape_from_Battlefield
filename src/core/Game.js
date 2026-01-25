@@ -164,6 +164,8 @@ export default class Game {
         this.enemies = []; this.projectiles = []; this.loots = []; this.grenades = []; this.vehicles = []; this.machineGuns = [];
         this.tileMap.chunks.clear(); 
         this.isFirstLoad = true;
+        this.eventTimers = {};
+        this.eventPrevStates = {};
 
         let sx = 0, sy = 0;
         let spawnFound = false;
@@ -411,6 +413,7 @@ export default class Game {
 
     loop(t) {
         const dt = Math.min(0.1, (t - this.lastTime) / 1000);
+        this.lastDeltaTime = dt;
         this.lastTime = t;
         this.update(dt); this.render(); this.input.reset();
         requestAnimationFrame((t) => this.loop(t));
@@ -504,31 +507,68 @@ export default class Game {
     processEvents() {
         if (!this.activeLogic || !this.activeLogic.events) return;
 
-        this.activeLogic.events.forEach((evt, index) => {
-            // Skip already processed non-repeatable events (for now all are one-time)
-            if (this.processedEvents.has(index)) return;
+        // Initialize timers and states if not present
+        if (!this.eventTimers) this.eventTimers = {};
+        if (!this.eventPrevStates) this.eventPrevStates = {};
 
-            let triggered = false;
+        this.activeLogic.events.forEach((evt, index) => {
+            const pb = evt.playback || { type: 'ONCE' };
+            
+            // 1. Skip if already done for ONCE events
+            if (pb.type === 'ONCE' && this.processedEvents.has(index)) return;
+
+            let isTriggeredNow = false;
             const type = evt.trigger.type;
             const params = evt.trigger.params;
 
-            if (type === 'ON_START') {
-                triggered = true;
+            // --- TRIGGER CHECKING ---
+            if (type === 'ALWAYS') {
+                isTriggeredNow = true;
+            } else if (type === 'ON_START') {
+                isTriggeredNow = true;
             } else if (type === 'ON_ENTER_AREA') {
                 const loc = this.activeLocations.find(l => l.id === params.locationId);
                 if (loc) {
                     const px = this.player.x / 64;
                     const py = this.player.y / 64;
                     if (px >= loc.x && px < loc.x + loc.w && py >= loc.y && py < loc.y + loc.h) {
-                        triggered = true;
+                        isTriggeredNow = true;
                     }
+                }
+            } else if (type === 'ON_ALL_ENEMIES_DEAD') {
+                if (this.enemies.length === 0 && !this.isFirstLoad) {
+                    isTriggeredNow = true;
                 }
             }
 
-            if (triggered) {
-                console.log(`Event triggered: ${evt.name}`);
-                evt.actions.forEach(action => this.executeAction(action));
-                this.processedEvents.add(index); // Mark as done
+            // --- PLAYBACK LOGIC ---
+            if (pb.type === 'ONCE') {
+                if (isTriggeredNow && !this.processedEvents.has(index)) {
+                    console.log(`Event [ONCE] triggered: ${evt.name}`);
+                    evt.actions.forEach(action => this.executeAction(action));
+                    this.processedEvents.add(index);
+                }
+            } else if (pb.type === 'REPEATING') {
+                if (isTriggeredNow) {
+                    if (this.eventTimers[index] === undefined) this.eventTimers[index] = 0;
+                    this.eventTimers[index] -= this.lastDeltaTime || 0.016; 
+                    
+                    if (this.eventTimers[index] <= 0) {
+                        console.log(`Event [REPEATING] triggered: ${evt.name}`);
+                        evt.actions.forEach(action => this.executeAction(action));
+                        this.eventTimers[index] = (pb.params.interval || 5); 
+                    }
+                } else {
+                    this.eventTimers[index] = 0; 
+                }
+            } else if (pb.type === 'CONDITIONAL') {
+                // Trigger whenever condition becomes true (Edge Triggered)
+                const prevState = this.eventPrevStates[index] || false;
+                if (isTriggeredNow && !prevState) {
+                    console.log(`Event [CONDITIONAL] triggered: ${evt.name}`);
+                    evt.actions.forEach(action => this.executeAction(action));
+                }
+                this.eventPrevStates[index] = isTriggeredNow;
             }
         });
     }
@@ -546,11 +586,18 @@ export default class Game {
         }
 
         if (type === 'SPAWN_UNIT') {
-            const worldX = (params.x + 0.5) * 64;
-            const worldY = (params.y + 0.5) * 64;
-            const newEnemy = new Enemy(this, worldX, worldY, params.unitId, { tag: params.unitTag });
-            this.enemies.push(newEnemy);
-            console.log(`Action: Spawned ${params.unitId} with tag '${params.unitTag}' at tile ${params.x}, ${params.y}`);
+            const count = params.count || 1;
+            for (let i = 0; i < count; i++) {
+                // Add slight random offset if spawning multiple units so they don't overlap perfectly
+                const offsetX = count > 1 ? (Math.random() - 0.5) * 20 : 0;
+                const offsetY = count > 1 ? (Math.random() - 0.5) * 20 : 0;
+                
+                const worldX = (params.x + 0.5) * 64 + offsetX;
+                const worldY = (params.y + 0.5) * 64 + offsetY;
+                const newEnemy = new Enemy(this, worldX, worldY, params.unitId, { tag: params.unitTag });
+                this.enemies.push(newEnemy);
+            }
+            console.log(`Action: Spawned ${count}x ${params.unitId} with tag '${params.unitTag}' at tile ${params.x}, ${params.y}`);
         } else if (type === 'SPAWN_ITEM') {
             const worldX = (params.x + 0.5) * 64;
             const worldY = (params.y + 0.5) * 64;
