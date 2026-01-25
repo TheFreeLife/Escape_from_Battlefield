@@ -59,38 +59,31 @@ export default class Projectile {
             const dist = this.speed * dt;
             const steps = Math.ceil(dist / 20); 
             let hitWall = false;
-            let hitX = this.x;
-            let hitY = this.y;
+            let hitPos = { x: this.x, y: this.y };
 
             for (let i = 1; i <= steps; i++) {
                 const checkX = oldX + (this.dx * dist * (i / steps));
                 const checkY = oldY + (this.dy * dist * (i / steps));
                 
-                const tx = Math.floor(checkX / 64);
-                const ty = Math.floor(checkY / 64);
-
-                // Only hit if it's a physical collision (bottom part for 2.5D objects)
+                // Only register a hit if it hits a physical collision area
                 if (this.game.tileMap.isCollidable(checkX, checkY)) {
                     const floorId = this.game.tileMap.getTileAtWorldPos(checkX, checkY, 'floor');
-                    const block = this.game.tileMap.getBlockAt(tx, ty);
-                    
-                    // Don't hit water unless it's a block
-                    if (block || floorId !== 'water') {
+                    // Block collision takes priority, but we also check for non-water collidables
+                    if (floorId !== 'water') {
                         hitWall = true;
-                        hitX = checkX;
-                        hitY = checkY;
+                        hitPos = { x: checkX, y: checkY };
                         break;
                     }
                 }
             }
 
             if (hitWall) {
-                this.x = hitX;
-                this.y = hitY;
+                this.x = hitPos.x;
+                this.y = hitPos.y;
                 if (this.isExplosive) {
                     this.explode();
                 } else if (!this.isFlame) {
-                    // Use the exact hit coordinates
+                    // Strictly damage at the collision point
                     this.game.tileMap.damageTile(this.x, this.y, this.damage);
                 }
                 this.markedForDeletion = true;

@@ -347,64 +347,71 @@ export default class TileMap {
     }
 
     damageTile(worldX, worldY, amount) {
-        let tx = Math.floor(worldX / TILE_SIZE);
-        let ty = Math.floor(worldY / TILE_SIZE);
-        
-        let block = this.getBlockAt(tx, ty);
+        const block = this.findDestructibleBlock(worldX, worldY);
+        if (!block) return;
 
-        // Robustness: If no block found at the exact point, check surrounding pixels (8-way)
-        if (!block) {
-            const range = 8; // Check within 8 pixels
-            const offsets = [[range,0], [-range,0], [0,range], [0,-range], [range,range], [-range,-range], [range,-range], [-range,range]];
-            for (const [ox, oy] of offsets) {
-                const b = this.getBlockAt(Math.floor((worldX + ox) / TILE_SIZE), Math.floor((worldY + oy) / TILE_SIZE));
-                if (b && b.def && b.def.destructible) {
-                    block = b;
-                    break;
-                }
-            }
-        }
-
-        if (!block || !block.def || !block.def.destructible) return;
-
-        // CRITICAL: Always use the master (anchor) tile coordinates for health data
         const ax = block.anchorX;
         const ay = block.anchorY;
 
-        let metadata = this.getMetadata(ax, ay);
-        if (!metadata) {
-            metadata = { health: block.def.health || 10 };
-        } else if (metadata.health === undefined) {
-            metadata.health = block.def.health || 10;
-        }
+        let metadata = this.getMetadata(ax, ay) || { health: block.def.health || 10 };
+        if (metadata.health === undefined) metadata.health = block.def.health || 10;
         
         metadata.health -= amount;
         
         if (metadata.health <= 0) {
-            const isFuelTank = block.id === 'fuel_tank';
-            const center = isFuelTank ? block.getCenterWorld() : null;
+            this.handleBlockDestruction(block);
+        } else {
+            this._setSingleTile(ax, ay, block.id, 'block', metadata);
+        }
+    }
 
-            // 1. Remove master and all occupied spaces FIRST to prevent recursion
-            const { width, height } = block;
-            for (let oy = 0; oy < height; oy++) {
-                for (let ox = 0; ox < width; ox++) {
-                    this._setSingleTile(ax + ox, ay + oy, null, 'block');
+    /**
+     * 특정 좌표가 어떤 파괴 가능한 블록의 물리적 충돌 박스 내부인지 엄격하게 확인합니다.
+     */
+    findDestructibleBlock(worldX, worldY) {
+        const tx = Math.floor(worldX / TILE_SIZE);
+        const ty = Math.floor(worldY / TILE_SIZE);
+        
+        // 탐색 범위를 5x5로 확장하여 대형 오브젝트(유류 탱크 등)의 모든 부위에서 마스터를 찾을 수 있게 함
+        for (let oy = -2; oy <= 2; oy++) {
+            for (let ox = -2; ox <= 2; ox++) {
+                const block = this.getBlockAt(tx + ox, ty + oy);
+                if (block && block.def && block.def.destructible) {
+                    const cb = block.getCollisionBoundsWorld();
+                    // 정확히 물리적 충돌 박스 내부에 있을 때만 데미지 허용
+                    if (worldX >= cb.x1 && worldX < cb.x2 && worldY >= cb.y1 && worldY < cb.y2) {
+                        return block;
+                    }
                 }
             }
+        }
+        return null;
+    }
 
-            // 2. Trigger explosion AFTER the tile is removed from the map
-            if (isFuelTank && center) {
-                const explosion = new Grenade(this.game, center.x, center.y, center.x, center.y, 0);
-                explosion.radius = 200;
-                explosion.damage = 300;
-                explosion.timer = 0; 
-                if (typeof explosion.explode === 'function') explosion.explode();
-                this.game.grenades.push(explosion);
-                console.log("Fuel tank destroyed and exploded safely!");
+    /**
+     * 블록 파괴 시의 처리를 담당합니다. (연쇄 폭발 등)
+     */
+    handleBlockDestruction(block) {
+        const ax = block.anchorX;
+        const ay = block.anchorY;
+        const isFuelTank = block.id === 'fuel_tank';
+        const center = isFuelTank ? block.getCenterWorld() : null;
+
+        // 1. 맵에서 블록 제거 (무한 루프 방지를 위해 우선 수행)
+        for (let oy = 0; oy < block.height; oy++) {
+            for (let ox = 0; ox < block.width; ox++) {
+                this._setSingleTile(ax + ox, ay + oy, null, 'block');
             }
-        } else {
-            // Ensure we update the metadata at the master tile
-            this._setSingleTile(ax, ay, block.id, 'block', metadata);
+        }
+
+        // 2. 특수 효과 (유류 탱크 폭발 등)
+        if (isFuelTank && center) {
+            const explosion = new Grenade(this.game, center.x, center.y, center.x, center.y, 0);
+            explosion.radius = 200;
+            explosion.damage = 300;
+            explosion.timer = 0;
+            if (typeof explosion.explode === 'function') explosion.explode();
+            this.game.grenades.push(explosion);
         }
     }
 

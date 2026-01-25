@@ -19,9 +19,8 @@ export default class Chunk {
             this.floors[y][x] = tileId;
         }
         
-        if (metadata) {
-            this.metadata[y][x] = JSON.parse(JSON.stringify(metadata));
-        }
+        // Always update metadata, even if it's null, to keep it in sync with the tile
+        this.metadata[y][x] = metadata ? JSON.parse(JSON.stringify(metadata)) : null;
     }
 
     getTile(x, y, layer = 'floor') {
