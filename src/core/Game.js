@@ -139,8 +139,10 @@ export default class Game {
         this.isFirstLoad = true;
 
         let sx = 0, sy = 0;
+        let spawnFound = false;
+
         if (this.activeMap) {
-            // --- NEW: Calculate EFFECTIVE map boundaries ---
+            // --- NEW: Calculate EFFECTIVE map boundaries and find spawn point ---
             let maxTX = 0;
             let maxTY = 0;
 
@@ -151,6 +153,13 @@ export default class Game {
                     if (!cell) return;
                     const [floorId, blockId, unitData] = cell;
                     
+                    // Check for player spawn point
+                    if (blockId === 'player_spawn') {
+                        sx = (x + 0.5) * 64;
+                        sy = (y + 0.5) * 64;
+                        spawnFound = true;
+                    }
+
                     let cellW = 1;
                     let cellH = 1;
 
@@ -187,8 +196,12 @@ export default class Game {
 
             this.mapW = maxTX;
             this.mapH = maxTY;
-            sx = (this.mapW / 2) * 64;
-            sy = (this.mapH / 2) * 64;
+
+            // Only fallback to map center if player_spawn was not found
+            if (!spawnFound) {
+                sx = (this.mapW / 2) * 64;
+                sy = (this.mapH / 2) * 64;
+            }
         }
 
         this.player.x = sx; this.player.y = sy;

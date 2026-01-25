@@ -424,6 +424,21 @@ export default class MapEditor {
         const ew = isRotated ? baseSize.h : baseSize.w;
         const eh = isRotated ? baseSize.w : baseSize.h;
 
+        // --- UNIQUE BLOCK HANDLING (e.g. Player Spawn) ---
+        if (layer === 'block' && tileId) {
+            const tiles = this.game.assetManager.getData('tiles') || [];
+            const def = tiles.find(t => t.id === tileId);
+            if (def && def.isUnique) {
+                // Find and remove any existing tile with the same ID
+                this.tiles.forEach((existingCell, existingKey) => {
+                    if (existingCell.block === tileId) {
+                        const [ex, ey] = existingKey.split(',').map(Number);
+                        this.setTileAt(ex, ey, null, 'block');
+                    }
+                });
+            }
+        }
+
         // Train Placement Restriction: Only allow on rails
         if (layer === 'units' && tileId === 'v_train') {
             for (let oy = 0; oy < eh; oy++) {
