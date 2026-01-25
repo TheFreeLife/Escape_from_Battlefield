@@ -77,6 +77,30 @@ export default class Grenade {
             }
         });
 
+        // Damage Tiles
+        if (this.game.tileMap) {
+            const tileSize = 64;
+            const checkRadius = Math.ceil(this.radius / tileSize);
+            const tx = Math.floor(this.x / tileSize);
+            const ty = Math.floor(this.y / tileSize);
+
+            for (let oy = -checkRadius; oy <= checkRadius; oy++) {
+                for (let ox = -checkRadius; ox <= checkRadius; ox++) {
+                    const block = this.game.tileMap.getBlockAt(tx + ox, ty + oy);
+                    if (block && block.def.destructible) {
+                        const center = block.getCenterWorld();
+                        const dx = center.x - this.x;
+                        const dy = center.y - this.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < this.radius) {
+                            const damageMult = 1 - (dist / this.radius);
+                            this.game.tileMap.damageTile(center.x, center.y, this.damage * (0.5 + 0.5 * damageMult));
+                        }
+                    }
+                }
+            }
+        }
+
         console.log("BOOM!");
     }
 

@@ -354,6 +354,8 @@ export default class TileMap {
         let metadata = this.getMetadata(block.anchorX, block.anchorY);
         if (!metadata) {
             metadata = { health: block.def.health || 10 };
+        } else if (metadata.health === undefined) {
+            metadata.health = block.def.health || 10;
         }
         
         metadata.health -= amount;
