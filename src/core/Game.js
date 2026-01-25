@@ -272,7 +272,11 @@ export default class Game {
             this.gameState = 'EDITOR';
             document.getElementById('main-menu').classList.add('hidden');
             document.getElementById('editor-ui').classList.remove('hidden');
-            if (!this.mapEditor) this.mapEditor = new MapEditor(this);
+            if (!this.mapEditor) {
+                this.mapEditor = new MapEditor(this);
+            } else {
+                this.mapEditor.resetView();
+            }
         });
 
         document.getElementById('exit-editor-btn').addEventListener('click', () => {

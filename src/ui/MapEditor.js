@@ -3,8 +3,8 @@ export default class MapEditor {
         this.game = game;
         this.baseTileSize = 40;
         this.zoom = 1.0;
-        this.offsetX = 100;
-        this.offsetY = 100;
+        this.offsetX = this.game.canvas.width / 2;
+        this.offsetY = this.game.canvas.height / 2;
         this.lastMousePos = { x: 0, y: 0 };
         this.tiles = new Map(); 
         this.selectedTileId = 'grass';
@@ -20,7 +20,14 @@ export default class MapEditor {
         this.locations = []; // [{id, name, x, y, w, h}]
         this.selectedEventIndex = -1;
         this.editingLocationIndex = -1;
+        this.resetView();
         this.init();
+    }
+
+    resetView() {
+        this.offsetX = this.game.canvas.width / 2;
+        this.offsetY = this.game.canvas.height / 2;
+        this.zoom = 1.0;
     }
 
     init() {
